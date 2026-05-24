@@ -3,8 +3,10 @@ import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { getDb } from '@/lib/mongodb'
 import type { IUser } from '@/lib/models/User'
+import { authConfig } from './auth.config'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       async authorize(credentials) {
@@ -32,44 +34,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        const u = user as typeof user & {
-          id: string
-          role: string
-          currency: string
-          currencySymbol: string
-          isAdmin: boolean
-          tier: string
-          premiumOverride: boolean
-        }
-        token.id = u.id
-        token.role = u.role
-        token.currency = u.currency
-        token.currencySymbol = u.currencySymbol
-        token.isAdmin = u.isAdmin
-        token.tier = u.tier
-        token.premiumOverride = u.premiumOverride
-      }
-      return token
-    },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.currency = token.currency as string
-        session.user.currencySymbol = token.currencySymbol as string
-        session.user.isAdmin = token.isAdmin as boolean
-        session.user.tier = token.tier as string
-        session.user.premiumOverride = token.premiumOverride as boolean
-      }
-      return session
-    },
-  },
-  pages: {
-    signIn: '/login',
-    error: '/login',
-  },
-  session: { strategy: 'jwt' },
 })
