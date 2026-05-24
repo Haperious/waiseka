@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ObjectId } from 'mongodb'
 import { auth } from '@/auth'
-import { connectDB } from '@/lib/mongodb'
-import Budget from '@/lib/models/Budget'
+import { getDb } from '@/lib/mongodb'
+import type { IBudget } from '@/lib/models/Budget'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -10,11 +11,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const body = await req.json()
 
-  await connectDB()
-  const budget = await Budget.findOneAndUpdate(
-    { _id: id, userId: session.user.id },
-    body,
-    { new: true }
+  const db = await getDb()
+  const budget = await db.collection<IBudget>('budgets').findOneAndUpdate(
+    { _id: new ObjectId(id), userId: session.user.id },
+    { $set: { ...body, updatedAt: new Date() } },
+    { returnDocument: 'after' }
   )
 
   if (!budget) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -26,9 +27,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-
-  await connectDB()
-  const budget = await Budget.findOneAndDelete({ _id: id, userId: session.user.id })
+  const db = await getDb()
+  const budget = await db.collection<IBudget>('budgets').findOneAndDelete({
+    _id: new ObjectId(id),
+    userId: session.user.id,
+  })
 
   if (!budget) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({ message: 'Deleted successfully' })

@@ -10,6 +10,9 @@ declare module 'next-auth' {
       role: string
       currency: string
       currencySymbol: string
+      isAdmin: boolean
+      tier: string
+      premiumOverride: boolean
     }
   }
 }
@@ -20,5 +23,8 @@ declare module 'next-auth/jwt' {
     role: string
     currency: string
     currencySymbol: string
+    isAdmin: boolean
+    tier: string
+    premiumOverride: boolean
   }
 }

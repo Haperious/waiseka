@@ -68,8 +68,8 @@ export default function GoalsPage() {
           </p>
         </div>
         <Button size="sm" onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          New Goal
+          <Plus className="h-4 w-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">New Goal</span>
         </Button>
       </div>
 

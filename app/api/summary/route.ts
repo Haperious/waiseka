@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { connectDB } from '@/lib/mongodb'
-import Transaction from '@/lib/models/Transaction'
+import { getDb } from '@/lib/mongodb'
+import type { ITransaction } from '@/lib/models/Transaction'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -11,12 +11,13 @@ export async function GET(req: NextRequest) {
   const month = parseInt(searchParams.get('month') ?? String(new Date().getMonth() + 1))
   const year = parseInt(searchParams.get('year') ?? String(new Date().getFullYear()))
 
-  const startDate = new Date(year, month - 1, 1)
-  const endDate = new Date(year, month, 0, 23, 59, 59)
+  const startDate = new Date(Date.UTC(year, month - 1, 1))
+  const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
 
-  await connectDB()
+  const db = await getDb()
+  const col = db.collection<ITransaction>('transactions')
 
-  const [summary] = await Transaction.aggregate([
+  const [summary] = await col.aggregate([
     {
       $match: {
         userId: session.user.id,
@@ -54,9 +55,9 @@ export async function GET(req: NextRequest) {
         },
       },
     },
-  ])
+  ]).toArray()
 
-  const categoryBreakdown = await Transaction.aggregate([
+  const categoryBreakdown = await col.aggregate([
     {
       $match: {
         userId: session.user.id,
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest) {
         count: 1,
       },
     },
-  ])
+  ]).toArray()
 
   const totalExpenses = summary?.totalExpenses ?? 0
   const categoryWithPercent = categoryBreakdown.map((c) => ({

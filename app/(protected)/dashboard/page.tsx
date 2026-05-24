@@ -43,10 +43,13 @@ export default function DashboardPage() {
 
   const now = new Date()
 
+  const currentMonth = now.getMonth() + 1
+  const currentYear = now.getFullYear()
+
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true)
     try {
-      const res = await fetch(`/api/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`)
+      const res = await fetch(`/api/summary?month=${currentMonth}&year=${currentYear}`)
       const data = await res.json()
       setSummary(data)
     } catch {
@@ -54,16 +57,15 @@ export default function DashboardPage() {
     } finally {
       setLoadingSummary(false)
     }
-  }, [now.getMonth, now.getFullYear])
+  }, [currentMonth, currentYear])
 
   const loadTrend = useCallback(async () => {
-    const year = now.getFullYear()
     const results: MonthlyData[] = []
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const currentMonth = now.getMonth()
-    for (let m = Math.max(0, currentMonth - 5); m <= currentMonth; m++) {
+    const monthIndex = now.getMonth()
+    for (let m = Math.max(0, monthIndex - 5); m <= monthIndex; m++) {
       try {
-        const res = await fetch(`/api/summary?month=${m + 1}&year=${year}`)
+        const res = await fetch(`/api/summary?month=${m + 1}&year=${currentYear}`)
         const d = await res.json()
         results.push({ month: months[m], income: d.totalIncome, expenses: d.totalExpenses })
       } catch {
@@ -71,7 +73,7 @@ export default function DashboardPage() {
       }
     }
     setMonthlyData(results)
-  }, [])
+  }, [currentYear])
 
   useEffect(() => {
     loadSummary()
@@ -95,8 +97,8 @@ export default function DashboardPage() {
           </p>
         </div>
         <Button onClick={() => setAddTxOpen(true)} size="sm">
-          <Plus className="h-4 w-4 mr-1.5" />
-          Add Transaction
+          <Plus className="h-4 w-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">Add Transaction</span>
         </Button>
       </div>
 

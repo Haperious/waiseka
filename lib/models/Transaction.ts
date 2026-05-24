@@ -1,6 +1,7 @@
-import mongoose, { Document, Model } from 'mongoose'
+import { ObjectId } from 'mongodb'
 
-export interface ITransaction extends Document {
+export interface ITransaction {
+  _id: ObjectId
   userId: string
   amount: number
   type: 'income' | 'expense'
@@ -12,22 +13,3 @@ export interface ITransaction extends Document {
   createdAt: Date
   updatedAt: Date
 }
-
-const TransactionSchema = new mongoose.Schema<ITransaction>(
-  {
-    userId: { type: String, required: true, index: true },
-    amount: { type: Number, required: true },
-    type: { type: String, enum: ['income', 'expense'], required: true },
-    category: { type: String, required: true },
-    description: { type: String },
-    date: { type: Date, required: true },
-    tags: [{ type: String }],
-    isRecurring: { type: Boolean, default: false },
-  },
-  { timestamps: true }
-)
-
-const Transaction: Model<ITransaction> =
-  mongoose.models.Transaction ?? mongoose.model<ITransaction>('Transaction', TransactionSchema)
-
-export default Transaction

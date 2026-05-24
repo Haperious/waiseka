@@ -33,7 +33,7 @@ export default function Select({
   return (
     <div className="flex flex-col gap-1">
       {label && <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>}
-      <RadixSelect.Root value={value} onValueChange={onValueChange} disabled={disabled}>
+      <RadixSelect.Root value={value || undefined} onValueChange={onValueChange} disabled={disabled}>
         <RadixSelect.Trigger
           className={cn(
             'flex h-10 w-full items-center justify-between rounded-lg border px-3 text-sm',

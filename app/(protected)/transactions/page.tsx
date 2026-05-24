@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/Toast'
 import TransactionForm from './TransactionForm'
 
 const TYPE_OPTIONS = [
-  { value: '', label: 'All Types' },
+  { value: 'all', label: 'All Types' },
   { value: 'income', label: 'Income' },
   { value: 'expense', label: 'Expense' },
 ]
@@ -25,7 +25,7 @@ export default function TransactionsPage() {
   const { formatAmount, currency } = useCurrency()
   const { toast } = useToast()
   const [page, setPage] = useState(1)
-  const [filterType, setFilterType] = useState('')
+  const [filterType, setFilterType] = useState('all')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -36,7 +36,7 @@ export default function TransactionsPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   const { transactions, total, totalPages, loading, deleteTransaction, refetch } = useTransactions({
-    type: filterType,
+    type: filterType === 'all' ? '' : filterType,
     search,
     startDate,
     endDate,
@@ -86,12 +86,12 @@ export default function TransactionsPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={exportCSV}>
-            <Download className="h-4 w-4 mr-1.5" />
-            Export
+            <Download className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
           <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add
+            <Plus className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Add</span>
           </Button>
         </div>
       </div>
@@ -99,18 +99,18 @@ export default function TransactionsPage() {
       {/* Filters */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="flex-1 min-w-[180px] relative">
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-0 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 className="h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm pl-9 pr-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="Search description..."
+                placeholder="Search..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setPage(1) }}}
               />
             </div>
-            <div className="w-36">
+            <div className="w-32 sm:w-36 shrink-0">
               <Select
                 value={filterType}
                 onValueChange={(v) => { setFilterType(v); setPage(1) }}
@@ -118,29 +118,27 @@ export default function TransactionsPage() {
                 placeholder="Type"
               />
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)}>
-              <Filter className="h-4 w-4 mr-1.5" />
-              {showFilters ? 'Hide' : 'Date Filter'}
+            <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)} className="shrink-0">
+              <Filter className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Date Filter'}</span>
             </Button>
           </div>
           {showFilters && (
-            <div className="flex flex-wrap gap-3 mt-3">
+            <div className="grid grid-cols-2 gap-2 mt-3 sm:flex sm:flex-wrap sm:gap-3">
               <Input
                 type="date"
                 label="From"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); setPage(1) }}
-                className="w-44"
               />
               <Input
                 type="date"
                 label="To"
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); setPage(1) }}
-                className="w-44"
               />
-              <div className="flex items-end">
-                <Button variant="ghost" size="sm" onClick={() => { setStartDate(''); setEndDate(''); setFilterType(''); setSearch(''); setSearchInput(''); setPage(1) }}>
+              <div className="col-span-2 flex sm:items-end">
+                <Button variant="ghost" size="sm" onClick={() => { setStartDate(''); setEndDate(''); setFilterType('all'); setSearch(''); setSearchInput(''); setPage(1) }}>
                   Clear
                 </Button>
               </div>
@@ -155,12 +153,12 @@ export default function TransactionsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-700">
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Date</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Description</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Category</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Type</th>
-                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Amount</th>
-                <th className="px-6 py-3" />
+                <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Date</th>
+                <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Description</th>
+                <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell">Category</th>
+                <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">Type</th>
+                <th className="text-right px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Amount</th>
+                <th className="px-3 sm:px-6 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -179,14 +177,15 @@ export default function TransactionsPage() {
               ) : (
                 transactions.map((tx) => (
                   <tr key={tx._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      {format(new Date(tx.date), 'MMM d, yyyy')}
+                    <td className="px-3 sm:px-6 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs sm:text-sm">
+                      {format(new Date(tx.date), 'MMM d')}
+                      <span className="hidden sm:inline">, {format(new Date(tx.date), 'yyyy')}</span>
                     </td>
-                    <td className="px-6 py-3 text-gray-900 dark:text-white max-w-[200px] truncate">
+                    <td className="px-3 sm:px-6 py-3 text-gray-900 dark:text-white max-w-[120px] sm:max-w-[200px] truncate text-xs sm:text-sm">
                       {tx.description || '—'}
                     </td>
-                    <td className="px-6 py-3 text-gray-600 dark:text-gray-300">{tx.category}</td>
-                    <td className="px-6 py-3">
+                    <td className="px-3 sm:px-6 py-3 text-gray-600 dark:text-gray-300 hidden sm:table-cell text-sm">{tx.category}</td>
+                    <td className="px-3 sm:px-6 py-3 hidden md:table-cell">
                       <Badge variant={tx.type === 'income' ? 'success' : 'danger'}>
                         {tx.type === 'income' ? (
                           <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" />Income</span>
@@ -195,10 +194,10 @@ export default function TransactionsPage() {
                         )}
                       </Badge>
                     </td>
-                    <td className={`px-6 py-3 text-right font-semibold whitespace-nowrap ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className={`px-3 sm:px-6 py-3 text-right font-semibold whitespace-nowrap text-xs sm:text-sm ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                       {tx.type === 'income' ? '+' : '-'}{formatAmount(tx.amount)}
                     </td>
-                    <td className="px-6 py-3">
+                    <td className="px-3 sm:px-6 py-3">
                       <div className="flex items-center gap-1 justify-end">
                         <button
                           onClick={() => setEditTx(tx)}

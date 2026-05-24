@@ -64,8 +64,8 @@ export default function BudgetsPage() {
           </p>
         </div>
         <Button size="sm" onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Add Budget
+          <Plus className="h-4 w-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">Add Budget</span>
         </Button>
       </div>
 

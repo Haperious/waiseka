@@ -6,17 +6,22 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {}
 export function Card({ className, ...props }: CardProps) {
   return (
     <div
-      className={cn(
-        'rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm',
-        className
-      )}
-      {...props}
-    />
+      className={cn('rounded-xl shadow-sm border')}
+      style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+    >
+      <div className={cn(className)} {...props} />
+    </div>
   )
 }
 
 export function CardHeader({ className, ...props }: CardProps) {
-  return <div className={cn('px-6 py-4 border-b border-gray-100 dark:border-gray-700', className)} {...props} />
+  return (
+    <div
+      className={cn('px-6 py-4 border-b', className)}
+      style={{ borderColor: 'var(--color-border)' }}
+      {...props}
+    />
+  )
 }
 
 export function CardContent({ className, ...props }: CardProps) {
@@ -26,7 +31,8 @@ export function CardContent({ className, ...props }: CardProps) {
 export function CardFooter({ className, ...props }: CardProps) {
   return (
     <div
-      className={cn('px-6 py-4 border-t border-gray-100 dark:border-gray-700', className)}
+      className={cn('px-6 py-4 border-t', className)}
+      style={{ borderColor: 'var(--color-border)' }}
       {...props}
     />
   )

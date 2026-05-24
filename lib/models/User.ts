@@ -1,53 +1,48 @@
-import mongoose, { Document, Model } from 'mongoose'
+import { ObjectId } from 'mongodb'
 
-export interface IUser extends Document {
+export interface IConversationMessage {
+  role: string
+  content: string
+  createdAt: Date
+}
+
+export interface IUser {
+  _id: ObjectId
   name: string
   email: string
   password: string
   avatar?: string
   role: 'user' | 'admin'
   isVerified: boolean
+  tier: 'free' | 'premium'
+  premiumOverride: boolean
+  isAdmin: boolean
   preferences: {
     currency: 'PHP' | 'QAR' | 'USD'
     currencySymbol: string
+    theme?: 'light' | 'dark'
+  }
+  ai: {
+    enabled: boolean
+    queriesUsed: number
+    queriesCapOverride: number | null
+    resetDate: Date
+    conversations: IConversationMessage[]
+  }
+  notifications: {
+    email: {
+      enabled: boolean
+      frequency: 'daily' | 'weekly' | 'monthly'
+    }
+    push: {
+      enabled: boolean
+      frequency: 'daily' | 'weekly' | 'monthly'
+      fcmToken: string | null
+    }
+    lastSeen: Date
   }
   createdAt: Date
   updatedAt: Date
 }
 
-const UserSchema = new mongoose.Schema<IUser>(
-  {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true },
-    avatar: { type: String },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
-    isVerified: { type: Boolean, default: false },
-    preferences: {
-      currency: {
-        type: String,
-        enum: ['PHP', 'QAR', 'USD'],
-        default: 'USD',
-      },
-      currencySymbol: {
-        type: String,
-        default: '$',
-      },
-    },
-  },
-  { timestamps: true }
-)
-
-const CURRENCY_SYMBOL_MAP: Record<string, string> = { PHP: '₱', QAR: '﷼', USD: '$' }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-UserSchema.pre('save', function (this: any, next: any) {
-  if (this.isModified('preferences.currency')) {
-    this.preferences.currencySymbol = CURRENCY_SYMBOL_MAP[this.preferences.currency] ?? '$'
-  }
-  next()
-})
-
-const User: Model<IUser> = mongoose.models.User ?? mongoose.model<IUser>('User', UserSchema)
-
-export default User
+export const CURRENCY_SYMBOL_MAP: Record<string, string> = { PHP: '₱', QAR: '﷼', USD: '$' }

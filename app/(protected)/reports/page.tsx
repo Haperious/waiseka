@@ -84,20 +84,20 @@ export default function ReportsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Financial insights and trends</p>
         </div>
-        <div className="flex gap-3">
-          <div className="w-36">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="flex-1 sm:w-36">
             <Select
               value={selectedMonth}
               onValueChange={setSelectedMonth}
               options={MONTHS}
             />
           </div>
-          <div className="w-28">
+          <div className="flex-1 sm:w-28">
             <Select
               value={selectedYear}
               onValueChange={setSelectedYear}
@@ -171,10 +171,10 @@ export default function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Category</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Amount</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">% of Expenses</th>
-                  <th className="px-6 py-3 w-1/3">
+                  <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Category</th>
+                  <th className="text-right px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Amount</th>
+                  <th className="text-right px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">%</th>
+                  <th className="px-3 sm:px-6 py-3 w-1/4 hidden sm:table-cell">
                     <span className="sr-only">Bar</span>
                   </th>
                 </tr>
@@ -182,10 +182,10 @@ export default function ReportsPage() {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {summary.categoryBreakdown.map((c, i) => (
                   <tr key={c.category} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{c.category}</td>
-                    <td className="px-6 py-3 text-right text-gray-700 dark:text-gray-300">{formatAmount(c.total)}</td>
-                    <td className="px-6 py-3 text-right text-gray-700 dark:text-gray-300">{c.percentage}%</td>
-                    <td className="px-6 py-3">
+                    <td className="px-3 sm:px-6 py-3 font-medium text-gray-900 dark:text-white text-xs sm:text-sm">{c.category}</td>
+                    <td className="px-3 sm:px-6 py-3 text-right text-gray-700 dark:text-gray-300 text-xs sm:text-sm">{formatAmount(c.total)}</td>
+                    <td className="px-3 sm:px-6 py-3 text-right text-gray-700 dark:text-gray-300 text-xs sm:text-sm">{c.percentage}%</td>
+                    <td className="px-3 sm:px-6 py-3 hidden sm:table-cell">
                       <div className="h-2 rounded-full bg-gray-200 dark:bg-gray-700">
                         <div
                           className="h-2 rounded-full"

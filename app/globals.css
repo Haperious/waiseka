@@ -1,20 +1,63 @@
 @import "tailwindcss";
 
+@custom-variant dark (.dark &);
+
+/* ── Light mode (default) ── */
 :root {
-  --background: #f9fafb;
-  --foreground: #111827;
+  --color-bg:       #F4FBF6;
+  --color-surface:  #FFFFFF;
+  --color-card:     #FAFFFE;
+  --color-elevated: #EEF9F3;
+  --color-border:   #C8E3C4;
+
+  --color-primary:  #1A6B3A;
+  --color-active:   #0D3D1F;
+  --color-accent:   #2A9654;
+  --color-sage:     #B5D5B0;
+  --color-pale:     #D9F5E5;
+
+  --color-text-primary:   #0D3D1F;
+  --color-text-secondary: #1A6B3A;
+  --color-text-muted:     #B5D5B0;
+
+  --color-income:     #2A9654;
+  --color-expense:    #C0392B;
+  --color-warning:    #9A6F00;
+  --color-income-bg:  #D9F5E5;
+  --color-expense-bg: #FDEAEA;
+  --color-warning-bg: #FEF6E4;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-  }
+/* ── Dark mode ── */
+.dark {
+  --color-bg:       #0A1A0F;
+  --color-surface:  #0F2416;
+  --color-card:     #142D1C;
+  --color-elevated: #1A3823;
+  --color-border:   #2A5035;
+
+  --color-primary:  #1A6B3A;
+  --color-active:   #2A9654;
+  --color-accent:   #3BAF68;
+  --color-sage:     #B5D5B0;
+  --color-pale:     #C2EDD0;
+
+  --color-text-primary:   #EEF9F3;
+  --color-text-secondary: #7DD99A;
+  --color-text-muted:     #2A5035;
+
+  --color-income:     #3BAF68;
+  --color-expense:    #E05A5A;
+  --color-warning:    #D4950A;
+  --color-income-bg:  rgba(59, 175, 104, 0.12);
+  --color-expense-bg: rgba(224, 90, 90, 0.12);
+  --color-warning-bg: rgba(212, 149, 10, 0.12);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 * {

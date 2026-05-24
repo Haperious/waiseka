@@ -1,19 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Transaction } from '@/hooks/useTransactions'
-
-const CATEGORIES = [
-  'Food & Dining', 'Transportation', 'Housing', 'Entertainment',
-  'Health & Fitness', 'Shopping', 'Utilities', 'Education',
-  'Travel', 'Personal Care', 'Gifts & Donations', 'Business',
-  'Salary', 'Freelance', 'Investment', 'Other',
-]
+import { useCategories } from '@/hooks/useCategories'
+import MicrophoneButton from '@/components/MicrophoneButton'
 
 interface TransactionFormProps {
   transaction?: Transaction
@@ -23,6 +18,7 @@ interface TransactionFormProps {
 
 export default function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast()
+  const { categories } = useCategories()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     type: transaction?.type ?? 'expense',
@@ -71,7 +67,13 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
     }
   }
 
-  const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: c }))
+  const categoryOptions = useMemo(() => {
+    const filtered = categories.filter(
+      (c) => c.type === form.type || c.type === 'both'
+    )
+    return filtered.map((c) => ({ value: c.name, label: c.name }))
+  }, [categories, form.type])
+
   const typeOptions = [
     { value: 'expense', label: 'Expense' },
     { value: 'income', label: 'Income' },
@@ -79,10 +81,23 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+        <MicrophoneButton
+          onFill={(data) =>
+            setForm((prev) => ({
+              ...prev,
+              ...(data.type && { type: data.type, category: '' }),
+              ...(data.amount !== undefined && { amount: String(data.amount) }),
+              ...(data.category && { category: data.category }),
+              ...(data.description && { description: data.description }),
+            }))
+          }
+        />
+      </div>
       <Select
         label="Type"
         value={form.type}
-        onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense' })}
+        onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense', category: '' })}
         options={typeOptions}
       />
       <Input

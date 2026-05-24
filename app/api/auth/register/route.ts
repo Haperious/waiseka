@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { connectDB } from '@/lib/mongodb'
-import User from '@/lib/models/User'
+import { getDb } from '@/lib/mongodb'
+import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
+import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const { name, email, password, confirmPassword } = body
-
+     
     if (!name || !email || !password || !confirmPassword) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
@@ -24,25 +26,66 @@ export async function POST(req: NextRequest) {
     if (password !== confirmPassword) {
       return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 })
     }
+   
+    const db = await getDb()
+    const users = db.collection('users')
 
-    await connectDB()
-
-    const existing = await User.findOne({ email: email.toLowerCase() })
+    const existing = await users.findOne({ email: email.toLowerCase() })
     if (existing) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    await User.create({
+    const resetDate = new Date()
+    resetDate.setMonth(resetDate.getMonth() + 1)
+    resetDate.setDate(1)
+    resetDate.setHours(0, 0, 0, 0)
+
+    const now = new Date()
+    const result = await users.insertOne({
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
-      preferences: { currency: 'USD', currencySymbol: '$' },
+      avatar: null,
+      role: 'user',
+      isVerified: false,
+      tier: 'free',
+      premiumOverride: false,
+      isAdmin: false,
+      preferences: { currency: 'PHP', currencySymbol: CURRENCY_SYMBOL_MAP['PHP'] },
+      ai: {
+        enabled: true,
+        queriesUsed: 0,
+        queriesCapOverride: null,
+        resetDate,
+        conversations: [],
+      },
+      notifications: {
+        email: { enabled: false, frequency: 'weekly' },
+        push: { enabled: false, frequency: 'weekly', fcmToken: null },
+        lastSeen: now,
+      },
+      createdAt: now,
+      updatedAt: now,
     })
 
+    const userId = result.insertedId.toString()
+    await db.collection<ICategory>('categories').insertMany(
+      DEFAULT_CATEGORIES.map((c) => ({
+        ...c,
+        userId,
+        createdAt: now,
+        updatedAt: now,
+      })) as ICategory[]
+    )
+
+    sendWelcomeEmail({ firstName: name.split(' ')[0], email: email.toLowerCase() })
+      .catch((err) => console.error('[register] welcome email error:', err))
+
     return NextResponse.json({ message: 'Account created successfully' }, { status: 201 })
-  } catch {
+  } catch (err) {
+    console.error('[register]', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

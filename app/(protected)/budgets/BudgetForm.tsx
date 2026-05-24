@@ -1,17 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Budget } from '@/hooks/useBudgets'
-
-const CATEGORIES = [
-  'Food & Dining', 'Transportation', 'Housing', 'Entertainment',
-  'Health & Fitness', 'Shopping', 'Utilities', 'Education',
-  'Travel', 'Personal Care', 'Gifts & Donations', 'Business', 'Other',
-]
+import { useCategories } from '@/hooks/useCategories'
 
 const COLORS = ['#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
@@ -28,6 +23,7 @@ interface BudgetFormProps {
 
 export default function BudgetForm({ budget, onSuccess, onCancel }: BudgetFormProps) {
   const { toast } = useToast()
+  const { categories } = useCategories()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     category: budget?.category ?? '',
@@ -73,7 +69,12 @@ export default function BudgetForm({ budget, onSuccess, onCancel }: BudgetFormPr
     }
   }
 
-  const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: c }))
+  const categoryOptions = useMemo(
+    () => categories
+      .filter((c) => c.type === 'expense' || c.type === 'both')
+      .map((c) => ({ value: c.name, label: c.name })),
+    [categories]
+  )
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

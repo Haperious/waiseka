@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ObjectId } from 'mongodb'
 import bcrypt from 'bcryptjs'
 import { auth } from '@/auth'
-import { connectDB } from '@/lib/mongodb'
-import User from '@/lib/models/User'
+import { getDb } from '@/lib/mongodb'
+import type { IUser } from '@/lib/models/User'
 
 export async function PUT(req: NextRequest) {
   const session = await auth()
@@ -23,15 +24,19 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'New passwords do not match' }, { status: 400 })
   }
 
-  await connectDB()
-  const user = await User.findById(session.user.id)
+  const db = await getDb()
+  const users = db.collection<IUser>('users')
+  const user = await users.findOne({ _id: new ObjectId(session.user.id) })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const match = await bcrypt.compare(currentPassword, user.password)
   if (!match) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
 
-  user.password = await bcrypt.hash(newPassword, 12)
-  await user.save()
+  const hashed = await bcrypt.hash(newPassword, 12)
+  await users.updateOne(
+    { _id: new ObjectId(session.user.id) },
+    { $set: { password: hashed, updatedAt: new Date() } }
+  )
 
   return NextResponse.json({ message: 'Password updated successfully' })
 }

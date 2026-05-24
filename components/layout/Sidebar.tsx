@@ -1,7 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { useTheme } from '@/context/ThemeContext'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -9,8 +12,10 @@ import {
   Target,
   BarChart3,
   Settings,
-  TrendingUp,
   X,
+  Bot,
+  Shield,
+  Tags,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -19,7 +24,9 @@ const navItems = [
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { href: '/budgets', label: 'Budgets', icon: PieChart },
   { href: '/goals', label: 'Goals', icon: Target },
+  { href: '/categories', label: 'Categories', icon: Tags },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/ai/chat', label: 'AI Assistant', icon: Bot },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -30,6 +37,9 @@ interface SidebarProps {
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const { theme } = useTheme()
+  const isAdmin = session?.user?.isAdmin === true
 
   return (
     <>
@@ -43,17 +53,22 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 w-64 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-transform duration-300',
+          'fixed inset-y-0 left-0 z-30 w-64 flex flex-col border-r transition-transform duration-300',
           'lg:translate-x-0 lg:static lg:z-auto',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
+        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
       >
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between h-16 px-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-bold text-gray-900 dark:text-white">Waiseka</span>
+            <Image
+              src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'}
+              alt="Waiseka"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
+            <span className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Waiseka</span>
           </Link>
           <button
             onClick={onClose}
@@ -74,10 +89,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 onClick={onClose}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                  isActive ? 'font-semibold' : 'hover:opacity-80'
                 )}
+                style={isActive
+                  ? { backgroundColor: 'var(--color-elevated)', color: 'var(--color-accent)' }
+                  : { color: 'var(--color-text-secondary)' }
+                }
               >
                 <Icon className="h-5 w-5 shrink-0" />
                 {label}
@@ -85,6 +102,26 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             )
           })}
         </nav>
+
+        {isAdmin && (
+          <div className="px-3 pb-4 border-t pt-3" style={{ borderColor: 'var(--color-border)' }}>
+            <Link
+              href="/admin/users"
+              onClick={onClose}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                pathname.startsWith('/admin') ? 'font-semibold' : 'hover:opacity-80'
+              )}
+              style={pathname.startsWith('/admin')
+                ? { backgroundColor: 'var(--color-elevated)', color: 'var(--color-accent)' }
+                : { color: 'var(--color-text-secondary)' }
+              }
+            >
+              <Shield className="h-5 w-5 shrink-0" />
+              Admin
+            </Link>
+          </div>
+        )}
       </aside>
     </>
   )

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import './globals.css'
 import { CurrencyProvider } from '@/context/CurrencyContext'
+import { ThemeProvider } from '@/context/ThemeContext'
 import { ToastProvider } from '@/components/ui/Toast'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
@@ -13,10 +14,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+    <html lang="en" className={`${geist.variable} h-full antialiased dark`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.classList.remove('light','dark');document.documentElement.classList.add(t);}})();` }} />
+      </head>
+      <body className="min-h-full" suppressHydrationWarning>
         <ToastProvider>
-          <CurrencyProvider>{children}</CurrencyProvider>
+          <ThemeProvider>
+            <CurrencyProvider>{children}</CurrencyProvider>
+          </ThemeProvider>
         </ToastProvider>
       </body>
     </html>
