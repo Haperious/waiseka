@@ -5,10 +5,12 @@ const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
 // ─── Transport ────────────────────────────────────────────────────────────────
 
 function createTransporter() {
+  const port = parseInt(process.env.SMTP_PORT ?? '587')
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT ?? '587'),
-    secure: process.env.SMTP_PORT === '465',
+    port,
+    secure: port === 465,
+    requireTLS: port === 587,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   })
 }
