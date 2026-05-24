@@ -1,5 +1,8 @@
-import { auth } from '@/auth'
+import NextAuth from 'next-auth'
+import { authConfig } from './auth.config'
 import { NextResponse } from 'next/server'
+
+const { auth } = NextAuth(authConfig)
 
 const protectedRoutes = ['/dashboard', '/transactions', '/budgets', '/goals', '/reports', '/settings', '/ai', '/admin']
 const publicRoutes = ['/login', '/register']
@@ -24,21 +27,6 @@ export default auth((req) => {
     if (!isAdmin) {
       return NextResponse.redirect(new URL('/dashboard', nextUrl))
     }
-  }
-
-  // Non-blocking lastSeen update
-  if (isProtected && isLoggedIn && session?.user?.id) {
-    const userId = session.user.id
-    import('@/lib/mongodb')
-      .then(({ getDb }) => getDb())
-      .then((db) => {
-        const { ObjectId } = require('mongodb')
-        db.collection('users').updateOne(
-          { _id: new ObjectId(userId) },
-          { $set: { 'notifications.lastSeen': new Date() } }
-        )
-      })
-      .catch(() => {})
   }
 
   return NextResponse.next()
