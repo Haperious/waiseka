@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { TrendingUp } from 'lucide-react'
+import Image from 'next/image'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -35,11 +35,9 @@ export default function ForgotPasswordPage() {
   return (
     <div className="w-full max-w-md">
       <div className="flex flex-col items-center mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-            <TrendingUp className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-2xl font-bold text-gray-900 dark:text-white">Waiseka</span>
+        <div className="flex items-center gap-3 mb-2">
+          <Image src="/logo.png" alt="Waiseka" width={48} height={48} priority className="rounded-xl" />
+          <span className="text-2xl font-bold text-gray-900 dark:text-white">WaiseKa</span>
         </div>
         <p className="text-gray-500 dark:text-gray-400 text-sm">Reset your password</p>
       </div>

@@ -8,7 +8,7 @@ import { ToastProvider } from '@/components/ui/Toast'
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 
 export const metadata: Metadata = {
-  title: 'Waiseka — Personal Budgeting',
+  title: 'Waiseka | Personal Budgeting',
   description: 'Track your income, expenses, budgets and financial goals.',
 }
 

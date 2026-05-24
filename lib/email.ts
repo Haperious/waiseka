@@ -36,7 +36,7 @@ const BASE_CSS = `
   .mbrand{font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.01em}
   .mbrand span{color:#C2EDD0}
   .hero{background:#FFFFFF;padding:36px 44px 32px;text-align:center;border-bottom:1px solid #C8E3C4}
-  .hico{width:68px;height:68px;border-radius:18px;background:#EEF9F3;border:1px solid #C8E3C4;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:28px}
+  .hico{width:68px;height:68px;border-radius:18px;background:#EEF9F3;border:1px solid #C8E3C4;display:block;text-align:center;line-height:68px;margin:0 auto 18px;font-size:28px}
   .h1{font-size:22px;font-weight:700;color:#0D3D1F;margin-bottom:8px;line-height:1.25;letter-spacing:-0.02em}
   .hsub{font-size:13px;color:#1A6B3A;line-height:1.65;max-width:370px;margin:0 auto}
   .body{background:#FFFFFF;padding:28px 44px}
