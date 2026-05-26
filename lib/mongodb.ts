@@ -1,43 +1,42 @@
-import { MongoClient, Db ,ServerApiVersion} from 'mongodb'
+import { MongoClient, Db, ServerApiVersion } from 'mongodb'
 
 const uri = process.env.MONGODB_URI!
 if (!uri) throw new Error('MONGODB_URI is not defined in environment variables')
 
-let client: MongoClient
-let clientPromise: Promise<MongoClient>
-
-declare global {
-  // eslint-disable-next-line no-var
-  var _mongoClientPromise: Promise<MongoClient> | undefined
-}
-
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, {
+const options = {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
+  },
+  maxPoolSize: 1,
+  serverSelectionTimeoutMS: 10000,
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var _mongoClient: MongoClient | undefined
+}
+
+async function getClient(): Promise<MongoClient> {
+  if (global._mongoClient) return global._mongoClient
+
+  const client = new MongoClient(uri, options)
+  try {
+    await client.connect()
+  } catch (err) {
+    global._mongoClient = undefined
+    throw err
   }
-})
-    global._mongoClientPromise = client.connect()
-  }
-  clientPromise = global._mongoClientPromise
-} else {
-  client = new MongoClient(uri, {
-    serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
-    }
-  })
-  clientPromise = client.connect()
+  global._mongoClient = client
+  return client
 }
 
 export async function getDb(): Promise<Db> {
-
-  const c = await clientPromise
-  return c.db("waiseka")
+  const client = await getClient()
+  return client.db('waiseka')
 }
 
-export default clientPromise
+export default getClient
