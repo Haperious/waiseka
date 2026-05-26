@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, Lock, DollarSign, Bell, Sun, Moon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { User, Lock, DollarSign, Bell, Sun, Moon, Mic } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const { currency, setCurrency, formatAmount } = useCurrency()
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
+  const router = useRouter()
   const currencies = getAllCurrencies()
 
   // Profile
@@ -38,6 +40,7 @@ export default function SettingsPage() {
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [frequency, setFrequency] = useState<Frequency>('weekly')
+  const [emailCount, setEmailCount] = useState(1)
 
   useEffect(() => {
     fetch('/api/users/me')
@@ -55,6 +58,7 @@ export default function SettingsPage() {
         if (d?.push) setPushEnabled(d.push.enabled ?? false)
         if (d?.email?.frequency) setFrequency(d.email.frequency)
         else if (d?.push?.frequency) setFrequency(d.push.frequency)
+        if (d?.email?.count) setEmailCount(d.email.count)
       })
       .catch(() => {})
   }, [])
@@ -158,11 +162,19 @@ export default function SettingsPage() {
     await saveNotifications({ push: { enabled, fcmToken } })
   }
 
+  const maxEmailCount = frequency === 'daily' ? 5 : frequency === 'weekly' ? 7 : 30
+
+  const handleFrequencyChange = (newFreq: Frequency) => {
+    setFrequency(newFreq)
+    const newMax = newFreq === 'daily' ? 5 : newFreq === 'weekly' ? 7 : 30
+    setEmailCount((v) => Math.min(v, newMax))
+  }
+
   const saveNotifications = async (overrides?: { push?: { enabled: boolean; fcmToken: string | null } }) => {
     setNotifLoading(true)
     try {
       const body: Record<string, unknown> = {
-        email: { enabled: emailEnabled, frequency },
+        email: { enabled: emailEnabled, frequency, count: emailCount },
         push: { enabled: pushEnabled, frequency },
       }
       if (overrides?.push !== undefined) {
@@ -395,6 +407,44 @@ export default function SettingsPage() {
             </button>
           </div>
 
+          {/* Email count stepper (shown when email is enabled) */}
+          {emailEnabled && (
+            <div className="rounded-lg p-3 space-y-2" style={{ backgroundColor: 'var(--color-elevated)' }}>
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Remind me</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEmailCount((v) => Math.max(1, v - 1))}
+                    disabled={emailCount <= 1}
+                    className="w-8 h-8 rounded-md border flex items-center justify-center text-lg font-medium transition-opacity disabled:opacity-30"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', backgroundColor: 'var(--color-surface)' }}
+                  >
+                    –
+                  </button>
+                  <span className="w-8 text-center text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                    {emailCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEmailCount((v) => Math.min(maxEmailCount, v + 1))}
+                    disabled={emailCount >= maxEmailCount}
+                    className="w-8 h-8 rounded-md border flex items-center justify-center text-lg font-medium transition-opacity disabled:opacity-30"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', backgroundColor: 'var(--color-surface)' }}
+                  >
+                    +
+                  </button>
+                  <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    time{emailCount !== 1 ? 's' : ''} per {frequency} (max {maxEmailCount})
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                Reminders: <strong>{emailCount}× {frequency}</strong>
+              </p>
+            </div>
+          )}
+
           {/* Push toggle */}
           <div className="flex items-center justify-between">
             <div>
@@ -427,7 +477,7 @@ export default function SettingsPage() {
             </label>
             <select
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value as Frequency)}
+              onChange={(e) => handleFrequencyChange(e.target.value as Frequency)}
               className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="daily">Daily</option>
@@ -439,6 +489,27 @@ export default function SettingsPage() {
 
           <Button onClick={() => saveNotifications()} loading={notifLoading}>
             Save Notification Preferences
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Voice Keywords */}
+      <Card>
+        <CardHeader className="flex items-center gap-3 flex-row">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-elevated)' }}>
+            <Mic className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+          </div>
+          <div>
+            <h2 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>Voice Keywords</h2>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Custom keywords for voice input</p>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            Map spoken words to transaction categories for faster voice entry.
+          </p>
+          <Button variant="outline" onClick={() => router.push('/settings/voice-keywords')}>
+            Manage Voice Keywords
           </Button>
         </CardContent>
       </Card>

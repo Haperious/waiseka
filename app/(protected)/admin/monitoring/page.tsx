@@ -26,7 +26,7 @@ export default function AdminMonitoringPage() {
       setStats(data)
       setLastUpdated(new Date())
     } catch {
-      // silent — auto-refresh will retry
+      // silent - auto-refresh will retry
     } finally {
       setLoading(false)
     }

@@ -5,8 +5,9 @@ import { adminGate } from '@/lib/admin-gate'
 import type { IUser } from '@/lib/models/User'
 
 const USER_PROJECTION = {
-  name: 1, email: 1, tier: 1, premiumOverride: 1,
+  name: 1, email: 1, tier: 1, premiumOverride: 1, isVerified: 1,
   'ai.enabled': 1, 'ai.queriesUsed': 1, 'ai.queriesCapOverride': 1, 'ai.resetDate': 1,
+  'notifications.lastSeen': 1,
   createdAt: 1,
 }
 

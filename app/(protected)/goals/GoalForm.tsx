@@ -32,7 +32,7 @@ export default function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
   const [form, setForm] = useState({
     title: goal?.title ?? '',
     targetAmount: goal?.targetAmount ? String(goal.targetAmount) : '',
-    deadline: goal?.deadline ? format(new Date(goal.deadline), 'yyyy-MM-dd') : '',
+    deadline: goal?.deadline ? format(new Date(goal.deadline), "yyyy-MM-dd'T'HH:mm") : '',
     priority: goal?.priority ?? 'medium',
     status: goal?.status ?? 'active',
   })
@@ -43,6 +43,7 @@ export default function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
     if (!form.title.trim()) e.title = 'Title is required'
     if (!form.targetAmount || isNaN(Number(form.targetAmount)) || Number(form.targetAmount) <= 0)
       e.targetAmount = 'Enter a valid target amount'
+    if (!form.deadline) e.deadline = 'Deadline is required'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -60,7 +61,7 @@ export default function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
         targetAmount: Number(form.targetAmount),
         priority: form.priority,
         status: form.status,
-        ...(form.deadline && { deadline: form.deadline }),
+        deadline: form.deadline,
       }
       const res = await fetch(url, {
         method,
@@ -101,10 +102,11 @@ export default function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
         error={errors.targetAmount}
       />
       <Input
-        label="Deadline (optional)"
-        type="date"
+        label="Deadline"
+        type="datetime-local"
         value={form.deadline}
         onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+        error={errors.deadline}
       />
       <Select
         label="Priority"

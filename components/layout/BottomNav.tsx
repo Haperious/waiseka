@@ -26,7 +26,7 @@ interface BottomNavProps {
 export default function BottomNav({ onMoreClick }: BottomNavProps) {
   const pathname = usePathname()
 
-  const isMoreActive = ['/reports', '/settings', '/admin', '/categories'].some((p) =>
+  const isMoreActive = ['/settings', '/admin', '/categories'].some((p) =>
     pathname.startsWith(p)
   )
 
@@ -54,7 +54,7 @@ export default function BottomNav({ onMoreClick }: BottomNavProps) {
         )
       })}
 
-      {/* More — opens sidebar drawer */}
+      {/* More - opens sidebar drawer */}
       <button
         onClick={onMoreClick}
         className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-opacity hover:opacity-70"

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { title, targetAmount, deadline, priority } = body
 
-  if (!title || !targetAmount) {
+  if (!title || !targetAmount || !deadline) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     title,
     targetAmount,
     savedAmount: 0,
-    deadline: deadline ? new Date(deadline) : undefined,
+    deadline: new Date(deadline),
     priority: priority ?? 'medium',
     status: 'active',
     createdAt: now,

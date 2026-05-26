@@ -10,7 +10,6 @@ import {
   ArrowLeftRight,
   PieChart,
   Target,
-  BarChart3,
   Settings,
   X,
   Bot,
@@ -25,7 +24,6 @@ const navItems = [
   { href: '/budgets', label: 'Budgets', icon: PieChart },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/categories', label: 'Categories', icon: Tags },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/ai/chat', label: 'AI Assistant', icon: Bot },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]

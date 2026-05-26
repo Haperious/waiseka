@@ -46,10 +46,18 @@ export async function PUT(req: NextRequest) {
   if (push?.frequency && !VALID_FREQUENCIES.includes(push.frequency)) {
     return NextResponse.json({ error: 'Invalid frequency value' }, { status: 400 })
   }
+  if (email?.count !== undefined) {
+    const freq = email.frequency ?? 'weekly'
+    const maxCount = freq === 'daily' ? 5 : freq === 'weekly' ? 7 : 30
+    if (!Number.isInteger(email.count) || email.count < 1 || email.count > maxCount) {
+      return NextResponse.json({ error: 'Invalid count for selected frequency' }, { status: 400 })
+    }
+  }
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
   if (email?.enabled !== undefined) update['notifications.email.enabled'] = email.enabled
   if (email?.frequency) update['notifications.email.frequency'] = email.frequency
+  if (email?.count !== undefined) update['notifications.email.count'] = email.count
   if (push?.enabled !== undefined) update['notifications.push.enabled'] = push.enabled
   if (push?.frequency) update['notifications.push.frequency'] = push.frequency
   if (push?.fcmToken !== undefined) update['notifications.push.fcmToken'] = push.fcmToken

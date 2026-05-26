@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Plus, TrendingUp, TrendingDown, Pencil, Trash2, Download, Search, Filter } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, PiggyBank, Pencil, Trash2, Download, Search, Filter } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -19,6 +19,7 @@ const TYPE_OPTIONS = [
   { value: 'all', label: 'All Types' },
   { value: 'income', label: 'Income' },
   { value: 'expense', label: 'Expense' },
+  { value: 'savings', label: 'Savings' },
 ]
 
 export default function TransactionsPage() {
@@ -118,7 +119,7 @@ export default function TransactionsPage() {
                 placeholder="Type"
               />
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)} className="shrink-0">
+            <Button variant="outline" size="md" onClick={() => setShowFilters((v) => !v)} className="shrink-0">
               <Filter className="h-4 w-4 sm:mr-1.5" />
               <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Date Filter'}</span>
             </Button>
@@ -182,20 +183,25 @@ export default function TransactionsPage() {
                       <span className="hidden sm:inline">, {format(new Date(tx.date), 'yyyy')}</span>
                     </td>
                     <td className="px-3 sm:px-6 py-3 text-gray-900 dark:text-white max-w-[120px] sm:max-w-[200px] truncate text-xs sm:text-sm">
-                      {tx.description || '—'}
+                      {tx.description || '-'}
                     </td>
                     <td className="px-3 sm:px-6 py-3 text-gray-600 dark:text-gray-300 hidden sm:table-cell text-sm">{tx.category}</td>
                     <td className="px-3 sm:px-6 py-3 hidden md:table-cell">
-                      <Badge variant={tx.type === 'income' ? 'success' : 'danger'}>
+                      <Badge variant={tx.type === 'income' ? 'success' : tx.type === 'savings' ? 'savings' : 'danger'}>
                         {tx.type === 'income' ? (
                           <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" />Income</span>
+                        ) : tx.type === 'savings' ? (
+                          <span className="flex items-center gap-1"><PiggyBank className="h-3 w-3" />Savings</span>
                         ) : (
                           <span className="flex items-center gap-1"><TrendingDown className="h-3 w-3" />Expense</span>
                         )}
                       </Badge>
                     </td>
-                    <td className={`px-3 sm:px-6 py-3 text-right font-semibold whitespace-nowrap text-xs sm:text-sm ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      {tx.type === 'income' ? '+' : '-'}{formatAmount(tx.amount)}
+                    <td
+                      className={`px-3 sm:px-6 py-3 text-right font-semibold whitespace-nowrap text-xs sm:text-sm ${tx.type === 'income' ? 'text-green-600' : tx.type === 'savings' ? '' : 'text-red-600'}`}
+                      style={tx.type === 'savings' ? { color: 'var(--color-savings)' } : undefined}
+                    >
+                      {tx.type === 'income' ? '+' : tx.type === 'savings' ? '=' : '-'}{formatAmount(tx.amount)}
                     </td>
                     <td className="px-3 sm:px-6 py-3">
                       <div className="flex items-center gap-1 justify-end">

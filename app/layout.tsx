@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import './globals.css'
+import { auth } from '@/auth'
 import { CurrencyProvider } from '@/context/CurrencyContext'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { ToastProvider } from '@/components/ui/Toast'
+import type { CurrencyCode } from '@/lib/currency'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 
@@ -12,7 +14,10 @@ export const metadata: Metadata = {
   description: 'Track your income, expenses, budgets and financial goals.',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth()
+  const initialCurrency = (session?.user?.currency ?? 'USD') as CurrencyCode
+
   return (
     <html lang="en" className={`${geist.variable} h-full antialiased dark`} suppressHydrationWarning>
       <head>
@@ -21,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full" suppressHydrationWarning>
         <ToastProvider>
           <ThemeProvider>
-            <CurrencyProvider>{children}</CurrencyProvider>
+            <CurrencyProvider initialCurrency={initialCurrency}>{children}</CurrencyProvider>
           </ThemeProvider>
         </ToastProvider>
       </body>

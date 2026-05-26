@@ -1,16 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Mic, Square, Loader2, Settings } from 'lucide-react'
+import { Mic, Square, Loader2, Settings, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { useVoiceKeywords } from '@/hooks/useVoiceKeywords'
 import { parseSpeechToTransaction, ParsedTransaction } from '@/lib/parseSpeechToTransaction'
 import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import VoiceKeywordManager from '@/components/VoiceKeywordManager'
 
 interface MicrophoneButtonProps {
-  onFill: (data: Partial<{ type: 'income' | 'expense'; amount: number; category: string; description: string }>) => void
+  onFill: (data: Partial<{ type: 'income' | 'expense' | 'savings'; amount: number; category: string; description: string }>) => void
 }
 
 type UIState = 'idle' | 'listening' | 'processing' | 'preview' | 'error'
@@ -79,7 +79,11 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
 
   const formatSummary = (p: ParsedTransaction) => {
     const parts: string[] = []
-    if (p.type) parts.push(p.type === 'expense' ? (isFil ? 'Gastos' : 'Expense') : (isFil ? 'Kita' : 'Income'))
+    if (p.type) parts.push(
+      p.type === 'expense' ? (isFil ? 'Gastos' : 'Expense') :
+      p.type === 'savings' ? (isFil ? 'Ipon' : 'Savings') :
+      (isFil ? 'Kita' : 'Income')
+    )
     if (p.amount !== undefined) parts.push(`₱${p.amount.toLocaleString()}`)
     if (p.category) parts.push(isFil ? `sa ${p.category}` : `on ${p.category}`)
     return parts.join(' ')
@@ -145,16 +149,28 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
         </button>
       </div>
 
-      {/* Keyword manager panel */}
+      {/* Keyword manager link */}
       {showKeywordManager && (
-        <VoiceKeywordManager keywords={keywords} addKeyword={addKeyword} removeKeyword={removeKeyword} />
+        <div
+          className="rounded-lg border px-3 py-2 flex items-center justify-between text-sm"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
+          <span style={{ color: 'var(--color-text-secondary)' }}>Manage voice keywords</span>
+          <Link
+            href="/settings/voice-keywords"
+            className="flex items-center gap-1 text-xs font-medium"
+            style={{ color: 'var(--color-accent)' }}
+          >
+            Open <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
       )}
 
       {/* Error state */}
       {uiState === 'error' && (
         <div className="flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2">
           <p className="text-xs text-red-600 dark:text-red-400">
-            {isFil ? 'Hindi ko naintindihan. Subukan ulit.' : "Couldn't understand — please try again."}
+            {isFil ? 'Hindi ko naintindihan. Subukan ulit.' : "Couldn't understand - please try again."}
           </p>
           <button
             type="button"
@@ -172,8 +188,8 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
           <CardContent className="py-3 px-4 space-y-2">
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {isFil
-                ? `Narinig ko: ${formatSummary(parsed)} — Tama ba ito?`
-                : `I heard: ${formatSummary(parsed)} — is this correct?`}
+                ? `Narinig ko: ${formatSummary(parsed)} - Tama ba ito?`
+                : `I heard: ${formatSummary(parsed)} - is this correct?`}
             </p>
             {parsed.description && (
               <p className="text-xs text-gray-400 dark:text-gray-500 italic truncate">&ldquo;{parsed.description}&rdquo;</p>

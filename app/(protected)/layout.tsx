@@ -19,8 +19,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             {children}
           </main>
         </div>
+        <BottomNav onMoreClick={() => setSidebarOpen(true)} />
       </div>
-      <BottomNav onMoreClick={() => setSidebarOpen(true)} />
     </SessionProvider>
   )
 }

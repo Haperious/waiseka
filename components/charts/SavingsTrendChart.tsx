@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useTheme } from '@/context/ThemeContext'
 import { formatAmountShort } from '@/lib/currency'
 
 interface DataPoint {
@@ -11,6 +12,9 @@ interface DataPoint {
 
 export default function SavingsTrendChart({ data }: { data: DataPoint[] }) {
   const { currency, formatAmount } = useCurrency()
+  const { theme } = useTheme()
+
+  const savingsColor = theme === 'dark' ? '#56C97F' : '#1A6B3A'
 
   return (
     <ResponsiveContainer width="100%" height={240}>
@@ -30,9 +34,9 @@ export default function SavingsTrendChart({ data }: { data: DataPoint[] }) {
         <Line
           type="monotone"
           dataKey="savings"
-          stroke="#3b82f6"
+          stroke={savingsColor}
           strokeWidth={2.5}
-          dot={{ fill: '#3b82f6', r: 4 }}
+          dot={{ fill: savingsColor, r: 4 }}
           activeDot={{ r: 6 }}
         />
       </LineChart>

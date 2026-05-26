@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
-import { sendWelcomeEmail } from '@/lib/email'
+import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   try {
@@ -80,8 +81,25 @@ export async function POST(req: NextRequest) {
       })) as ICategory[]
     )
 
-    sendWelcomeEmail({ firstName: name.split(' ')[0], email: email.toLowerCase() })
+    const firstName = name.split(' ')[0]
+    const lowerEmail = email.toLowerCase()
+
+    const verifyToken = crypto.randomBytes(32).toString('hex')
+    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    await db.collection('emailVerificationTokens').insertOne({
+      userId: userId,
+      token: verifyToken,
+      expiresAt: verifyExpiry,
+      createdAt: now,
+    })
+
+    const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/auth/verify-email?token=${verifyToken}`
+
+    sendWelcomeEmail({ firstName, email: lowerEmail })
       .catch((err) => console.error('[register] welcome email error:', err))
+
+    sendVerificationEmail({ firstName, email: lowerEmail, verifyUrl })
+      .catch((err) => console.error('[register] verification email error:', err))
 
     return NextResponse.json({ message: 'Account created successfully' }, { status: 201 })
   } catch (err) {

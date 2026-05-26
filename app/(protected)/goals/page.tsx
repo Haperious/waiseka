@@ -94,6 +94,15 @@ export default function GoalsPage() {
             const remaining = goal.targetAmount - goal.savedAmount
             const isCompleted = goal.status === 'completed'
 
+            const now = Date.now()
+            const deadlineMs = new Date(goal.deadline).getTime()
+            const startMs = new Date(goal.createdAt).getTime()
+            const totalDuration = deadlineMs - startMs
+            const elapsed = now - startMs
+            const expectedProgress = totalDuration > 0 ? Math.min((elapsed / totalDuration) * 100, 100) : 100
+            const isOverdue = !isCompleted && now > deadlineMs
+            const isOnTrack = !isOverdue && progress >= expectedProgress
+
             return (
               <Card key={goal._id}>
                 <CardContent className="space-y-4">
@@ -108,6 +117,18 @@ export default function GoalsPage() {
                           <Flag className="h-3 w-3" />
                           {goal.priority}
                         </span>
+                        {!isCompleted && (
+                          <span className={cn(
+                            'text-xs font-medium px-1.5 py-0.5 rounded-full',
+                            isOverdue
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                              : isOnTrack
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                          )}>
+                            {isOverdue ? 'Overdue' : isOnTrack ? 'On Track' : 'Behind'}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0 ml-2">
@@ -169,12 +190,15 @@ export default function GoalsPage() {
                         <span className="font-semibold text-blue-600 dark:text-blue-400">{formatAmount(remaining)}</span>
                       </div>
                     )}
-                    {goal.deadline && (
-                      <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 pt-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span className="text-xs">{format(new Date(goal.deadline), 'MMM d, yyyy')}</span>
-                      </div>
-                    )}
+                    <div className={cn(
+                      'flex items-center gap-1.5 pt-1',
+                      isOverdue ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'
+                    )}>
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-xs">
+                        {format(new Date(goal.deadline), "MMM d, yyyy 'at' h:mm a")}
+                      </span>
+                    </div>
                   </div>
 
                   {!isCompleted && (

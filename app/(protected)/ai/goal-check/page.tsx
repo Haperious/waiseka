@@ -81,7 +81,7 @@ export default function AiGoalCheckPage() {
               >
                 {goals.map((g) => (
                   <option key={g._id} value={g._id}>
-                    {g.title} — {formatAmount(g.savedAmount)} / {formatAmount(g.targetAmount)}
+                    {g.title} - {formatAmount(g.savedAmount)} / {formatAmount(g.targetAmount)}
                     {g.deadline ? ` (due ${new Date(g.deadline).toLocaleDateString()})` : ''}
                   </option>
                 ))}

@@ -143,14 +143,14 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
   </div>
   <div class="body">
     <p class="gr">Hey ${data.firstName},</p>
-    <p class="p">You've just taken a meaningful first step toward financial clarity. WaiseKa is here to help you track spending, crush your savings goals, and finally understand where every peso goes — all in one place.</p>
+    <p class="p">You've just taken a meaningful first step toward financial clarity. WaiseKa is here to help you track spending, crush your savings goals, and finally understand where every peso goes - all in one place.</p>
     <p class="p">Here's how to hit the ground running:</p>
   </div>
   <div style="margin:0 44px 20px">
-    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Log your first transaction</b> — manual entry or connect your account to get started instantly.</div></div>
-    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Set a monthly budget</b> — define limits per category so you always know where you stand.</div></div>
-    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Create a savings goal</b> — travel fund, emergency buffer, or big purchase — we track your progress.</div></div>
-    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Get monthly insights</b> — WaiseKa surfaces patterns and tips tailored to your habits.</div></div>
+    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Log your first transaction</b> - manual entry or connect your account to get started instantly.</div></div>
+    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Set a monthly budget</b> - define limits per category so you always know where you stand.</div></div>
+    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Create a savings goal</b> - travel fund, emergency buffer, or big purchase - we track your progress.</div></div>
+    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Get monthly insights</b> - WaiseKa surfaces patterns and tips tailored to your habits.</div></div>
   </div>
   <div class="cta">
     <a href="${APP_URL}/budgets" class="btn">Set up my budget</a>
@@ -181,7 +181,7 @@ export interface ResetPasswordEmailData {
 
 export async function sendResetPasswordEmail(data: ResetPasswordEmailData) {
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>WaiseKa — Reset Your Password</title><style>${BASE_CSS}
+<title>WaiseKa - Reset Your Password</title><style>${BASE_CSS}
   .secinfo{margin:20px 44px;background:#EEF9F3;border-radius:12px;padding:14px 18px}
   .sr{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;color:#0D3D1F;border-bottom:1px solid #C8E3C4}
   .sr:last-child{border-bottom:none}
@@ -211,7 +211,7 @@ export async function sendResetPasswordEmail(data: ResetPasswordEmailData) {
     <div class="sr"><span class="sk">Location</span><span>${data.locationApprox}</span></div>
   </div>
   <div class="body" style="padding-top:0;padding-bottom:16px">
-    <p class="muted">Didn't request this? Your account is still safe — just ignore this email. Your password won't change unless you use the link above.</p>
+    <p class="muted">Didn't request this? Your account is still safe - just ignore this email. Your password won't change unless you use the link above.</p>
   </div>
   <div class="alert-sec" style="margin:16px 44px">
     <span style="font-size:18px;flex-shrink:0;margin-top:1px">🛡️</span>
@@ -270,7 +270,7 @@ export async function sendBudgetReminderEmail(data: BudgetReminderEmailData) {
   </div>` : ''
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>WaiseKa — Your ${data.monthName} Budget Check-In</title><style>${BASE_CSS}
+<title>WaiseKa - Your ${data.monthName} Budget Check-In</title><style>${BASE_CSS}
   .sect-lbl{font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.08em;text-transform:uppercase;padding:0 44px;margin-bottom:10px}
   .progs{margin:0 44px 20px}
   .pr{margin-bottom:10px}
@@ -313,7 +313,7 @@ export async function sendBudgetReminderEmail(data: BudgetReminderEmailData) {
     { href: settingsUrl, label: 'Unsubscribe' },
   ], "You're receiving this as part of your monthly budget digest.<br>WaiseKa · waiseKa.app")}
 </div></div></body></html>`
-  await sendMail(data.email, `Your ${data.monthName} budget check-in — WaiseKa`, html)
+  await sendMail(data.email, `Your ${data.monthName} budget check-in - WaiseKa`, html)
 }
 
 // ─── 4. Re-Engage ─────────────────────────────────────────────────────────────
@@ -332,7 +332,7 @@ export interface ReEngageEmailData {
 export async function sendReEngageEmail(data: ReEngageEmailData) {
   const settingsUrl = `${APP_URL}/settings`
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>WaiseKa — We've Missed You</title><style>${BASE_CSS}
+<title>WaiseKa - We've Missed You</title><style>${BASE_CSS}
   .goal-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
 </style></head><body>
 <div class="wrap"><div class="shell">
@@ -344,7 +344,7 @@ export async function sendReEngageEmail(data: ReEngageEmailData) {
   </div>
   <div class="body">
     <p class="gr">Hey ${data.firstName},</p>
-    <p class="p">Life gets busy — we get it. But even 2 minutes of logging can make a big difference in staying on top of your finances. Here's a quick peek at what's happened since you were last here:</p>
+    <p class="p">Life gets busy - we get it. But even 2 minutes of logging can make a big difference in staying on top of your finances. Here's a quick peek at what's happened since you were last here:</p>
   </div>
   ${statsTable([
     { emoji: '📅', label: 'Unlogged days', value: String(data.daysSinceLogin), color: '#C0392B' },
@@ -366,7 +366,7 @@ export async function sendReEngageEmail(data: ReEngageEmailData) {
     { href: settingsUrl, label: 'Unsubscribe' },
   ], `You're receiving this because you haven't logged in for ${data.daysSinceLogin} days.<br>WaiseKa · waiseKa.app`)}
 </div></div></body></html>`
-  await sendMail(data.email, `We've missed you, ${data.firstName} — WaiseKa`, html)
+  await sendMail(data.email, `We've missed you, ${data.firstName} - WaiseKa`, html)
 }
 
 // ─── 5. Monthly Report ────────────────────────────────────────────────────────
@@ -412,7 +412,7 @@ export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
     </div>`).join('')
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>WaiseKa — Your ${data.monthName} ${data.year} Monthly Report</title><style>${BASE_CSS}
+<title>WaiseKa - Your ${data.monthName} ${data.year} Monthly Report</title><style>${BASE_CSS}
   .sect-lbl{font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.08em;text-transform:uppercase;padding:0 44px;margin-bottom:10px}
   .txns{margin:0 44px 20px;border:1px solid #C8E3C4;border-radius:12px;overflow:hidden}
   .txnhd{background:#EEF9F3;padding:9px 14px;font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.06em;text-transform:uppercase}
@@ -423,7 +423,7 @@ export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
   <div class="hero">
     <div class="hico">📈</div>
     <h1 class="h1">Your ${data.monthName} ${data.year} monthly report</h1>
-    <p class="hsub">A complete picture of how your month went — income, spending, and savings.</p>
+    <p class="hsub">A complete picture of how your month went - income, spending, and savings.</p>
   </div>
   <div class="body">
     <p class="gr">Hey ${data.firstName},</p>
@@ -453,7 +453,7 @@ export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
     { href: settingsUrl, label: 'Unsubscribe' },
   ], 'Your monthly report is generated on the 1st of each month.<br>WaiseKa · waiseKa.app')}
 </div></div></body></html>`
-  await sendMail(data.email, `Your ${data.monthName} ${data.year} financial report — WaiseKa`, html)
+  await sendMail(data.email, `Your ${data.monthName} ${data.year} financial report - WaiseKa`, html)
 }
 
 // ─── 6. Spending Alert ────────────────────────────────────────────────────────
@@ -492,7 +492,7 @@ export async function sendSpendingAlertEmail(data: SpendingAlertEmailData) {
     </div>`).join('')
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>WaiseKa — Budget Alert: ${data.categoryName} Limit Exceeded</title><style>${BASE_CSS}
+<title>WaiseKa - Budget Alert: ${data.categoryName} Limit Exceeded</title><style>${BASE_CSS}
   .sect-lbl{font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.08em;text-transform:uppercase;padding:0 44px;margin-bottom:10px}
   .txns{margin:0 44px 20px;border:1px solid #C8E3C4;border-radius:12px;overflow:hidden}
   .txnhd{background:#EEF9F3;padding:9px 14px;font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.06em;text-transform:uppercase}
@@ -533,10 +533,39 @@ export async function sendSpendingAlertEmail(data: SpendingAlertEmailData) {
     { href: settingsUrl, label: 'Unsubscribe' },
   ], "You're receiving this because budget alerts are enabled.<br>WaiseKa · waiseKa.app", 'WaiseKa Alerts')}
 </div></div></body></html>`
-  await sendMail(data.email, `Budget alert: ${data.categoryName} limit exceeded — WaiseKa`, html)
+  await sendMail(data.email, `Budget alert: ${data.categoryName} limit exceeded - WaiseKa`, html)
 }
 
-// ─── 7. Savings Milestone ─────────────────────────────────────────────────────
+// ─── 7. Email Verification ───────────────────────────────────────────────────
+
+export async function sendVerificationEmail(data: { firstName: string; email: string; verifyUrl: string }) {
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>WaiseKa - Verify your email</title><style>${BASE_CSS}</style></head><body>
+<div class="wrap"><div class="shell">
+  ${emailHeader()}
+  <div class="hero">
+    <div class="hico">✉️</div>
+    <h1 class="h1">Verify your email address</h1>
+    <p class="hsub">One quick step to secure your WaiseKa account. This link expires in 24 hours.</p>
+  </div>
+  <div class="body">
+    <p class="gr">Hey ${data.firstName},</p>
+    <p class="p">Thanks for signing up! Click the button below to confirm your email address and activate your account. If you didn't create a WaiseKa account, you can safely ignore this email.</p>
+  </div>
+  <div class="cta">
+    <a href="${data.verifyUrl}" class="btn">Verify my email</a>
+    <p class="btnsub">Link expires in 24 hours · Never share this with anyone</p>
+  </div>
+  <div class="hr"></div>
+  <div class="tip"><b>Having trouble?</b> Copy and paste this URL into your browser:<br><span style="font-family:'DM Mono',monospace;font-size:11px;color:#2A9654;word-break:break-all">${data.verifyUrl}</span></div>
+  ${emailFooter([
+    { href: `${APP_URL}/login`, label: 'Back to login' },
+  ], "You're receiving this because you created a WaiseKa account.<br>WaiseKa · waiseKa.app", 'WaiseKa Security')}
+</div></div></body></html>`
+  await sendMail(data.email, 'Verify your WaiseKa email address', html)
+}
+
+// ─── 8. Savings Milestone ─────────────────────────────────────────────────────
 
 export interface SavingsMilestoneEmailData {
   firstName: string
@@ -556,7 +585,7 @@ export interface SavingsMilestoneEmailData {
 export async function sendSavingsMilestoneEmail(data: SavingsMilestoneEmailData) {
   const settingsUrl = `${APP_URL}/settings`
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>WaiseKa — ${data.goalName} Milestone Reached!</title><style>${BASE_CSS}
+<title>WaiseKa - ${data.goalName} Milestone Reached!</title><style>${BASE_CSS}
   .milestone{margin:0 44px 20px;background:#1A6B3A;border-radius:14px;padding:20px;text-align:center}
   .ms-amt{font-family:'DM Mono',monospace;font-size:30px;font-weight:500;color:#fff;margin-bottom:4px}
   .ms-lbl{font-size:11px;color:#C2EDD0;font-family:'DM Mono',monospace}
@@ -574,7 +603,7 @@ export async function sendSavingsMilestoneEmail(data: SavingsMilestoneEmailData)
   </div>
   <div class="body">
     <p class="gr">Hey ${data.firstName},</p>
-    <p class="p">You've been consistent, and it's paying off. Your ${data.goalName} goal just hit ${data.reachedPercent}% — a huge deal. Keep this pace and you'll reach your full ${data.targetAmount} target in about ${data.monthsToTarget} months.</p>
+    <p class="p">You've been consistent, and it's paying off. Your ${data.goalName} goal just hit ${data.reachedPercent}% - a huge deal. Keep this pace and you'll reach your full ${data.targetAmount} target in about ${data.monthsToTarget} months.</p>
   </div>
   <div class="milestone">
     <div class="ms-amt">${data.savedAmount}</div>
@@ -596,11 +625,11 @@ export async function sendSavingsMilestoneEmail(data: SavingsMilestoneEmailData)
     <p class="btnsub">Add a new goal or boost this one</p>
   </div>
   <div class="hr"></div>
-  <div class="tip"><b>Next milestone:</b> At ${data.nextMilestoneAmount} you'll unlock WaiseKa's advanced investment suggestions — personalized options based on your savings pace and risk profile.</div>
+  <div class="tip"><b>Next milestone:</b> At ${data.nextMilestoneAmount} you'll unlock WaiseKa's advanced investment suggestions - personalized options based on your savings pace and risk profile.</div>
   ${emailFooter([
     { href: settingsUrl, label: 'Manage goals' },
     { href: settingsUrl, label: 'Unsubscribe' },
   ], "You're receiving this because milestone notifications are enabled.<br>WaiseKa · waiseKa.app")}
 </div></div></body></html>`
-  await sendMail(data.email, `🎉 ${data.goalName} milestone reached — WaiseKa`, html)
+  await sendMail(data.email, `🎉 ${data.goalName} milestone reached - WaiseKa`, html)
 }

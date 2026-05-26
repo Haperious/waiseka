@@ -6,7 +6,7 @@ export interface IGoal {
   title: string
   targetAmount: number
   savedAmount: number
-  deadline?: Date
+  deadline: Date
   priority: 'low' | 'medium' | 'high'
   status: 'active' | 'completed' | 'paused'
   createdAt: Date

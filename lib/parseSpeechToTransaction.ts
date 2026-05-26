@@ -1,7 +1,7 @@
 import type { VoiceKeyword } from '@/hooks/useVoiceKeywords'
 
 export interface ParsedTransaction {
-  type?: 'income' | 'expense'
+  type?: 'income' | 'expense' | 'savings'
   amount?: number
   category?: string
   description?: string
@@ -97,7 +97,7 @@ export function parseSpeechToTransaction(
     result.type = 'expense'
   }
 
-  // 2. Extract amount — Arabic numerals first
+  // 2. Extract amount - Arabic numerals first
   const numericMatch = lower.match(/[\d,]+(\.\d+)?/)
   if (numericMatch) {
     const cleaned = numericMatch[0].replace(/,/g, '')
@@ -109,7 +109,7 @@ export function parseSpeechToTransaction(
     if (tagalogAmt !== null) result.amount = tagalogAmt
   }
 
-  // 3. Detect category — custom keywords first, then built-ins
+  // 3. Detect category - custom keywords first, then built-ins
   let matched = false
 
   for (const { keyword, category } of customKeywords) {
@@ -129,7 +129,7 @@ export function parseSpeechToTransaction(
     }
   }
 
-  // 4. Description — use the original transcript trimmed
+  // 4. Description - use the original transcript trimmed
   result.description = transcript.trim()
 
   return result

@@ -8,7 +8,7 @@ export interface Goal {
   title: string
   targetAmount: number
   savedAmount: number
-  deadline?: string
+  deadline: string
   priority: 'low' | 'medium' | 'high'
   status: 'active' | 'completed' | 'paused'
   createdAt: string

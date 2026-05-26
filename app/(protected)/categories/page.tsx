@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, Tag } from 'lucide-react'
+import { Plus, Pencil, Trash2, Tag, Search, X } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
@@ -41,6 +41,7 @@ export default function CategoriesPage() {
   const { toast } = useToast()
   const { categories, loading, refetch } = useCategories()
 
+  const [searchQuery, setSearchQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const [form, setForm] = useState<FormState>(defaultForm())
@@ -116,10 +117,14 @@ export default function CategoriesPage() {
     }
   }
 
+  const filtered = searchQuery
+    ? categories.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : categories
+
   const grouped = {
-    expense: categories.filter((c) => c.type === 'expense'),
-    income: categories.filter((c) => c.type === 'income'),
-    both: categories.filter((c) => c.type === 'both'),
+    expense: filtered.filter((c) => c.type === 'expense'),
+    income: filtered.filter((c) => c.type === 'income'),
+    both: filtered.filter((c) => c.type === 'both'),
   }
 
   return (
@@ -135,6 +140,35 @@ export default function CategoriesPage() {
           <Plus className="h-4 w-4 sm:mr-1.5" />
           <span className="hidden sm:inline">Add Category</span>
         </Button>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative">
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
+          style={{ color: 'var(--color-text-muted)' }}
+        />
+        <input
+          className="w-full pl-9 pr-9 h-10 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-offset-1"
+          style={{
+            borderColor: 'var(--color-border)',
+            backgroundColor: 'var(--color-surface)',
+            color: 'var(--color-text-primary)',
+          }}
+          placeholder="Search categories..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        {searchQuery && (
+          <button
+            className="absolute right-3 top-1/2 -translate-y-1/2"
+            onClick={() => setSearchQuery('')}
+            style={{ color: 'var(--color-text-muted)' }}
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -200,6 +234,23 @@ export default function CategoriesPage() {
             <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               No categories yet. Add your first one.
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && categories.length > 0 && filtered.length === 0 && searchQuery && (
+        <Card>
+          <CardContent className="py-10 text-center space-y-2">
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              No results for &ldquo;{searchQuery}&rdquo;
+            </p>
+            <button
+              className="text-xs underline"
+              style={{ color: 'var(--color-accent)' }}
+              onClick={() => setSearchQuery('')}
+            >
+              Clear search
+            </button>
           </CardContent>
         </Card>
       )}

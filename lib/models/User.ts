@@ -33,6 +33,8 @@ export interface IUser {
     email: {
       enabled: boolean
       frequency: 'daily' | 'weekly' | 'monthly'
+      count?: number
+      lastSent?: Date
     }
     push: {
       enabled: boolean

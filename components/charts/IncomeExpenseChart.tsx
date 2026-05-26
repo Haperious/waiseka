@@ -4,16 +4,23 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useTheme } from '@/context/ThemeContext'
 import { formatAmountShort } from '@/lib/currency'
 
 interface DataPoint {
   month: string
   income: number
   expenses: number
+  savings?: number
 }
 
 export default function IncomeExpenseChart({ data }: { data: DataPoint[] }) {
   const { currency, formatAmount } = useCurrency()
+  const { theme } = useTheme()
+
+  const incomeColor = theme === 'dark' ? '#3BAF68' : '#2A9654'
+  const expenseColor = theme === 'dark' ? '#E05A5A' : '#C0392B'
+  const savingsColor = '#56C97F'
 
   return (
     <ResponsiveContainer width="100%" height={280}>
@@ -27,8 +34,9 @@ export default function IncomeExpenseChart({ data }: { data: DataPoint[] }) {
           contentStyle={{ borderRadius: '8px', fontSize: '13px' }}
         />
         <Legend />
-        <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="Income" />
-        <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} name="Expenses" />
+        <Bar dataKey="income" fill={incomeColor} radius={[4, 4, 0, 0]} name="Income" />
+        <Bar dataKey="expenses" fill={expenseColor} radius={[4, 4, 0, 0]} name="Expenses" />
+        <Bar dataKey="savings" fill={savingsColor} radius={[4, 4, 0, 0]} name="Savings" />
       </BarChart>
     </ResponsiveContainer>
   )

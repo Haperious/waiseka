@@ -19,6 +19,7 @@ function fmt(n: number, sym: string) {
 }
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const EMAIL_THRESHOLD: Record<string, number> = { daily: 1, weekly: 7, monthly: 30 }
 
 // ─── AI Query Reset (daily midnight) ─────────────────────────────────────────
 
@@ -57,10 +58,16 @@ async function sendBudgetReminders() {
     const monthName = MONTH_NAMES[now.getMonth()]
 
     const users = await db.collection<IUser>('users')
-      .find({ 'notifications.email.enabled': true }, { projection: { name: 1, email: 1, preferences: 1 } })
+      .find({ 'notifications.email.enabled': true }, { projection: { name: 1, email: 1, preferences: 1, notifications: 1 } })
       .toArray()
 
     for (const user of users) {
+      const frequency = user.notifications?.email?.frequency ?? 'weekly'
+      const lastSent = user.notifications?.email?.lastSent
+        ? new Date(user.notifications.email.lastSent).getTime() : 0
+      const daysSinceEmail = (Date.now() - lastSent) / (1000 * 60 * 60 * 24)
+      if (daysSinceEmail < (EMAIL_THRESHOLD[frequency] ?? 7)) continue
+
       const userId = user._id.toString()
       const sym = user.preferences?.currencySymbol ?? '₱'
 
@@ -97,6 +104,11 @@ async function sendBudgetReminders() {
       const projectedOverage = alertCategory && projectedSpent > totalLimit
         ? fmt(projectedSpent - totalLimit, sym)
         : undefined
+
+      await db.collection<IUser>('users').updateOne(
+        { _id: user._id },
+        { $set: { 'notifications.email.lastSent': new Date() } }
+      )
 
       sendBudgetReminderEmail({
         firstName: user.name.split(' ')[0],
@@ -136,6 +148,12 @@ async function sendReEngageEmails() {
       .toArray()
 
     for (const user of users) {
+      const frequency = user.notifications?.email?.frequency ?? 'weekly'
+      const lastSent = user.notifications?.email?.lastSent
+        ? new Date(user.notifications.email.lastSent).getTime() : 0
+      const daysSinceEmail = (Date.now() - lastSent) / (1000 * 60 * 60 * 24)
+      if (daysSinceEmail < (EMAIL_THRESHOLD[frequency] ?? 7)) continue
+
       const userId = user._id.toString()
       const sym = user.preferences?.currencySymbol ?? '₱'
       const daysSinceLogin = Math.floor(
@@ -153,6 +171,11 @@ async function sendReEngageEmails() {
       const goalPercent = topGoal.targetAmount > 0
         ? Math.round((topGoal.savedAmount / topGoal.targetAmount) * 100)
         : 0
+
+      await db.collection<IUser>('users').updateOne(
+        { _id: user._id },
+        { $set: { 'notifications.email.lastSent': new Date() } }
+      )
 
       sendReEngageEmail({
         firstName: user.name.split(' ')[0],
@@ -247,6 +270,11 @@ async function sendMonthlyReports() {
         ? fmt(currTopSpent * (changePercent / 100), sym)
         : fmt(0, sym)
 
+      await db.collection<IUser>('users').updateOne(
+        { _id: user._id },
+        { $set: { 'notifications.email.lastSent': new Date() } }
+      )
+
       sendMonthlyReportEmail({
         firstName: user.name.split(' ')[0],
         email: user.email,
@@ -294,13 +322,12 @@ async function sendPushNotifications() {
       .toArray()
 
     const now = Date.now()
-    const THRESHOLD: Record<string, number> = { daily: 1, weekly: 7, monthly: 30 }
 
     for (const user of users) {
       const lastSeen = user.notifications?.lastSeen
         ? new Date(user.notifications.lastSeen).getTime() : 0
       const daysSince = (now - lastSeen) / (1000 * 60 * 60 * 24)
-      const threshold = THRESHOLD[user.notifications?.push?.frequency ?? 'weekly'] ?? 7
+      const threshold = EMAIL_THRESHOLD[user.notifications?.push?.frequency ?? 'weekly'] ?? 7
       if (daysSince < threshold) continue
 
       const type = daysSince >= threshold * 2 ? 'inactivity' : 'reminder'

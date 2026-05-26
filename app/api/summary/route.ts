@@ -33,6 +33,9 @@ export async function GET(req: NextRequest) {
         totalExpenses: {
           $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] },
         },
+        totalSavings: {
+          $sum: { $cond: [{ $eq: ['$type', 'savings'] }, '$amount', 0] },
+        },
       },
     },
     {
@@ -40,6 +43,7 @@ export async function GET(req: NextRequest) {
         _id: 0,
         totalIncome: 1,
         totalExpenses: 1,
+        totalSavings: 1,
         netSavings: { $subtract: ['$totalIncome', '$totalExpenses'] },
         savingsRate: {
           $cond: [
@@ -92,6 +96,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     totalIncome: summary?.totalIncome ?? 0,
     totalExpenses: summary?.totalExpenses ?? 0,
+    totalSavings: summary?.totalSavings ?? 0,
     netSavings: summary?.netSavings ?? 0,
     savingsRate: summary?.savingsRate ? Math.round(summary.savingsRate) : 0,
     categoryBreakdown: categoryWithPercent,

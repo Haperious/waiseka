@@ -1,7 +1,7 @@
 'use client'
 
 import * as RadixSelect from '@radix-ui/react-select'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, ChevronUp, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface SelectOption {
@@ -56,8 +56,12 @@ export default function Select({
             className="z-50 min-w-[8rem] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg"
             position="popper"
             sideOffset={4}
+            style={{ maxHeight: 'min(var(--radix-select-content-available-height), 280px)', width: 'var(--radix-select-trigger-width)' }}
           >
-            <RadixSelect.Viewport className="p-1">
+            <RadixSelect.ScrollUpButton className="flex items-center justify-center py-1 text-gray-400 cursor-default">
+              <ChevronUp className="h-4 w-4" />
+            </RadixSelect.ScrollUpButton>
+            <RadixSelect.Viewport className="p-1 overflow-y-auto" style={{ maxHeight: 'min(var(--radix-select-content-available-height, 280px), 260px)' }}>
               {options.map((opt) => (
                 <RadixSelect.Item
                   key={opt.value}
@@ -76,6 +80,9 @@ export default function Select({
                 </RadixSelect.Item>
               ))}
             </RadixSelect.Viewport>
+            <RadixSelect.ScrollDownButton className="flex items-center justify-center py-1 text-gray-400 cursor-default">
+              <ChevronDown className="h-4 w-4" />
+            </RadixSelect.ScrollDownButton>
           </RadixSelect.Content>
         </RadixSelect.Portal>
       </RadixSelect.Root>

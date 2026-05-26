@@ -4,7 +4,7 @@ export interface ITransaction {
   _id: ObjectId
   userId: string
   amount: number
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'savings'
   category: string
   description?: string
   date: Date

@@ -21,7 +21,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   const { categories } = useCategories()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
-    type: transaction?.type ?? 'expense',
+    type: (transaction?.type ?? 'expense') as 'income' | 'expense' | 'savings',
     amount: transaction?.amount ? String(transaction.amount) : '',
     category: transaction?.category ?? '',
     description: transaction?.description ?? '',
@@ -69,7 +69,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
 
   const categoryOptions = useMemo(() => {
     const filtered = categories.filter(
-      (c) => c.type === form.type || c.type === 'both'
+      (c) => c.type === form.type || c.type === 'both' || form.type === 'savings'
     )
     return filtered.map((c) => ({ value: c.name, label: c.name }))
   }, [categories, form.type])
@@ -77,6 +77,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   const typeOptions = [
     { value: 'expense', label: 'Expense' },
     { value: 'income', label: 'Income' },
+    { value: 'savings', label: '🏦 Savings' },
   ]
 
   return (
@@ -97,7 +98,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       <Select
         label="Type"
         value={form.type}
-        onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense', category: '' })}
+        onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense' | 'savings', category: '' })}
         options={typeOptions}
       />
       <Input

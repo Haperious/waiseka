@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { getDb } from '@/lib/mongodb'
 import type { IBudget } from '@/lib/models/Budget'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -16,9 +16,13 @@ export async function GET() {
 
   if (budgets.length === 0) return NextResponse.json([])
 
+  const { searchParams } = new URL(req.url)
   const now = new Date()
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
+  const month = parseInt(searchParams.get('month') ?? String(now.getUTCMonth() + 1))
+  const year = parseInt(searchParams.get('year') ?? String(now.getUTCFullYear()))
+
+  const monthStart = new Date(Date.UTC(year, month - 1, 1))
+  const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
   const weekStart = new Date(now)
   weekStart.setUTCDate(now.getUTCDate() - now.getUTCDay())
   weekStart.setUTCHours(0, 0, 0, 0)

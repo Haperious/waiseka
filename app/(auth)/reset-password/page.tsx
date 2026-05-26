@@ -69,7 +69,7 @@ function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        Choose a strong password — at least 8 characters.
+        Choose a strong password - at least 8 characters.
       </p>
       <PasswordInput
         label="New password"

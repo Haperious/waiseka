@@ -5,7 +5,7 @@ type NotificationType = 'reminder' | 'inactivity'
 
 const MESSAGES: Record<NotificationType, string> = {
   reminder: "Time to log your expenses!",
-  inactivity: "It's been a while — come back and update your budget!",
+  inactivity: "It's been a while - come back and update your budget!",
 }
 
 function getTransporter() {
@@ -34,9 +34,9 @@ export async function sendEmailNotification({
   await transporter.sendMail({
     from: process.env.EMAIL_FROM,
     to,
-    subject: type === 'reminder' ? 'Budget Reminder — Waiseka' : 'We miss you — Waiseka',
+    subject: type === 'reminder' ? 'Budget Reminder - Waiseka' : 'We miss you - Waiseka',
     text: `Hi ${name},\n\n${message}\n\nWaiseka`,
-    html: `<p>Hi ${name},</p><p>${message}</p><p>— Waiseka</p>`,
+    html: `<p>Hi ${name},</p><p>${message}</p><p>- Waiseka</p>`,
   })
 }
 

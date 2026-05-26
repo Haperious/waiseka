@@ -26,6 +26,9 @@
   --color-income-bg:  #D9F5E5;
   --color-expense-bg: #FDEAEA;
   --color-warning-bg: #FEF6E4;
+
+  --color-savings:    #1A6B3A;
+  --color-savings-bg: #D9F5E5;
 }
 
 /* ── Dark mode ── */
@@ -52,6 +55,9 @@
   --color-income-bg:  rgba(59, 175, 104, 0.12);
   --color-expense-bg: rgba(224, 90, 90, 0.12);
   --color-warning-bg: rgba(212, 149, 10, 0.12);
+
+  --color-savings:    #56C97F;
+  --color-savings-bg: rgba(86, 201, 127, 0.12);
 }
 
 body {

@@ -6,7 +6,7 @@ export interface Transaction {
   _id: string
   userId: string
   amount: number
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'savings'
   category: string
   description?: string
   date: string
