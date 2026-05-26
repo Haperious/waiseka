@@ -167,13 +167,19 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
         </div>
       )}
 
-      {/* Microphone permission error */}
-      {error === 'permission-denied' && (
+      {/* Speech recognition error */}
+      {error && error !== 'unknown' && (
         <div className="flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
           <p className="text-xs text-amber-700 dark:text-amber-400">
-            {isFil
-              ? 'Kailangan ng pahintulot sa mikropono. Sa Safari: Settings → Safari → Microphone.'
-              : 'Microphone access denied. In Safari: Settings → Safari → Microphone.'}
+            {error === 'not-allowed'
+              ? (isFil ? 'Pinigilan ang mikropono. I-allow sa browser settings.' : 'Microphone blocked. Allow it in browser settings.')
+              : error === 'service-not-allowed'
+              ? (isFil ? 'Hindi available ang speech recognition sa Safari. Kailangan ng HTTPS at Speech Recognition sa System/iOS Settings.' : 'Speech recognition unavailable in Safari. Requires HTTPS and Speech Recognition enabled in System/iOS Settings.')
+              : error === 'network'
+              ? (isFil ? 'Network error. Suriin ang iyong koneksyon.' : 'Network error — check your internet connection.')
+              : error === 'no-speech'
+              ? (isFil ? 'Walang narinig na boses. Subukan ulit.' : 'No speech detected — please try again.')
+              : (isFil ? `Error sa speech recognition: ${error}` : `Speech recognition error: ${error}`)}
           </p>
           <button
             type="button"

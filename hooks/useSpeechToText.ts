@@ -74,12 +74,8 @@ export function useSpeechToText(): UseSpeechToTextReturn {
     }
 
     recognition.onerror = (event: Event) => {
-      const errorCode = (event as Event & { error?: string }).error
-      if (errorCode === 'not-allowed' || errorCode === 'service-not-allowed') {
-        setError('permission-denied')
-      } else {
-        setError(errorCode ?? 'unknown')
-      }
+      const errorCode = (event as Event & { error?: string }).error ?? 'unknown'
+      setError(errorCode)
       setIsListening(false)
     }
 
