@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { formatAmount, getCurrencySymbol, CurrencyCode } from '@/lib/currency'
 
 interface CurrencyContextValue {
@@ -19,6 +19,10 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 
 export function CurrencyProvider({ children, initialCurrency }: { children: React.ReactNode; initialCurrency?: CurrencyCode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(initialCurrency ?? 'USD')
+
+  useEffect(() => {
+    if (initialCurrency) setCurrencyState(initialCurrency)
+  }, [initialCurrency])
 
   const setCurrency = useCallback((code: CurrencyCode) => {
     setCurrencyState(code)
