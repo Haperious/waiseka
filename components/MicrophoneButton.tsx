@@ -16,7 +16,7 @@ interface MicrophoneButtonProps {
 type UIState = 'idle' | 'listening' | 'processing' | 'preview' | 'error'
 
 export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
-  const { transcript, isListening, isSupported, language, setLanguage, startListening, stopListening, clearTranscript } =
+  const { transcript, isListening, isSupported, error, language, setLanguage, startListening, stopListening, clearTranscript, clearError } =
     useSpeechToText()
   const { keywords, addKeyword, removeKeyword } = useVoiceKeywords()
 
@@ -52,6 +52,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
       setUiState('idle')
     } else {
       clearTranscript()
+      clearError()
       setParsed(null)
       setUiState('idle')
       startListening()
@@ -163,6 +164,24 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
           >
             Open <ExternalLink className="h-3 w-3" />
           </Link>
+        </div>
+      )}
+
+      {/* Microphone permission error */}
+      {error === 'permission-denied' && (
+        <div className="flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            {isFil
+              ? 'Kailangan ng pahintulot sa mikropono. Sa Safari: Settings → Safari → Microphone.'
+              : 'Microphone access denied. In Safari: Settings → Safari → Microphone.'}
+          </p>
+          <button
+            type="button"
+            onClick={clearError}
+            className="text-xs text-amber-700 dark:text-amber-400 underline ml-2 shrink-0"
+          >
+            OK
+          </button>
         </div>
       )}
 

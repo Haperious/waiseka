@@ -37,17 +37,20 @@ interface UseSpeechToTextReturn {
   transcript: string
   isListening: boolean
   isSupported: boolean
+  error: string | null
   language: SpeechLang
   setLanguage: (lang: SpeechLang) => void
   startListening: () => void
   stopListening: () => void
   clearTranscript: () => void
+  clearError: () => void
 }
 
 export function useSpeechToText(): UseSpeechToTextReturn {
   const [transcript, setTranscript] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [language, setLanguage] = useState<SpeechLang>('fil-PH')
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
 
@@ -70,7 +73,13 @@ export function useSpeechToText(): UseSpeechToTextReturn {
       setIsListening(false)
     }
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: Event) => {
+      const errorCode = (event as Event & { error?: string }).error
+      if (errorCode === 'not-allowed' || errorCode === 'service-not-allowed') {
+        setError('permission-denied')
+      } else {
+        setError(errorCode ?? 'unknown')
+      }
       setIsListening(false)
     }
 
@@ -100,11 +109,15 @@ export function useSpeechToText(): UseSpeechToTextReturn {
     setTranscript('')
   }, [])
 
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
   useEffect(() => {
     return () => {
       recognitionRef.current?.abort()
     }
   }, [])
 
-  return { transcript, isListening, isSupported, language, setLanguage, startListening, stopListening, clearTranscript }
+  return { transcript, isListening, isSupported, error, language, setLanguage, startListening, stopListening, clearTranscript, clearError }
 }
