@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { useVoiceKeywords } from '@/hooks/useVoiceKeywords'
 import { parseSpeechToTransaction, ParsedTransaction } from '@/lib/parseSpeechToTransaction'
+import { useCurrency } from '@/context/CurrencyContext'
 import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 
@@ -18,6 +19,7 @@ type UIState = 'idle' | 'listening' | 'processing' | 'preview' | 'error'
 export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
   const { transcript, isListening, isSupported, error, language, setLanguage, startListening, stopListening, clearTranscript, clearError } =
     useSpeechToText()
+  const { formatAmount } = useCurrency()
   const { keywords, addKeyword, removeKeyword } = useVoiceKeywords()
 
   const [uiState, setUiState] = useState<UIState>('idle')
@@ -85,7 +87,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
       p.type === 'savings' ? (isFil ? 'Ipon' : 'Savings') :
       (isFil ? 'Kita' : 'Income')
     )
-    if (p.amount !== undefined) parts.push(`₱${p.amount.toLocaleString()}`)
+    if (p.amount !== undefined) parts.push(formatAmount(p.amount))
     if (p.category) parts.push(isFil ? `sa ${p.category}` : `on ${p.category}`)
     return parts.join(' ')
   }
