@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Plus, TrendingUp, TrendingDown, PiggyBank, Pencil, Trash2, Download, Search, Filter } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, PiggyBank, Pencil, Trash2, Download, Search, Filter, Upload } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -13,6 +13,9 @@ import { SkeletonRow } from '@/components/ui/Skeleton'
 import { useTransactions, Transaction } from '@/hooks/useTransactions'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useToast } from '@/components/ui/Toast'
+import { useSession } from 'next-auth/react'
+import { isPremium } from '@/lib/tier'
+import ImportModal from '@/components/import/ImportModal'
 import TransactionForm from './TransactionForm'
 
 const TYPE_OPTIONS = [
@@ -25,6 +28,7 @@ const TYPE_OPTIONS = [
 export default function TransactionsPage() {
   const { formatAmount, currency } = useCurrency()
   const { toast } = useToast()
+  const { data: session } = useSession()
   const [page, setPage] = useState(1)
   const [filterType, setFilterType] = useState('all')
   const [search, setSearch] = useState('')
@@ -32,9 +36,14 @@ export default function TransactionsPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [addOpen, setAddOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const [deleteTx, setDeleteTx] = useState<Transaction | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+
+  const userIsPremium = session
+    ? isPremium({ tier: session.user.tier, premiumOverride: session.user.premiumOverride })
+    : false
 
   const { transactions, total, totalPages, loading, deleteTransaction, refetch } = useTransactions({
     type: filterType === 'all' ? '' : filterType,
@@ -89,6 +98,10 @@ export default function TransactionsPage() {
           <Button variant="outline" size="sm" onClick={exportCSV}>
             <Download className="h-4 w-4 sm:mr-1.5" />
             <span className="hidden sm:inline">Export</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Import</span>
           </Button>
           <Button size="sm" onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4 sm:mr-1.5" />
@@ -243,6 +256,14 @@ export default function TransactionsPage() {
           </div>
         )}
       </Card>
+
+      {/* Import modal */}
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={refetch}
+        isPremium={userIsPremium}
+      />
 
       {/* Add modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Transaction">

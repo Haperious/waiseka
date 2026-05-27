@@ -43,6 +43,10 @@ export interface IUser {
     }
     lastSeen: Date
   }
+  importUsage?: {
+    count: number
+    resetAt: Date
+  }
   createdAt: Date
   updatedAt: Date
 }
