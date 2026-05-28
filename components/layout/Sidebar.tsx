@@ -17,15 +17,17 @@ import {
   Tags,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/context/LanguageContext'
+import type { TranslationKey } from '@/lib/translations'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
-  { href: '/budgets', label: 'Budgets', icon: PieChart },
-  { href: '/goals', label: 'Goals', icon: Target },
-  { href: '/categories', label: 'Categories', icon: Tags },
-  { href: '/ai/chat', label: 'AI Assistant', icon: Bot },
-  { href: '/settings', label: 'Settings', icon: Settings },
+const navItems: { href: string; labelKey: TranslationKey; icon: React.ElementType }[] = [
+  { href: '/dashboard',    labelKey: 'nav.dashboard',    icon: LayoutDashboard },
+  { href: '/transactions', labelKey: 'nav.transactions', icon: ArrowLeftRight  },
+  { href: '/budgets',      labelKey: 'nav.budgets',      icon: PieChart        },
+  { href: '/goals',        labelKey: 'nav.goals',        icon: Target          },
+  { href: '/categories',   labelKey: 'nav.categories',   icon: Tags            },
+  { href: '/ai/chat',      labelKey: 'nav.aiAssistant',  icon: Bot             },
+  { href: '/settings',     labelKey: 'nav.settings',     icon: Settings        },
 ]
 
 interface SidebarProps {
@@ -37,6 +39,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const { theme } = useTheme()
+  const { t } = useLanguage()
   const isAdmin = session?.user?.isAdmin === true
 
   return (
@@ -70,7 +73,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </Link>
           <button
             onClick={onClose}
-            className="lg:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="lg:hidden hover:opacity-70 transition-opacity"
+            style={{ color: 'var(--color-text-muted)' }}
             aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
@@ -78,7 +82,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, labelKey, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link
@@ -86,16 +90,22 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 href={href}
                 onClick={onClose}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive ? 'font-semibold' : 'hover:opacity-80'
+                  'flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                  isActive ? 'font-semibold' : 'hover:bg-[var(--color-elevated)]'
                 )}
                 style={isActive
-                  ? { backgroundColor: 'var(--color-elevated)', color: 'var(--color-accent)' }
-                  : { color: 'var(--color-text-secondary)' }
+                  ? {
+                      backgroundColor: 'var(--color-sage)',
+                      borderLeft: '2px solid var(--color-accent)',
+                      color: 'var(--color-accent)',
+                      paddingLeft: 'calc(0.75rem - 2px)',
+                      paddingRight: '0.75rem',
+                    }
+                  : { color: 'var(--color-text-secondary)', paddingLeft: '0.75rem', paddingRight: '0.75rem' }
                 }
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                {label}
+                {t(labelKey)}
               </Link>
             )
           })}
@@ -107,16 +117,22 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               href="/admin/users"
               onClick={onClose}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                pathname.startsWith('/admin') ? 'font-semibold' : 'hover:opacity-80'
+                'flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                pathname.startsWith('/admin') ? 'font-semibold' : 'hover:bg-[var(--color-elevated)]'
               )}
               style={pathname.startsWith('/admin')
-                ? { backgroundColor: 'var(--color-elevated)', color: 'var(--color-accent)' }
-                : { color: 'var(--color-text-secondary)' }
+                ? {
+                    backgroundColor: 'var(--color-sage)',
+                    borderLeft: '2px solid var(--color-accent)',
+                    color: 'var(--color-accent)',
+                    paddingLeft: 'calc(0.75rem - 2px)',
+                    paddingRight: '0.75rem',
+                  }
+                : { color: 'var(--color-text-secondary)', paddingLeft: '0.75rem', paddingRight: '0.75rem' }
               }
             >
               <Shield className="h-5 w-5 shrink-0" />
-              Admin
+              {t('nav.admin')}
             </Link>
           </div>
         )}

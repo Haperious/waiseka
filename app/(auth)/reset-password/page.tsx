@@ -23,11 +23,11 @@ function ResetPasswordForm() {
     return (
       <div className="text-center space-y-4">
         <div className="text-4xl">❌</div>
-        <p className="text-sm font-medium text-gray-900 dark:text-white">Invalid reset link</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Invalid reset link</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           This link is missing or malformed. Request a new one.
         </p>
-        <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline font-medium">
+        <Link href="/forgot-password" className="text-sm hover:underline font-medium" style={{ color: 'var(--color-accent)' }}>
           Request new link
         </Link>
       </div>
@@ -68,7 +68,7 @@ function ResetPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
         Choose a strong password - at least 8 characters.
       </p>
       <PasswordInput
@@ -88,8 +88,8 @@ function ResetPasswordForm() {
       <Button type="submit" size="lg" loading={loading} className="w-full">
         Set new password
       </Button>
-      <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-        <Link href="/login" className="text-blue-600 hover:underline font-medium">
+      <p className="text-center text-sm">
+        <Link href="/login" className="hover:underline font-medium" style={{ color: 'var(--color-accent)' }}>
           Back to login
         </Link>
       </p>
@@ -103,9 +103,9 @@ export default function ResetPasswordPage() {
       <div className="flex flex-col items-center mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Image src="/logo.png" alt="Waiseka" width={48} height={48} priority className="rounded-xl" />
-          <span className="text-2xl font-bold text-gray-900 dark:text-white">WaiseKa</span>
+          <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>WaiseKa</span>
         </div>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">Set a new password</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Set a new password</p>
       </div>
       <Card>
         <CardContent className="pt-6">

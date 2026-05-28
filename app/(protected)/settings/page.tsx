@@ -3,39 +3,123 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, Lock, DollarSign, Bell, Sun, Moon, Mic } from 'lucide-react'
-import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import PasswordInput from '@/components/ui/PasswordInput'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useTheme } from '@/context/ThemeContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { getAllCurrencies, CurrencyCode } from '@/lib/currency'
 import { useToast } from '@/components/ui/Toast'
-import { cn } from '@/lib/utils'
 
 type Frequency = 'daily' | 'weekly' | 'monthly'
 
+// ── Reusable section card ────────────────────────────────────────────────────
+function SettingsSection({
+  icon: Icon,
+  iconColor,
+  iconBg,
+  title,
+  subtitle,
+  children,
+}: {
+  icon: React.ElementType
+  iconColor: string
+  iconBg: string
+  title: string
+  subtitle: string
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)',
+      borderRadius: 16,
+      border: '1px solid var(--color-border)',
+      overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '16px 24px',
+        borderBottom: '1px solid var(--color-border)',
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+          backgroundColor: iconBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon style={{ width: 18, height: 18, color: iconColor }} />
+        </div>
+        <div>
+          <h2 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1.2 }}>
+            {title}
+          </h2>
+          <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 1 }}>
+            {subtitle}
+          </p>
+        </div>
+      </div>
+      {/* Body */}
+      <div style={{ padding: '20px 24px' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ── Toggle switch ────────────────────────────────────────────────────────────
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        width: 44, height: 24,
+        borderRadius: 999,
+        border: 'none',
+        cursor: 'pointer',
+        backgroundColor: checked ? 'var(--color-accent)' : 'var(--color-elevated)',
+        transition: 'background-color 0.2s',
+        flexShrink: 0,
+        outline: 'none',
+      }}
+    >
+      <span style={{
+        position: 'absolute',
+        top: 3, left: checked ? 23 : 3,
+        width: 18, height: 18,
+        borderRadius: '50%',
+        backgroundColor: '#fff',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        transition: 'left 0.2s',
+      }} />
+    </button>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { currency, setCurrency, formatAmount } = useCurrency()
   const { theme, setTheme } = useTheme()
+  const { t } = useLanguage()
   const { toast } = useToast()
   const router = useRouter()
   const currencies = getAllCurrencies()
 
-  // Profile
   const [profile, setProfile] = useState({ name: '', avatar: '' })
   const [profileLoading, setProfileLoading] = useState(false)
 
-  // Password
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({})
   const [passwordLoading, setPasswordLoading] = useState(false)
 
-  // Currency
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(currency)
   const [currencyLoading, setCurrencyLoading] = useState(false)
 
-  // Notifications
   const [notifLoading, setNotifLoading] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
@@ -146,18 +230,14 @@ export default function SettingsPage() {
 
   const handlePushToggle = async (enabled: boolean) => {
     let fcmToken: string | null = null
-
     if (enabled && 'Notification' in window) {
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         toast('Push permission denied. Please allow notifications in your browser.', 'error')
         return
       }
-      // FCM token retrieval requires the Firebase client SDK.
-      // Store null for now; configure FIREBASE_VAPID_KEY + firebase client SDK to enable.
       fcmToken = null
     }
-
     setPushEnabled(enabled)
     await saveNotifications({ push: { enabled, fcmToken } })
   }
@@ -180,7 +260,6 @@ export default function SettingsPage() {
       if (overrides?.push !== undefined) {
         body.push = { ...body.push as object, ...overrides.push }
       }
-
       const res = await fetch('/api/notifications', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -199,320 +278,343 @@ export default function SettingsPage() {
     }
   }
 
+  const rowStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+  }
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)',
+  }
+
+  const subLabelStyle: React.CSSProperties = {
+    fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2,
+  }
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* ── Page header ──────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Settings</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Manage your account and preferences</p>
+        <h1 style={{
+          fontSize: '1.6rem', fontWeight: 900,
+          color: 'var(--color-text-primary)',
+          fontFamily: 'var(--font-playfair), Georgia, serif',
+          lineHeight: 1.1,
+        }}>
+          {t('settings.title')}
+        </h1>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+          {t('settings.subtitle')}
+        </p>
       </div>
 
-      {/* Appearance */}
-      <Card>
-        <CardHeader className="flex items-center gap-3 flex-row">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-elevated)' }}>
-            {theme === 'dark' ? (
-              <Moon className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
-            ) : (
-              <Sun className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
-            )}
-          </div>
-          <div>
-            <h2 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>Appearance</h2>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Choose your display theme</p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setTheme('light')}
-              className={cn(
-                'flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all'
-              )}
-              style={theme === 'light'
-                ? { borderColor: 'var(--color-accent)', backgroundColor: 'var(--color-elevated)' }
-                : { borderColor: 'var(--color-border)' }
-              }
-            >
-              <Sun className="h-6 w-6" style={{ color: theme === 'light' ? 'var(--color-accent)' : 'var(--color-text-secondary)' }} />
-              <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Light</span>
-            </button>
-            <button
-              onClick={() => setTheme('dark')}
-              className={cn(
-                'flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all'
-              )}
-              style={theme === 'dark'
-                ? { borderColor: 'var(--color-accent)', backgroundColor: 'var(--color-elevated)' }
-                : { borderColor: 'var(--color-border)' }
-              }
-            >
-              <Moon className="h-6 w-6" style={{ color: theme === 'dark' ? 'var(--color-accent)' : 'var(--color-text-secondary)' }} />
-              <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Dark</span>
-            </button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Profile */}
-      <Card>
-        <CardHeader className="flex items-center gap-3 flex-row">
-          <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white">Profile</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Update your name and avatar</p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleProfileSave} className="space-y-4">
-            <Input
-              label="Full Name"
-              value={profile.name}
-              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-              placeholder="Your name"
-            />
-            <Input
-              label="Avatar URL (optional)"
-              value={profile.avatar}
-              onChange={(e) => setProfile({ ...profile, avatar: e.target.value })}
-              placeholder="https://..."
-              type="url"
-            />
-            <Button type="submit" loading={profileLoading}>Save Profile</Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Password */}
-      <Card>
-        <CardHeader className="flex items-center gap-3 flex-row">
-          <div className="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-            <Lock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white">Password</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Change your account password</p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordSave} className="space-y-4">
-            <PasswordInput
-              label="Current Password"
-              value={passwords.currentPassword}
-              onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-              error={passwordErrors.currentPassword}
-              autoComplete="current-password"
-            />
-            <PasswordInput
-              label="New Password"
-              value={passwords.newPassword}
-              onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-              error={passwordErrors.newPassword}
-              autoComplete="new-password"
-            />
-            <PasswordInput
-              label="Confirm New Password"
-              value={passwords.confirmPassword}
-              onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-              error={passwordErrors.confirmPassword}
-              autoComplete="new-password"
-            />
-            <Button type="submit" loading={passwordLoading}>Update Password</Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Currency */}
-      <Card>
-        <CardHeader className="flex items-center gap-3 flex-row">
-          <div className="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white">Currency</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Choose your display currency</p>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {currencies.map((c) => (
+      {/* ── Appearance ───────────────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={theme === 'dark' ? Moon : Sun}
+        iconColor="var(--color-accent)"
+        iconBg="var(--color-sage)"
+        title={t('settings.appearance')}
+        subtitle={t('settings.appearanceSub')}
+      >
+        <div style={{ display: 'flex', gap: 12 }}>
+          {(['light', 'dark'] as const).map((mode) => {
+            const isActive = theme === mode
+            const Icon = mode === 'light' ? Sun : Moon
+            return (
               <button
-                key={c.code}
-                type="button"
-                onClick={() => setSelectedCurrency(c.code as CurrencyCode)}
-                className={cn(
-                  'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-left',
-                  selectedCurrency === c.code
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                )}
+                key={mode}
+                onClick={() => setTheme(mode)}
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  padding: '16px 12px', borderRadius: 14,
+                  border: isActive ? '2px solid var(--color-accent)' : '2px solid var(--color-border)',
+                  backgroundColor: isActive ? 'var(--color-sage)' : 'transparent',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                }}
               >
-                <span className="text-3xl">{c.flag}</span>
-                <div className="text-center">
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.code}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{c.label}</p>
-                  <p className="text-base text-blue-600 dark:text-blue-400 font-bold mt-0.5">{c.symbol}</p>
-                </div>
+                <Icon style={{
+                  width: 22, height: 22,
+                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                }} />
+                <span style={{
+                  fontSize: '0.82rem', fontWeight: 600,
+                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                }}>
+                  {mode === 'light' ? t('settings.light') : t('settings.dark')}
+                </span>
               </button>
-            ))}
+            )
+          })}
+        </div>
+      </SettingsSection>
+
+      {/* ── Profile ──────────────────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={User}
+        iconColor="var(--color-accent)"
+        iconBg="var(--color-sage)"
+        title={t('settings.profile')}
+        subtitle={t('settings.profileSub')}
+      >
+        <form onSubmit={handleProfileSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Input
+            label={t('settings.fullName')}
+            value={profile.name}
+            onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+            placeholder="Your name"
+          />
+          <Input
+            label={t('settings.avatarUrl')}
+            value={profile.avatar}
+            onChange={(e) => setProfile({ ...profile, avatar: e.target.value })}
+            placeholder="https://..."
+            type="url"
+          />
+          <Button type="submit" loading={profileLoading}>
+            {t('settings.saveProfile')}
+          </Button>
+        </form>
+      </SettingsSection>
+
+      {/* ── Password ─────────────────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={Lock}
+        iconColor="var(--color-warning)"
+        iconBg="var(--color-warning-bg)"
+        title={t('settings.password')}
+        subtitle={t('settings.passwordSub')}
+      >
+        <form onSubmit={handlePasswordSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <PasswordInput
+            label={t('settings.currentPassword')}
+            value={passwords.currentPassword}
+            onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+            error={passwordErrors.currentPassword}
+            autoComplete="current-password"
+          />
+          <PasswordInput
+            label={t('settings.newPassword')}
+            value={passwords.newPassword}
+            onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+            error={passwordErrors.newPassword}
+            autoComplete="new-password"
+          />
+          <PasswordInput
+            label={t('settings.confirmPassword')}
+            value={passwords.confirmPassword}
+            onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+            error={passwordErrors.confirmPassword}
+            autoComplete="new-password"
+          />
+          <Button type="submit" loading={passwordLoading}>
+            {t('settings.updatePassword')}
+          </Button>
+        </form>
+      </SettingsSection>
+
+      {/* ── Currency ─────────────────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={DollarSign}
+        iconColor="var(--color-income)"
+        iconBg="var(--color-income-bg)"
+        title={t('settings.currency')}
+        subtitle={t('settings.currencySub')}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+            gap: 10,
+          }}>
+            {currencies.map((c) => {
+              const isActive = selectedCurrency === c.code
+              return (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => setSelectedCurrency(c.code as CurrencyCode)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                    padding: '14px 8px', borderRadius: 14,
+                    border: isActive ? '2px solid var(--color-accent)' : '2px solid var(--color-border)',
+                    backgroundColor: isActive ? 'var(--color-sage)' : 'transparent',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>{c.flag}</span>
+                  <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    {c.code}
+                  </p>
+                  <p style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{c.label}</p>
+                  <p style={{
+                    fontSize: '0.92rem', fontWeight: 800,
+                    color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                  }}>
+                    {c.symbol}
+                  </p>
+                </button>
+              )
+            })}
           </div>
 
           {selectedCurrency !== currency && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p style={{
+              fontSize: '0.78rem', color: 'var(--color-warning)',
+              padding: '8px 12px', borderRadius: 8,
+              backgroundColor: 'var(--color-warning-bg)',
+            }}>
               Preview: {formatAmount(1500)} → amounts will display in {selectedCurrency}
             </p>
           )}
 
-          <Button onClick={handleCurrencySave} loading={currencyLoading} disabled={selectedCurrency === currency}>
-            Save Currency Preference
+          <Button
+            onClick={handleCurrencySave}
+            loading={currencyLoading}
+            disabled={selectedCurrency === currency}
+          >
+            {t('settings.saveCurrency')}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </SettingsSection>
 
-      {/* Notifications */}
-      <Card>
-        <CardHeader className="flex items-center gap-3 flex-row">
-          <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-            <Bell className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white">Notifications</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Reminders to log your expenses</p>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      {/* ── Notifications ────────────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={Bell}
+        iconColor="var(--color-savings)"
+        iconBg="var(--color-savings-bg)"
+        title={t('settings.notifications')}
+        subtitle={t('settings.notifSub')}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
           {/* Email toggle */}
-          <div className="flex items-center justify-between">
+          <div style={rowStyle}>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Email reminders</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Receive budget reminders by email</p>
+              <p style={labelStyle}>{t('settings.emailReminders')}</p>
+              <p style={subLabelStyle}>{t('settings.emailRemindersSub')}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setEmailEnabled((v) => !v)}
-              className={cn(
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-                emailEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-              )}
-              role="switch"
-              aria-checked={emailEnabled}
-            >
-              <span
-                className={cn(
-                  'inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform',
-                  emailEnabled ? 'translate-x-6' : 'translate-x-1'
-                )}
-              />
-            </button>
+            <Toggle checked={emailEnabled} onChange={setEmailEnabled} />
           </div>
 
-          {/* Email count stepper (shown when email is enabled) */}
+          {/* Email count stepper */}
           {emailEnabled && (
-            <div className="rounded-lg p-3 space-y-2" style={{ backgroundColor: 'var(--color-elevated)' }}>
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Remind me</p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEmailCount((v) => Math.max(1, v - 1))}
-                    disabled={emailCount <= 1}
-                    className="w-8 h-8 rounded-md border flex items-center justify-center text-lg font-medium transition-opacity disabled:opacity-30"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', backgroundColor: 'var(--color-surface)' }}
-                  >
-                    –
-                  </button>
-                  <span className="w-8 text-center text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>
+            <div style={{
+              padding: '14px 16px',
+              borderRadius: 12,
+              backgroundColor: 'var(--color-elevated)',
+              border: '1px solid var(--color-border)',
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <p style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                {t('settings.remindMe')}
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {[
+                    { label: '−', action: () => setEmailCount((v) => Math.max(1, v - 1)), disabled: emailCount <= 1 },
+                    { label: '+', action: () => setEmailCount((v) => Math.min(maxEmailCount, v + 1)), disabled: emailCount >= maxEmailCount },
+                  ].map(({ label, action, disabled }, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={label === '−' ? action : action}
+                      disabled={disabled}
+                      style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        border: '1px solid var(--color-border)',
+                        backgroundColor: 'var(--color-card)',
+                        color: 'var(--color-text-primary)',
+                        fontSize: '1.1rem', fontWeight: 600,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        opacity: disabled ? 0.35 : 1,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'opacity 0.15s',
+                      }}
+                    >
+                      {i === 0 ? '−' : '+'}
+                    </button>
+                  ))}
+                  <span style={{
+                    width: 32, textAlign: 'center',
+                    fontSize: '1rem', fontWeight: 800,
+                    color: 'var(--color-text-primary)',
+                  }}>
                     {emailCount}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setEmailCount((v) => Math.min(maxEmailCount, v + 1))}
-                    disabled={emailCount >= maxEmailCount}
-                    className="w-8 h-8 rounded-md border flex items-center justify-center text-lg font-medium transition-opacity disabled:opacity-30"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', backgroundColor: 'var(--color-surface)' }}
-                  >
-                    +
-                  </button>
-                  <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    time{emailCount !== 1 ? 's' : ''} per {frequency} (max {maxEmailCount})
-                  </span>
                 </div>
+                <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                  {t('settings.timePer')} {frequency} ({t('settings.max')} {maxEmailCount})
+                </span>
               </div>
-              <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                Reminders: <strong>{emailCount}× {frequency}</strong>
-              </p>
             </div>
           )}
 
           {/* Push toggle */}
-          <div className="flex items-center justify-between">
+          <div style={rowStyle}>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Push notifications</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Browser push alerts (requires permission)</p>
+              <p style={labelStyle}>{t('settings.pushNotifs')}</p>
+              <p style={subLabelStyle}>{t('settings.pushNotifsSub')}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => handlePushToggle(!pushEnabled)}
-              className={cn(
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-                pushEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-              )}
-              role="switch"
-              aria-checked={pushEnabled}
-            >
-              <span
-                className={cn(
-                  'inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform',
-                  pushEnabled ? 'translate-x-6' : 'translate-x-1'
-                )}
-              />
-            </button>
+            <Toggle checked={pushEnabled} onChange={handlePushToggle} />
           </div>
 
-          {/* Frequency */}
+          {/* Frequency select */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
-              Reminder frequency
+            <label style={{
+              display: 'block', marginBottom: 8,
+              fontSize: '0.78rem', fontWeight: 600,
+              color: 'var(--color-text-primary)',
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+            }}>
+              {t('settings.reminderFreq')}
             </label>
             <select
               value={frequency}
               onChange={(e) => handleFrequencyChange(e.target.value as Frequency)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{
+                width: '100%', height: 40,
+                padding: '0 12px',
+                borderRadius: 10,
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-elevated)',
+                color: 'var(--color-text-primary)',
+                fontSize: '0.85rem',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
             >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
+              <option value="daily">{t('settings.daily')}</option>
+              <option value="weekly">{t('settings.weekly')}</option>
+              <option value="monthly">{t('settings.monthly')}</option>
             </select>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Applies to both email and push notifications</p>
+            <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+              {t('settings.freqSub')}
+            </p>
           </div>
 
           <Button onClick={() => saveNotifications()} loading={notifLoading}>
-            Save Notification Preferences
+            {t('settings.saveNotifs')}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </SettingsSection>
 
-      {/* Voice Keywords */}
-      <Card>
-        <CardHeader className="flex items-center gap-3 flex-row">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-elevated)' }}>
-            <Mic className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
-          </div>
-          <div>
-            <h2 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>Voice Keywords</h2>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Custom keywords for voice input</p>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Map spoken words to transaction categories for faster voice entry.
+      {/* ── Voice Keywords ───────────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={Mic}
+        iconColor="var(--color-accent)"
+        iconBg="var(--color-sage)"
+        title={t('settings.voiceKeywords')}
+        subtitle={t('settings.voiceKeywordsSub')}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+            {t('settings.voiceMap')}
           </p>
           <Button variant="outline" onClick={() => router.push('/settings/voice-keywords')}>
-            Manage Voice Keywords
+            {t('settings.manageVoice')}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </SettingsSection>
     </div>
   )
 }

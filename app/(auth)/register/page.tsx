@@ -69,9 +69,9 @@ export default function RegisterPage() {
       <div className="flex flex-col items-center mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Image src="/logo.png" alt="Waiseka" width={48} height={48} priority className="rounded-xl" />
-          <span className="text-2xl font-bold text-gray-900 dark:text-white">WaiseKa</span>
+          <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>WaiseKa</span>
         </div>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">Create your account</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Create your account</p>
       </div>
 
       <Card>
@@ -117,9 +117,9 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-4 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             Already have an account?{' '}
-            <Link href="/login" className="text-blue-600 hover:underline font-medium">
+            <Link href="/login" className="hover:underline font-medium" style={{ color: 'var(--color-accent)' }}>
               Log in
             </Link>
           </p>

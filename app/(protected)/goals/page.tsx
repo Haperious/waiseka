@@ -1,30 +1,324 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Plus, Pencil, Trash2, PlusCircle, Calendar, Flag } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useGoals, Goal } from '@/hooks/useGoals'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/components/ui/Toast'
-import { cn } from '@/lib/utils'
 import GoalForm from './GoalForm'
 
-const PRIORITY_COLORS: Record<string, string> = {
-  low: 'text-green-600 dark:text-green-400',
-  medium: 'text-yellow-600 dark:text-yellow-400',
-  high: 'text-red-600 dark:text-red-400',
+// ── Priority config ──────────────────────────────────────────────────────────
+const PRIORITY_COLOR: Record<string, string> = {
+  high:   'var(--color-expense)',
+  medium: 'var(--color-warning)',
+  low:    'var(--color-income)',
 }
 
+// ── Animated SVG ring ────────────────────────────────────────────────────────
+function ProgressRing({ percent, isCompleted }: { percent: number; isCompleted: boolean }) {
+  const [animated, setAnimated] = useState(false)
+
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setAnimated(true))
+    return () => cancelAnimationFrame(t)
+  }, [])
+
+  const r = 36
+  const circ = 2 * Math.PI * r
+  const ringColor = isCompleted ? 'var(--color-income)' : 'var(--color-accent)'
+  const offset = circ - (Math.min(percent, 100) / 100) * circ
+
+  return (
+    <div style={{ position: 'relative', width: 96, height: 96 }}>
+      <svg viewBox="0 0 96 96" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+        <circle
+          cx="48" cy="48" r={r}
+          fill="none"
+          stroke="var(--color-elevated)"
+          strokeWidth="7"
+        />
+        <circle
+          cx="48" cy="48" r={r}
+          fill="none"
+          stroke={ringColor}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${circ}`}
+          strokeDashoffset={animated ? `${offset}` : `${circ}`}
+          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)' }}
+        />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{
+          fontSize: '1rem', fontWeight: 800,
+          color: ringColor,
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1,
+        }}>
+          {Math.round(percent)}%
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ── Goal card ────────────────────────────────────────────────────────────────
+function GoalCard({
+  goal,
+  formatAmount,
+  t,
+  onEdit,
+  onDelete,
+  onAddFunds,
+}: {
+  goal: Goal
+  formatAmount: (v: number) => string
+  t: (key: string) => string
+  onEdit: () => void
+  onDelete: () => void
+  onAddFunds: () => void
+}) {
+  const progress = goal.targetAmount > 0
+    ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100)
+    : 0
+  const remaining = goal.targetAmount - goal.savedAmount
+  const isCompleted = goal.status === 'completed'
+  const isPaused = goal.status === 'paused'
+
+  const now = Date.now()
+  const deadlineMs = new Date(goal.deadline).getTime()
+  const startMs = new Date(goal.createdAt).getTime()
+  const totalDuration = deadlineMs - startMs
+  const elapsed = now - startMs
+  const expectedProgress = totalDuration > 0 ? Math.min((elapsed / totalDuration) * 100, 100) : 100
+  const isOverdue = !isCompleted && !isPaused && now > deadlineMs
+  const isOnTrack = !isOverdue && progress >= expectedProgress
+
+  const daysLeft = Math.ceil((deadlineMs - now) / 86_400_000)
+
+  // Status chip
+  const statusChip = isCompleted
+    ? { label: t('goal.completed'), color: 'var(--color-income)', bg: 'var(--color-income-bg)' }
+    : isPaused
+    ? { label: t('goal.paused'), color: 'var(--color-text-muted)', bg: 'var(--color-elevated)' }
+    : isOverdue
+    ? { label: t('goal.overdue'), color: 'var(--color-expense)', bg: 'var(--color-expense-bg)' }
+    : isOnTrack
+    ? { label: t('goal.onTrack'), color: 'var(--color-income)', bg: 'var(--color-income-bg)' }
+    : { label: t('goal.behind'), color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' }
+
+  const priorityColor = PRIORITY_COLOR[goal.priority] ?? 'var(--color-text-muted)'
+  const priorityLabel =
+    goal.priority === 'high'   ? t('goal.priorityHigh') :
+    goal.priority === 'medium' ? t('goal.priorityMedium') :
+    t('goal.priorityLow')
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)',
+      borderRadius: 16,
+      border: '1px solid var(--color-border)',
+      padding: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16,
+    }}>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{
+            fontWeight: 700, fontSize: '0.92rem',
+            color: 'var(--color-text-primary)',
+            lineHeight: 1.3,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {goal.title}
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            {/* Status chip */}
+            <span style={{
+              fontSize: '0.65rem', fontWeight: 700,
+              padding: '2px 8px', borderRadius: 999,
+              backgroundColor: statusChip.bg,
+              color: statusChip.color,
+              textTransform: 'uppercase', letterSpacing: '0.04em',
+            }}>
+              {statusChip.label}
+            </span>
+
+            {/* Priority */}
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: 3,
+              fontSize: '0.68rem', fontWeight: 600,
+              color: priorityColor,
+            }}>
+              <Flag style={{ width: 10, height: 10 }} />
+              {priorityLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button
+            onClick={onEdit}
+            aria-label={t('common.edit')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 30, height: 30, borderRadius: 8,
+              border: 'none', backgroundColor: 'transparent',
+              color: 'var(--color-text-muted)', cursor: 'pointer',
+              transition: 'all 0.12s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-sage)'
+              e.currentTarget.style.color = 'var(--color-accent)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = 'var(--color-text-muted)'
+            }}
+          >
+            <Pencil style={{ width: 13, height: 13 }} />
+          </button>
+          <button
+            onClick={onDelete}
+            aria-label={t('common.delete')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 30, height: 30, borderRadius: 8,
+              border: 'none', backgroundColor: 'transparent',
+              color: 'var(--color-text-muted)', cursor: 'pointer',
+              transition: 'all 0.12s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-expense-bg)'
+              e.currentTarget.style.color = 'var(--color-expense)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = 'var(--color-text-muted)'
+            }}
+          >
+            <Trash2 style={{ width: 13, height: 13 }} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Progress ring ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 0' }}>
+        <ProgressRing percent={progress} isCompleted={isCompleted} />
+      </div>
+
+      {/* ── Stats ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[
+          { label: t('goal.saved'),   value: formatAmount(goal.savedAmount),   color: 'var(--color-text-primary)' },
+          { label: t('goal.target'),  value: formatAmount(goal.targetAmount),  color: 'var(--color-text-primary)' },
+          ...(remaining > 0 ? [{
+            label: t('goal.remaining'),
+            value: formatAmount(remaining),
+            color: 'var(--color-accent)',
+          }] : []),
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{label}</span>
+            <span style={{ fontSize: '0.88rem', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
+              {value}
+            </span>
+          </div>
+        ))}
+
+        {/* Deadline row */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          paddingTop: 4,
+          borderTop: '1px solid var(--color-border)',
+        }}>
+          <Calendar style={{
+            width: 13, height: 13, flexShrink: 0,
+            color: isOverdue ? 'var(--color-expense)' : 'var(--color-text-muted)',
+          }} />
+          <span style={{
+            fontSize: '0.75rem',
+            color: isOverdue ? 'var(--color-expense)' : 'var(--color-text-muted)',
+            flex: 1,
+          }}>
+            {format(new Date(goal.deadline), 'MMM d, yyyy')}
+          </span>
+          {!isCompleted && !isPaused && (
+            <span style={{
+              fontSize: '0.65rem', fontWeight: 700,
+              padding: '2px 7px', borderRadius: 999,
+              backgroundColor: isOverdue
+                ? 'var(--color-expense-bg)'
+                : daysLeft <= 30
+                ? 'var(--color-warning-bg)'
+                : 'var(--color-income-bg)',
+              color: isOverdue
+                ? 'var(--color-expense)'
+                : daysLeft <= 30
+                ? 'var(--color-warning)'
+                : 'var(--color-income)',
+            }}>
+              {isOverdue
+                ? t('goal.overdue')
+                : `${daysLeft}d`}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Add funds button ── */}
+      {!isCompleted && !isPaused && (
+        <button
+          onClick={onAddFunds}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            width: '100%', height: 36,
+            borderRadius: 10,
+            border: '1px solid var(--color-border)',
+            backgroundColor: 'transparent',
+            color: 'var(--color-text-secondary)',
+            fontSize: '0.82rem', fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-accent)'
+            e.currentTarget.style.backgroundColor = 'var(--color-sage)'
+            e.currentTarget.style.color = 'var(--color-accent)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-border)'
+            e.currentTarget.style.backgroundColor = 'transparent'
+            e.currentTarget.style.color = 'var(--color-text-secondary)'
+          }}
+        >
+          <PlusCircle style={{ width: 14, height: 14 }} />
+          {t('goal.addFunds')}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 export default function GoalsPage() {
   const { formatAmount } = useCurrency()
+  const { t } = useLanguage()
   const { toast } = useToast()
   const { goals, loading, deleteGoal, addFunds, refetch } = useGoals()
+
   const [addOpen, setAddOpen] = useState(false)
   const [editGoal, setEditGoal] = useState<Goal | null>(null)
   const [deleteGoalItem, setDeleteGoalItem] = useState<Goal | null>(null)
@@ -58,172 +352,83 @@ export default function GoalsPage() {
     }
   }
 
+  const activeCount = goals.filter((g) => g.status === 'active').length
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* ── Page header ──────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Financial Goals</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {goals.filter((g) => g.status === 'active').length} active goal(s)
+          <h1 style={{
+            fontSize: '1.6rem', fontWeight: 900,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-playfair), Georgia, serif',
+            lineHeight: 1.1,
+          }}>
+            {t('goal.title')}
+          </h1>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+            {activeCount} {t('goal.active')}
           </p>
         </div>
         <Button size="sm" onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 sm:mr-1.5" />
-          <span className="hidden sm:inline">New Goal</span>
+          <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
+          <span className="hidden sm:inline">{t('goal.add')}</span>
         </Button>
       </div>
 
+      {/* ── Content ──────────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(272px, 1fr))', gap: 16 }}>
           {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : goals.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-16">
-            <p className="text-gray-400 text-sm mb-4">No goals yet. Set your first financial goal!</p>
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Create Goal
-            </Button>
-          </CardContent>
-        </Card>
+        <div style={{
+          backgroundColor: 'var(--color-card)',
+          borderRadius: 16,
+          border: '1px solid var(--color-border)',
+          padding: '64px 24px',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 16,
+        }}>
+          <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)' }}>
+            {t('goal.createFirst')}
+          </p>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus style={{ width: 14, height: 14, marginRight: 6 }} />
+            {t('goal.create')}
+          </Button>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {goals.map((goal) => {
-            const progress = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0
-            const remaining = goal.targetAmount - goal.savedAmount
-            const isCompleted = goal.status === 'completed'
-
-            const now = Date.now()
-            const deadlineMs = new Date(goal.deadline).getTime()
-            const startMs = new Date(goal.createdAt).getTime()
-            const totalDuration = deadlineMs - startMs
-            const elapsed = now - startMs
-            const expectedProgress = totalDuration > 0 ? Math.min((elapsed / totalDuration) * 100, 100) : 100
-            const isOverdue = !isCompleted && now > deadlineMs
-            const isOnTrack = !isOverdue && progress >= expectedProgress
-
-            return (
-              <Card key={goal._id}>
-                <CardContent className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">{goal.title}</h3>
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <Badge variant={goal.status as 'active' | 'completed' | 'paused'}>
-                          {goal.status}
-                        </Badge>
-                        <span className={cn('flex items-center gap-1 text-xs font-medium capitalize', PRIORITY_COLORS[goal.priority])}>
-                          <Flag className="h-3 w-3" />
-                          {goal.priority}
-                        </span>
-                        {!isCompleted && (
-                          <span className={cn(
-                            'text-xs font-medium px-1.5 py-0.5 rounded-full',
-                            isOverdue
-                              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                              : isOnTrack
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                                : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
-                          )}>
-                            {isOverdue ? 'Overdue' : isOnTrack ? 'On Track' : 'Behind'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-1 shrink-0 ml-2">
-                      <button
-                        onClick={() => setEditGoal(goal)}
-                        className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                        aria-label="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteGoalItem(goal)}
-                        className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Circular-style progress */}
-                  <div className="flex items-center justify-center py-2">
-                    <div className="relative w-24 h-24">
-                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                        <circle cx="50" cy="50" r="40" fill="none" strokeWidth="8" className="stroke-gray-200 dark:stroke-gray-700" />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          fill="none"
-                          strokeWidth="8"
-                          stroke={isCompleted ? '#22c55e' : '#3b82f6'}
-                          strokeLinecap="round"
-                          strokeDasharray={`${2 * Math.PI * 40}`}
-                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - progress / 100)}`}
-                          className="transition-all duration-500"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-lg font-bold text-gray-900 dark:text-white">
-                          {Math.round(progress)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500 dark:text-gray-400">Saved</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">{formatAmount(goal.savedAmount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500 dark:text-gray-400">Target</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">{formatAmount(goal.targetAmount)}</span>
-                    </div>
-                    {remaining > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">Remaining</span>
-                        <span className="font-semibold text-blue-600 dark:text-blue-400">{formatAmount(remaining)}</span>
-                      </div>
-                    )}
-                    <div className={cn(
-                      'flex items-center gap-1.5 pt-1',
-                      isOverdue ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'
-                    )}>
-                      <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-xs">
-                        {format(new Date(goal.deadline), "MMM d, yyyy 'at' h:mm a")}
-                      </span>
-                    </div>
-                  </div>
-
-                  {!isCompleted && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => setAddFundsGoal(goal)}
-                    >
-                      <PlusCircle className="h-4 w-4 mr-1.5" />
-                      Add Funds
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(272px, 1fr))', gap: 16 }}>
+          {goals.map((goal) => (
+            <GoalCard
+              key={goal._id}
+              goal={goal}
+              formatAmount={formatAmount}
+              t={t}
+              onEdit={() => setEditGoal(goal)}
+              onDelete={() => setDeleteGoalItem(goal)}
+              onAddFunds={() => setAddFundsGoal(goal)}
+            />
+          ))}
         </div>
       )}
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create Goal">
-        <GoalForm onSuccess={() => { setAddOpen(false); refetch() }} onCancel={() => setAddOpen(false)} />
+      {/* ── Add modal ────────────────────────────────────────────────────────── */}
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('goal.create')}>
+        <GoalForm
+          onSuccess={() => { setAddOpen(false); refetch() }}
+          onCancel={() => setAddOpen(false)}
+        />
       </Modal>
 
-      <Modal open={!!editGoal} onClose={() => setEditGoal(null)} title="Edit Goal">
+      {/* ── Edit modal ───────────────────────────────────────────────────────── */}
+      <Modal open={!!editGoal} onClose={() => setEditGoal(null)} title={t('goal.editTitle')}>
         {editGoal && (
           <GoalForm
             goal={editGoal}
@@ -233,13 +438,25 @@ export default function GoalsPage() {
         )}
       </Modal>
 
-      <Modal open={!!addFundsGoal} onClose={() => setAddFundsGoal(null)} title={`Add Funds to "${addFundsGoal?.title}"`}>
-        <div className="space-y-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Current: {formatAmount(addFundsGoal?.savedAmount ?? 0)} / {formatAmount(addFundsGoal?.targetAmount ?? 0)}
+      {/* ── Add funds modal ──────────────────────────────────────────────────── */}
+      <Modal
+        open={!!addFundsGoal}
+        onClose={() => { setAddFundsGoal(null); setFundsAmount('') }}
+        title={`${t('goal.addFundsTitle')} "${addFundsGoal?.title}"`}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            {t('goal.addFundsCurrent')}:{' '}
+            <strong style={{ color: 'var(--color-text-primary)' }}>
+              {formatAmount(addFundsGoal?.savedAmount ?? 0)}
+            </strong>
+            {' / '}
+            <strong style={{ color: 'var(--color-text-primary)' }}>
+              {formatAmount(addFundsGoal?.targetAmount ?? 0)}
+            </strong>
           </p>
           <Input
-            label="Amount to Add"
+            label={t('goal.addFundsLabel')}
             type="number"
             step="0.01"
             min="0"
@@ -248,20 +465,35 @@ export default function GoalsPage() {
             onChange={(e) => setFundsAmount(e.target.value)}
             autoFocus
           />
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => setAddFundsGoal(null)}>Cancel</Button>
-            <Button className="flex-1" loading={fundsLoading} onClick={handleAddFunds}>Add Funds</Button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Button
+              variant="outline"
+              style={{ flex: 1 }}
+              onClick={() => { setAddFundsGoal(null); setFundsAmount('') }}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button style={{ flex: 1 }} loading={fundsLoading} onClick={handleAddFunds}>
+              {t('goal.addFunds')}
+            </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={!!deleteGoalItem} onClose={() => setDeleteGoalItem(null)} title="Delete Goal">
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-          Delete &quot;{deleteGoalItem?.title}&quot;? This cannot be undone.
+      {/* ── Delete confirm modal ─────────────────────────────────────────────── */}
+      <Modal open={!!deleteGoalItem} onClose={() => setDeleteGoalItem(null)} title={t('goal.deleteTitle')}>
+        <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+          {t('goal.deleteConfirm')}{' '}
+          <strong style={{ color: 'var(--color-text-primary)' }}>&quot;{deleteGoalItem?.title}&quot;</strong>?{' '}
+          {t('goal.deleteConfirm2')}
         </p>
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => setDeleteGoalItem(null)}>Cancel</Button>
-          <Button variant="danger" className="flex-1" onClick={handleDelete}>Delete</Button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button variant="outline" style={{ flex: 1 }} onClick={() => setDeleteGoalItem(null)}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="danger" style={{ flex: 1 }} onClick={handleDelete}>
+            {t('common.delete')}
+          </Button>
         </div>
       </Modal>
     </div>

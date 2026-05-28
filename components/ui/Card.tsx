@@ -6,7 +6,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {}
 export function Card({ className, ...props }: CardProps) {
   return (
     <div
-      className={cn('rounded-xl shadow-sm border')}
+      className={cn('rounded-2xl shadow-sm border transition-all duration-200 hover:-translate-y-px')}
       style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
     >
       <div className={cn(className)} {...props} />
