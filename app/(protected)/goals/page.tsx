@@ -10,6 +10,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useGoals, Goal } from '@/hooks/useGoals'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { TranslationKey } from '@/lib/translations'
 import { useToast } from '@/components/ui/Toast'
 import GoalForm from './GoalForm'
 
@@ -82,7 +83,7 @@ function GoalCard({
 }: {
   goal: Goal
   formatAmount: (v: number) => string
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
   onEdit: () => void
   onDelete: () => void
   onAddFunds: () => void
