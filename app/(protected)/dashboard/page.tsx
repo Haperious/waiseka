@@ -11,6 +11,7 @@ import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { TranslationKey } from '@/lib/translations'
 import Link from 'next/link'
 import type { Budget } from '@/hooks/useBudgets'
 import type { Goal } from '@/hooks/useGoals'
@@ -298,7 +299,7 @@ function GoalBar({
 }: {
   goal: Goal
   formatAmount: (v: number) => string
-  t: (k: string) => string
+  t: (k: TranslationKey) => string
 }) {
   const pct       = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0
   const isComplete = goal.status === 'completed' || pct >= 100
