@@ -43,9 +43,9 @@ export default function LoginPage() {
       <div className="flex flex-col items-center mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Image src="/logo.png" alt="Waiseka" width={48} height={48} priority className="rounded-xl" />
-          <span className="text-2xl font-bold text-gray-900 dark:text-white">WaiseKa</span>
+          <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>WaiseKa</span>
         </div>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">Sign in to your account</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Sign in to your account</p>
       </div>
 
       <Card>
@@ -73,7 +73,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
               />
               <div className="mt-1 text-right">
-                <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
+                <Link href="/forgot-password" className="text-xs hover:underline" style={{ color: 'var(--color-accent)' }}>
                   Forgot password?
                 </Link>
               </div>
@@ -90,9 +90,9 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-4 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-blue-600 hover:underline font-medium">
+            <Link href="/register" className="hover:underline font-medium" style={{ color: 'var(--color-accent)' }}>
               Register
             </Link>
           </p>

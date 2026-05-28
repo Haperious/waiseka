@@ -14,7 +14,7 @@ export default function SavingsTrendChart({ data }: { data: DataPoint[] }) {
   const { currency, formatAmount } = useCurrency()
   const { theme } = useTheme()
 
-  const savingsColor = theme === 'dark' ? '#56C97F' : '#1A6B3A'
+  const savingsColor = theme === 'dark' ? '#4ADE80' : '#166534'
 
   return (
     <ResponsiveContainer width="100%" height={240}>

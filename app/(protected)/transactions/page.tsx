@@ -2,33 +2,44 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Plus, TrendingUp, TrendingDown, PiggyBank, Pencil, Trash2, Download, Search, Filter, Upload } from 'lucide-react'
-import { Card, CardContent, CardHeader } from '@/components/ui/Card'
+import {
+  Plus, TrendingUp, TrendingDown, PiggyBank,
+  Pencil, Trash2, Download, Search, Filter, Upload,
+} from 'lucide-react'
 import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
-import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import { SkeletonRow } from '@/components/ui/Skeleton'
 import { useTransactions, Transaction } from '@/hooks/useTransactions'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/components/ui/Toast'
 import { useSession } from 'next-auth/react'
 import { isPremium } from '@/lib/tier'
 import ImportModal from '@/components/import/ImportModal'
 import TransactionForm from './TransactionForm'
 
-const TYPE_OPTIONS = [
-  { value: 'all', label: 'All Types' },
-  { value: 'income', label: 'Income' },
-  { value: 'expense', label: 'Expense' },
-  { value: 'savings', label: 'Savings' },
-]
+const cardStyle: React.CSSProperties = {
+  backgroundColor: 'var(--color-card)',
+  borderRadius: 16,
+  border: '1px solid var(--color-border)',
+  overflow: 'hidden',
+}
+
+const sectionHeaderStyle: React.CSSProperties = {
+  padding: '16px 24px',
+  borderBottom: '1px solid var(--color-border)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+}
 
 export default function TransactionsPage() {
   const { formatAmount, currency } = useCurrency()
+  const { t } = useLanguage()
   const { toast } = useToast()
   const { data: session } = useSession()
+
   const [page, setPage] = useState(1)
   const [filterType, setFilterType] = useState('all')
   const [search, setSearch] = useState('')
@@ -44,6 +55,13 @@ export default function TransactionsPage() {
   const userIsPremium = session
     ? isPremium({ tier: session.user.tier, premiumOverride: session.user.premiumOverride })
     : false
+
+  const TYPE_OPTIONS = [
+    { value: 'all',     label: t('tx.allTypes') },
+    { value: 'income',  label: t('common.income') },
+    { value: 'expense', label: t('common.expense') },
+    { value: 'savings', label: t('common.savings') },
+  ]
 
   const { transactions, total, totalPages, loading, deleteTransaction, refetch } = useTransactions({
     type: filterType === 'all' ? '' : filterType,
@@ -67,14 +85,14 @@ export default function TransactionsPage() {
 
   const exportCSV = () => {
     const headers = [`Date,Type,Category,Description,Amount (${currency}),Tags`]
-    const rows = transactions.map((t) =>
+    const rows = transactions.map((tx) =>
       [
-        format(new Date(t.date), 'yyyy-MM-dd'),
-        t.type,
-        t.category,
-        `"${t.description ?? ''}"`,
-        t.amount.toFixed(2),
-        `"${t.tags.join('; ')}"`,
+        format(new Date(tx.date), 'yyyy-MM-dd'),
+        tx.type,
+        tx.category,
+        `"${tx.description ?? ''}"`,
+        tx.amount.toFixed(2),
+        `"${tx.tags.join('; ')}"`,
       ].join(',')
     )
     const csv = [...headers, ...rows].join('\n')
@@ -87,150 +105,387 @@ export default function TransactionsPage() {
     URL.revokeObjectURL(url)
   }
 
+  // ── Type badge ────────────────────────────────────────────────────────────
+  function TypeBadge({ type }: { type: string }) {
+    const config =
+      type === 'income'
+        ? { color: 'var(--color-income)', bg: 'var(--color-income-bg)', Icon: TrendingUp, label: t('common.income') }
+        : type === 'savings'
+        ? { color: 'var(--color-savings)', bg: 'var(--color-savings-bg)', Icon: PiggyBank, label: t('common.savings') }
+        : { color: 'var(--color-expense)', bg: 'var(--color-expense-bg)', Icon: TrendingDown, label: t('common.expense') }
+
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        fontSize: '0.68rem', fontWeight: 700,
+        padding: '3px 9px', borderRadius: 999,
+        backgroundColor: config.bg,
+        color: config.color,
+        letterSpacing: '0.03em',
+        textTransform: 'uppercase',
+      }}>
+        <config.Icon style={{ width: 10, height: 10 }} />
+        {config.label}
+      </span>
+    )
+  }
+
+  // ── Amount display ────────────────────────────────────────────────────────
+  function AmountCell({ tx }: { tx: Transaction }) {
+    const color =
+      tx.type === 'income' ? 'var(--color-income)' :
+      tx.type === 'savings' ? 'var(--color-savings)' :
+      'var(--color-expense)'
+    const prefix = tx.type === 'income' ? '+' : tx.type === 'savings' ? '=' : '−'
+
+    return (
+      <span style={{
+        color,
+        fontWeight: 700,
+        fontVariantNumeric: 'tabular-nums',
+        fontSize: '0.9rem',
+        whiteSpace: 'nowrap',
+      }}>
+        {prefix}{formatAmount(tx.amount)}
+      </span>
+    )
+  }
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* ── Page header ──────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{total} total records</p>
+          <h1 style={{
+            fontSize: '1.6rem', fontWeight: 900,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-playfair), Georgia, serif',
+            lineHeight: 1.1,
+          }}>
+            {t('tx.title')}
+          </h1>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+            {total} {t('tx.totalRecords')}
+          </p>
         </div>
-        <div className="flex gap-2">
+
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <Button variant="outline" size="sm" onClick={exportCSV}>
-            <Download className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Export</span>
+            <Download style={{ width: 14, height: 14, marginRight: 4 }} />
+            <span className="hidden sm:inline">{t('tx.exportLabel')}</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Import</span>
+            <Upload style={{ width: 14, height: 14, marginRight: 4 }} />
+            <span className="hidden sm:inline">{t('tx.import')}</span>
           </Button>
           <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Add</span>
+            <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
+            <span className="hidden sm:inline">{t('common.add')}</span>
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-wrap gap-2 items-end">
-            <div className="flex-1 min-w-0 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                className="h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm pl-9 pr-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="Search..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setPage(1) }}}
-              />
-            </div>
-            <div className="w-32 sm:w-36 shrink-0">
-              <Select
-                value={filterType}
-                onValueChange={(v) => { setFilterType(v); setPage(1) }}
-                options={TYPE_OPTIONS}
-                placeholder="Type"
-              />
-            </div>
-            <Button variant="outline" size="md" onClick={() => setShowFilters((v) => !v)} className="shrink-0">
-              <Filter className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Date Filter'}</span>
-            </Button>
+      {/* ── Filters ──────────────────────────────────────────────────────────── */}
+      <div style={cardStyle}>
+        <div style={{ padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+
+          {/* Search */}
+          <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+            <Search style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              width: 15, height: 15, color: 'var(--color-text-muted)', pointerEvents: 'none',
+            }} />
+            <input
+              style={{
+                height: 40, width: '100%',
+                borderRadius: 10,
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-elevated)',
+                color: 'var(--color-text-primary)',
+                fontSize: '0.85rem',
+                paddingLeft: 38, paddingRight: 12,
+                outline: 'none',
+                transition: 'border-color 0.15s',
+              }}
+              placeholder={t('tx.search')}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { setSearch(searchInput); setPage(1) }
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-accent)' }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)' }}
+            />
           </div>
-          {showFilters && (
-            <div className="grid grid-cols-2 gap-2 mt-3 sm:flex sm:flex-wrap sm:gap-3">
-              <Input
+
+          {/* Type select */}
+          <div style={{ width: 148, flexShrink: 0 }}>
+            <Select
+              value={filterType}
+              onValueChange={(v) => { setFilterType(v); setPage(1) }}
+              options={TYPE_OPTIONS}
+              placeholder={t('common.type')}
+            />
+          </div>
+
+          {/* Date filter toggle */}
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              height: 40, padding: '0 14px',
+              borderRadius: 10,
+              border: showFilters ? '1px solid var(--color-accent)' : '1px solid var(--color-border)',
+              backgroundColor: showFilters ? 'var(--color-sage)' : 'var(--color-elevated)',
+              color: showFilters ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer',
+              transition: 'all 0.15s',
+              flexShrink: 0,
+            }}
+          >
+            <Filter style={{ width: 14, height: 14 }} />
+            <span className="hidden sm:inline">
+              {showFilters ? t('tx.hideFilter') : t('tx.dateFilter')}
+            </span>
+          </button>
+        </div>
+
+        {/* Date range row */}
+        {showFilters && (
+          <div style={{
+            padding: '12px 20px 16px',
+            borderTop: '1px solid var(--color-border)',
+            display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {t('tx.dateFrom')}
+              </label>
+              <input
                 type="date"
-                label="From"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); setPage(1) }}
+                style={{
+                  height: 38, padding: '0 12px',
+                  borderRadius: 10,
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-elevated)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '0.82rem',
+                  outline: 'none',
+                }}
               />
-              <Input
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {t('tx.dateTo')}
+              </label>
+              <input
                 type="date"
-                label="To"
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); setPage(1) }}
+                style={{
+                  height: 38, padding: '0 12px',
+                  borderRadius: 10,
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-elevated)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '0.82rem',
+                  outline: 'none',
+                }}
               />
-              <div className="col-span-2 flex sm:items-end">
-                <Button variant="ghost" size="sm" onClick={() => { setStartDate(''); setEndDate(''); setFilterType('all'); setSearch(''); setSearchInput(''); setPage(1) }}>
-                  Clear
-                </Button>
-              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <button
+              onClick={() => {
+                setStartDate('')
+                setEndDate('')
+                setFilterType('all')
+                setSearch('')
+                setSearchInput('')
+                setPage(1)
+              }}
+              style={{
+                height: 38, padding: '0 14px',
+                borderRadius: 10,
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'transparent',
+                color: 'var(--color-text-muted)',
+                fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer',
+              }}
+            >
+              {t('tx.clearFilters')}
+            </button>
+          </div>
+        )}
+      </div>
 
-      {/* Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+      {/* ── Table ────────────────────────────────────────────────────────────── */}
+      <div style={cardStyle}>
+        <div style={{ ...sectionHeaderStyle }}>
+          <h2 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            {t('tx.title')}
+          </h2>
+          {!loading && total > 0 && (
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              {total} {t('tx.totalRecords')}
+            </span>
+          )}
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-700">
-                <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Date</th>
-                <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Description</th>
-                <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell">Category</th>
-                <th className="text-left px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">Type</th>
-                <th className="text-right px-3 sm:px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Amount</th>
-                <th className="px-3 sm:px-6 py-3" />
+              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                {[
+                  { label: t('common.date'),        className: '' },
+                  { label: t('common.description'), className: '' },
+                  { label: t('common.category'),    className: 'hidden sm:table-cell' },
+                  { label: t('common.type'),        className: 'hidden md:table-cell' },
+                  { label: t('common.amount'),      className: '', align: 'right' as const },
+                  { label: '',                      className: '' },
+                ].map(({ label, className, align }, i) => (
+                  <th
+                    key={i}
+                    className={className}
+                    style={{
+                      padding: '10px 20px',
+                      textAlign: align ?? 'left',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      color: 'var(--color-text-muted)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+
+            <tbody>
               {loading ? (
                 [...Array(8)].map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={6} className="px-6">
+                    <td colSpan={6} style={{ padding: '0 20px' }}>
                       <SkeletonRow />
                     </td>
                   </tr>
                 ))
               ) : transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-400">No transactions found</td>
+                  <td colSpan={6}>
+                    <div style={{
+                      padding: '48px 24px',
+                      textAlign: 'center',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.88rem',
+                    }}>
+                      {t('tx.noResults')}
+                    </div>
+                  </td>
                 </tr>
               ) : (
-                transactions.map((tx) => (
-                  <tr key={tx._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-3 sm:px-6 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs sm:text-sm">
-                      {format(new Date(tx.date), 'MMM d')}
-                      <span className="hidden sm:inline">, {format(new Date(tx.date), 'yyyy')}</span>
+                transactions.map((tx, idx) => (
+                  <tr
+                    key={tx._id}
+                    style={{
+                      borderBottom: idx < transactions.length - 1 ? '1px solid var(--color-border)' : 'none',
+                      transition: 'background-color 0.12s',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'var(--color-elevated)'
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'transparent'
+                    }}
+                  >
+                    {/* Date */}
+                    <td style={{ padding: '12px 20px', whiteSpace: 'nowrap', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                        {format(new Date(tx.date), 'MMM d')}
+                      </span>
+                      <span className="hidden sm:inline" style={{ color: 'var(--color-text-muted)', marginLeft: 2 }}>
+                        , {format(new Date(tx.date), 'yyyy')}
+                      </span>
                     </td>
-                    <td className="px-3 sm:px-6 py-3 text-gray-900 dark:text-white max-w-[120px] sm:max-w-[200px] truncate text-xs sm:text-sm">
-                      {tx.description || '-'}
+
+                    {/* Description */}
+                    <td style={{
+                      padding: '12px 20px',
+                      color: 'var(--color-text-primary)',
+                      fontWeight: 500,
+                      maxWidth: 200,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {tx.description || '—'}
                     </td>
-                    <td className="px-3 sm:px-6 py-3 text-gray-600 dark:text-gray-300 hidden sm:table-cell text-sm">{tx.category}</td>
-                    <td className="px-3 sm:px-6 py-3 hidden md:table-cell">
-                      <Badge variant={tx.type === 'income' ? 'success' : tx.type === 'savings' ? 'savings' : 'danger'}>
-                        {tx.type === 'income' ? (
-                          <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" />Income</span>
-                        ) : tx.type === 'savings' ? (
-                          <span className="flex items-center gap-1"><PiggyBank className="h-3 w-3" />Savings</span>
-                        ) : (
-                          <span className="flex items-center gap-1"><TrendingDown className="h-3 w-3" />Expense</span>
-                        )}
-                      </Badge>
+
+                    {/* Category */}
+                    <td className="hidden sm:table-cell" style={{ padding: '12px 20px', color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
+                      {tx.category}
                     </td>
-                    <td
-                      className={`px-3 sm:px-6 py-3 text-right font-semibold whitespace-nowrap text-xs sm:text-sm ${tx.type === 'income' ? 'text-green-600' : tx.type === 'savings' ? '' : 'text-red-600'}`}
-                      style={tx.type === 'savings' ? { color: 'var(--color-savings)' } : undefined}
-                    >
-                      {tx.type === 'income' ? '+' : tx.type === 'savings' ? '=' : '-'}{formatAmount(tx.amount)}
+
+                    {/* Type badge */}
+                    <td className="hidden md:table-cell" style={{ padding: '12px 20px' }}>
+                      <TypeBadge type={tx.type} />
                     </td>
-                    <td className="px-3 sm:px-6 py-3">
-                      <div className="flex items-center gap-1 justify-end">
+
+                    {/* Amount */}
+                    <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                      <AmountCell tx={tx} />
+                    </td>
+
+                    {/* Actions */}
+                    <td style={{ padding: '12px 16px 12px 8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                         <button
                           onClick={() => setEditTx(tx)}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                          aria-label="Edit"
+                          aria-label={t('common.edit')}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 32, height: 32, borderRadius: 8,
+                            border: 'none', backgroundColor: 'transparent',
+                            color: 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                            transition: 'all 0.12s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--color-sage)'
+                            e.currentTarget.style.color = 'var(--color-accent)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                            e.currentTarget.style.color = 'var(--color-text-muted)'
+                          }}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil style={{ width: 14, height: 14 }} />
                         </button>
                         <button
                           onClick={() => setDeleteTx(tx)}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                          aria-label="Delete"
+                          aria-label={t('common.delete')}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 32, height: 32, borderRadius: 8,
+                            border: 'none', backgroundColor: 'transparent',
+                            color: 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                            transition: 'all 0.12s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--color-expense-bg)'
+                            e.currentTarget.style.color = 'var(--color-expense)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                            e.currentTarget.style.color = 'var(--color-text-muted)'
+                          }}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 style={{ width: 14, height: 14 }} />
                         </button>
                       </div>
                     </td>
@@ -243,21 +498,35 @@ export default function TransactionsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-700">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
+          <div style={{
+            padding: '14px 24px',
+            borderTop: '1px solid var(--color-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              {t('tx.previous')}
             </Button>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Page {page} of {totalPages}
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              {t('tx.page')} {page} {t('common.of')} {totalPages}
             </span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              Next
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              {t('tx.next')}
             </Button>
           </div>
         )}
-      </Card>
+      </div>
 
-      {/* Import modal */}
+      {/* ── Import modal ─────────────────────────────────────────────────────── */}
       <ImportModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
@@ -265,13 +534,16 @@ export default function TransactionsPage() {
         isPremium={userIsPremium}
       />
 
-      {/* Add modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Transaction">
-        <TransactionForm onSuccess={() => { setAddOpen(false); refetch() }} onCancel={() => setAddOpen(false)} />
+      {/* ── Add modal ────────────────────────────────────────────────────────── */}
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('tx.add')}>
+        <TransactionForm
+          onSuccess={() => { setAddOpen(false); refetch() }}
+          onCancel={() => setAddOpen(false)}
+        />
       </Modal>
 
-      {/* Edit modal */}
-      <Modal open={!!editTx} onClose={() => setEditTx(null)} title="Edit Transaction">
+      {/* ── Edit modal ───────────────────────────────────────────────────────── */}
+      <Modal open={!!editTx} onClose={() => setEditTx(null)} title={t('tx.editTitle')}>
         {editTx && (
           <TransactionForm
             transaction={editTx}
@@ -281,14 +553,18 @@ export default function TransactionsPage() {
         )}
       </Modal>
 
-      {/* Delete confirm */}
-      <Modal open={!!deleteTx} onClose={() => setDeleteTx(null)} title="Delete Transaction">
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-          Are you sure you want to delete this transaction? This action cannot be undone.
+      {/* ── Delete confirm modal ─────────────────────────────────────────────── */}
+      <Modal open={!!deleteTx} onClose={() => setDeleteTx(null)} title={t('tx.deleteTitle')}>
+        <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+          {t('tx.deleteConfirm')} {t('tx.deleteWarning')}
         </p>
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => setDeleteTx(null)}>Cancel</Button>
-          <Button variant="danger" className="flex-1" onClick={handleDelete}>Delete</Button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button variant="outline" style={{ flex: 1 }} onClick={() => setDeleteTx(null)}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="danger" style={{ flex: 1 }} onClick={handleDelete}>
+            {t('common.delete')}
+          </Button>
         </div>
       </Modal>
     </div>

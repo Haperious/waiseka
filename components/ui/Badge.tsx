@@ -6,15 +6,15 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<string, string> = {
-  default: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-  success: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  danger: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  default:   'bg-[var(--color-elevated)] text-[var(--color-text-secondary)]',
+  success:   'bg-[var(--color-income-bg)] text-[var(--color-income)]',
+  active:    'bg-[var(--color-income-bg)] text-[var(--color-income)]',
+  savings:   'bg-[var(--color-savings-bg)] text-[var(--color-savings)]',
+  warning:   'bg-[var(--color-warning-bg)] text-[var(--color-warning)]',
+  paused:    'bg-[var(--color-warning-bg)] text-[var(--color-warning)]',
+  danger:    'bg-[var(--color-expense-bg)] text-[var(--color-expense)]',
+  info:      'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   completed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  paused: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  savings: 'bg-[#D9F5E5] text-[#1A6B3A] dark:bg-[rgba(86,201,127,0.12)] dark:text-[#56C97F]',
 }
 
 export default function Badge({ className, variant = 'default', children, ...props }: BadgeProps) {

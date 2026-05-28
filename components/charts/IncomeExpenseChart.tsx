@@ -18,9 +18,9 @@ export default function IncomeExpenseChart({ data }: { data: DataPoint[] }) {
   const { currency, formatAmount } = useCurrency()
   const { theme } = useTheme()
 
-  const incomeColor = theme === 'dark' ? '#3BAF68' : '#2A9654'
-  const expenseColor = theme === 'dark' ? '#E05A5A' : '#C0392B'
-  const savingsColor = '#56C97F'
+  const incomeColor  = theme === 'dark' ? '#4ADE80' : '#166534'
+  const expenseColor = theme === 'dark' ? '#F87171' : '#B91C1C'
+  const savingsColor = theme === 'dark' ? '#34D399' : '#16A34A'
 
   return (
     <ResponsiveContainer width="100%" height={280}>

@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User } from 'lucide-react'
-import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -12,6 +12,7 @@ interface Message {
 }
 
 export default function AiChatPage() {
+  const { t } = useLanguage()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -62,101 +63,210 @@ export default function AiChatPage() {
   const limitReached = queriesRemaining !== null && queriesRemaining <= 0
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ── Header ───────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">AI Financial Assistant</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Ask questions about your budget and finances</p>
+          <h1 style={{
+            fontSize: '1.6rem', fontWeight: 900,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-playfair), Georgia, serif',
+            lineHeight: 1.1,
+          }}>
+            {t('ai.title')}
+          </h1>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+            {t('ai.subtitle')}
+          </p>
         </div>
         {queriesUsed !== null && (
-          <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 self-start sm:self-auto">
-            {queriesUsed} / {cap} queries used this month
+          <span style={{
+            fontSize: '0.72rem', fontWeight: 600,
+            padding: '4px 12px', borderRadius: 999,
+            backgroundColor: 'var(--color-sage)',
+            color: 'var(--color-accent)',
+            alignSelf: 'flex-start',
+            whiteSpace: 'nowrap',
+          }}>
+            {queriesUsed} / {cap} {t('ai.queriesUsed')}
           </span>
         )}
       </div>
 
-      <Card className="flex flex-col" style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}>
-        <CardContent className="flex-1 overflow-y-auto py-4 space-y-4" style={{ minHeight: 0 }}>
+      {/* ── Chat container ───────────────────────────────────────────────────── */}
+      <div style={{
+        backgroundColor: 'var(--color-card)',
+        borderRadius: 16,
+        border: '1px solid var(--color-border)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: 'calc(100vh - 220px)',
+        minHeight: 400,
+        overflow: 'hidden',
+      }}>
+        {/* Messages area */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+          minHeight: 0,
+        }}>
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-16">
-              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                <Bot className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 14,
+              padding: '40px 24px',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: '50%',
+                backgroundColor: 'var(--color-sage)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Bot style={{ width: 24, height: 24, color: 'var(--color-accent)' }} />
               </div>
-              <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs">
-                Ask me anything about your budget, spending habits, or financial goals.
+              <p style={{
+                fontSize: '0.88rem', color: 'var(--color-text-muted)',
+                maxWidth: 300, lineHeight: 1.6,
+              }}>
+                {t('ai.emptyState')}
               </p>
             </div>
           )}
+
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              style={{
+                display: 'flex',
+                gap: 10,
+                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                alignItems: 'flex-end',
+              }}
             >
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                  <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                  backgroundColor: 'var(--color-sage)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Bot style={{ width: 15, height: 15, color: 'var(--color-accent)' }} />
                 </div>
               )}
-              <div
-                className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-sm'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm'
-                }`}
-              >
+              <div style={{
+                maxWidth: '75%',
+                padding: '10px 14px',
+                borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                fontSize: '0.88rem',
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+                backgroundColor: msg.role === 'user'
+                  ? 'var(--color-accent)'
+                  : 'var(--color-elevated)',
+                color: msg.role === 'user'
+                  ? '#fff'
+                  : 'var(--color-text-primary)',
+              }}>
                 {msg.content}
               </div>
               {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center shrink-0">
-                  <User className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                  backgroundColor: 'var(--color-elevated)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <User style={{ width: 15, height: 15, color: 'var(--color-text-muted)' }} />
                 </div>
               )}
             </div>
           ))}
+
+          {/* Typing indicator */}
           {loading && (
-            <div className="flex gap-3 justify-start">
-              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-start', alignItems: 'flex-end' }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                backgroundColor: 'var(--color-sage)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Bot style={{ width: 15, height: 15, color: 'var(--color-accent)' }} />
               </div>
-              <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-gray-100 dark:bg-gray-700">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
+              <div style={{
+                padding: '12px 16px',
+                borderRadius: '18px 18px 18px 4px',
+                backgroundColor: 'var(--color-elevated)',
+                display: 'flex', gap: 4, alignItems: 'center',
+              }}>
+                {[0, 150, 300].map((delay) => (
+                  <span
+                    key={delay}
+                    className="animate-bounce"
+                    style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      backgroundColor: 'var(--color-text-muted)',
+                      display: 'inline-block',
+                      animationDelay: `${delay}ms`,
+                    }}
+                  />
+                ))}
               </div>
             </div>
           )}
+
           <div ref={bottomRef} />
-        </CardContent>
-        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+        </div>
+
+        {/* ── Input bar ────────────────────────────────────────────────── */}
+        <div style={{
+          padding: '14px 20px',
+          borderTop: '1px solid var(--color-border)',
+          backgroundColor: 'var(--color-card)',
+        }}>
           {error && (
-            <p className="text-sm text-red-500 mb-2">{error}</p>
-          )}
-          {limitReached && (
-            <p className="text-sm text-amber-600 dark:text-amber-400 mb-2">
-              Monthly query limit reached. Your limit resets on the 1st of next month.
+            <p style={{
+              fontSize: '0.8rem', color: 'var(--color-expense)',
+              marginBottom: 8,
+            }}>
+              {error}
             </p>
           )}
-          <div className="flex gap-2">
+          {limitReached && (
+            <p style={{
+              fontSize: '0.8rem', color: 'var(--color-warning)',
+              marginBottom: 8,
+            }}>
+              {t('ai.limitReached')}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
             <Input
               value={input}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
-              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-              placeholder={limitReached ? 'Query limit reached' : 'Ask about your finances...'}
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                if (e.key === 'Enter' && !e.shiftKey) sendMessage()
+              }}
+              placeholder={limitReached ? t('ai.limitPlaceholder') : t('ai.placeholder')}
               disabled={loading || limitReached}
               className="flex-1"
             />
             <Button
               onClick={sendMessage}
               disabled={loading || !input.trim() || limitReached}
-              className="shrink-0"
+              style={{ flexShrink: 0 }}
             >
-              <Send className="h-4 w-4" />
+              <Send style={{ width: 15, height: 15 }} />
             </Button>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }
