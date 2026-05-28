@@ -8,6 +8,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useBudgets, Budget } from '@/hooks/useBudgets'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { TranslationKey } from '@/lib/translations'
 import { useToast } from '@/components/ui/Toast'
 import BudgetForm from './BudgetForm'
 
@@ -79,7 +80,7 @@ function BudgetCard({
 }: {
   budget: Budget
   formatAmount: (v: number) => string
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
   onEdit: () => void
   onDelete: () => void
 }) {
