@@ -107,7 +107,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
           className="text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
           title={isFil ? 'Switch to English' : 'Palitan ng Filipino'}
         >
-          {isFil ? '🇵🇭 FIL' : 'ENG'}
+          {isFil ? '🇵🇭 FIL' : '🇵🇭 ENG'}
         </button>
 
         {/* Microphone button */}
