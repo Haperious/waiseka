@@ -263,10 +263,25 @@ export default function LandingPage() {
     { icon: Tags,          titleKey: 'landing.f6.title', descKey: 'landing.f6.desc', color: '#15803D' },
   ]
 
-  const filipinoFeatures: { icon: React.ElementType; titleKey: TranslationKey; descKey: TranslationKey }[] = [
-    { icon: CalendarDays, titleKey: 'landing.fil.13.title',    descKey: 'landing.fil.13.desc'    },
-    { icon: Banknote,     titleKey: 'landing.fil.peso.title',  descKey: 'landing.fil.peso.desc'  },
-    { icon: Users,        titleKey: 'landing.fil.fam.title',   descKey: 'landing.fil.fam.desc'   },
+  const currencyCardCopy: Record<CurrencyCode, { title: string; desc: string }> = {
+    PHP: {
+      title: 'Philippine Peso, Always',
+      desc:  'No currency conversion. Every figure is in PHP, every budget limit is in pesos.',
+    },
+    QAR: {
+      title: 'Qatari Riyal, Always',
+      desc:  'No currency conversion. Every figure is in QAR, every budget limit is in riyals.',
+    },
+    USD: {
+      title: 'US Dollar, Always',
+      desc:  'No currency conversion. Every figure is in USD, every budget limit is in dollars.',
+    },
+  }
+
+  const filipinoFeatures: { icon: React.ElementType; title: string; desc: string }[] = [
+    { icon: CalendarDays, title: t('landing.fil.13.title'),   desc: t('landing.fil.13.desc')   },
+    { icon: Banknote,     title: currencyCardCopy[currency].title, desc: currencyCardCopy[currency].desc },
+    { icon: Users,        title: t('landing.fil.fam.title'),  desc: t('landing.fil.fam.desc')  },
   ]
 
   const steps: { icon: React.ElementType; numKey: TranslationKey; titleKey: TranslationKey; descKey: TranslationKey }[] = [
@@ -888,9 +903,9 @@ export default function LandingPage() {
 
           {/* Right — feature cards */}
           <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {filipinoFeatures.map(({ icon: Icon, titleKey, descKey }) => (
+            {filipinoFeatures.map(({ icon: Icon, title, desc }) => (
               <div
-                key={titleKey}
+                key={title}
                 style={{
                   display: 'flex', gap: 16, alignItems: 'flex-start',
                   background: 'rgba(255,255,255,0.06)',
@@ -918,7 +933,7 @@ export default function LandingPage() {
                       color: isDark ? 'var(--color-text-primary)' : '#F0FDF4',
                     }}
                   >
-                    {t(titleKey)}
+                    {title}
                   </h3>
                   <p
                     style={{
@@ -926,7 +941,7 @@ export default function LandingPage() {
                       color: isDark ? 'var(--color-text-muted)' : 'rgba(240,253,244,0.72)',
                     }}
                   >
-                    {t(descKey)}
+                    {desc}
                   </p>
                 </div>
               </div>
