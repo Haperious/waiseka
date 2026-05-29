@@ -171,17 +171,17 @@ export default function TransactionsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <Download style={{ width: 14, height: 14, marginRight: 4 }} />
+          <Button variant="outline" size="sm" onClick={exportCSV} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
+            <Download style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
             <span className="hidden sm:inline">{t('tx.exportLabel')}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-            <Upload style={{ width: 14, height: 14, marginRight: 4 }} />
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
+            <Upload style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
             <span className="hidden sm:inline">{t('tx.import')}</span>
           </Button>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
-            <span className="hidden sm:inline">{t('common.add')}</span>
+          <Button size="sm" onClick={() => setAddOpen(true)} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
+            <Plus style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
+            <span>{t('common.add')}</span>
           </Button>
         </div>
       </div>

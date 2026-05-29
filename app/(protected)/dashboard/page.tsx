@@ -566,9 +566,9 @@ export default function DashboardPage() {
             {t('dashboard.title')}
           </h1>
         </div>
-        <Button onClick={() => setAddTxOpen(true)} size="sm">
-          <Plus className="h-4 w-4 sm:mr-1.5" />
-          <span className="hidden sm:inline">{t('dashboard.addTransaction')}</span>
+        <Button onClick={() => setAddTxOpen(true)} size="sm" className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
+          <Plus className="h-4 w-4 mr-1.5" />
+          <span>{t('dashboard.addTransaction')}</span>
         </Button>
       </div>
 
