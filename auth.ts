@@ -2,11 +2,40 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { getDb } from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
 import type { IUser } from '@/lib/models/User'
 import { authConfig } from './auth.config'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    async jwt(params) {
+      const token = await authConfig.callbacks!.jwt!(params)
+      if (!token) return null
+
+      // Subsequent requests: verify the password hasn't changed since this token was issued
+      if (!params.user && token.id) {
+        try {
+          const db = await getDb()
+          const dbUser = await db
+            .collection<IUser>('users')
+            .findOne({ _id: new ObjectId(token.id as string) }, { projection: { passwordChangedAt: 1 } })
+
+          const dbChangedAt = dbUser?.passwordChangedAt?.getTime() ?? null
+          const tokenChangedAt = (token.passwordChangedAt as number | null) ?? null
+
+          if (dbChangedAt && dbChangedAt !== tokenChangedAt) {
+            return null
+          }
+        } catch {
+          // If the DB check fails, let the request through rather than locking everyone out
+        }
+      }
+
+      return token
+    },
+  },
   providers: [
     Credentials({
       async authorize(credentials) {
