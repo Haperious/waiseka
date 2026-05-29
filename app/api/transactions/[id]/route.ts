@@ -11,11 +11,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const body = await req.json()
 
-  const update: Partial<ITransaction> & { updatedAt: Date } = {
-    ...body,
-    updatedAt: new Date(),
+  // Whitelist editable fields — never allow userId, _id, or other system fields to be overwritten
+  const update: Partial<ITransaction> & { updatedAt: Date } = { updatedAt: new Date() }
+  if (body.amount !== undefined) {
+    if (typeof body.amount !== 'number' || !isFinite(body.amount) || body.amount <= 0) {
+      return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
+    }
+    update.amount = body.amount
   }
-  if (body.date) update.date = new Date(body.date)
+  if (body.type !== undefined) update.type = body.type
+  if (body.category !== undefined) update.category = body.category
+  if (body.description !== undefined) update.description = body.description
+  if (body.date !== undefined) update.date = new Date(body.date)
 
   const db = await getDb()
   const transaction = await db.collection<ITransaction>('transactions').findOneAndUpdate(

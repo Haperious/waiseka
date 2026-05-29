@@ -11,14 +11,14 @@ interface CurrencyContextValue {
 }
 
 const CurrencyContext = createContext<CurrencyContextValue>({
-  currency: 'USD',
-  currencySymbol: '$',
-  formatAmount: (n) => `$ ${n.toFixed(2)}`,
+  currency: 'PHP',
+  currencySymbol: '₱',
+  formatAmount: (n) => `₱ ${n.toFixed(2)}`,
   setCurrency: () => {},
 })
 
 export function CurrencyProvider({ children, initialCurrency }: { children: React.ReactNode; initialCurrency?: CurrencyCode }) {
-  const [currency, setCurrencyState] = useState<CurrencyCode>(initialCurrency ?? 'USD')
+  const [currency, setCurrencyState] = useState<CurrencyCode>(initialCurrency ?? 'PHP')
 
   useEffect(() => {
     if (initialCurrency) setCurrencyState(initialCurrency)

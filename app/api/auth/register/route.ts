@@ -5,14 +5,32 @@ import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
 import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
+
+// 5 registrations per IP per hour
+const RATE_LIMIT = 5
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const rl = rateLimit(`register:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    )
+  }
+
   try {
     const body = await req.json()
     const { name, email, password, confirmPassword } = body
-     
+
     if (!name || !email || !password || !confirmPassword) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
+    }
+
+    if (name.length > 100) {
+      return NextResponse.json({ error: 'Name must be 100 characters or fewer' }, { status: 400 })
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

@@ -31,7 +31,11 @@ export async function GET(req: NextRequest) {
     if (endDate) query.date.$lte = new Date(endDate)
   }
   if (tags) query.tags = { $in: tags.split(',') }
-  if (search) query.description = { $regex: search, $options: 'i' }
+  if (search) {
+    // Escape special regex characters to prevent ReDoS
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    query.description = { $regex: escapedSearch, $options: 'i' }
+  }
 
   const db = await getDb()
   const col = db.collection<ITransaction>('transactions')
@@ -50,8 +54,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { amount, type, category, description, date, tags, isRecurring } = body
 
-  if (!amount || !type || !category || !date) {
+  if (!type || !category || !date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+  if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
+    return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
   }
 
   const now = new Date()

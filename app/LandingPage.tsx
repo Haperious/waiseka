@@ -5,16 +5,28 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTheme } from '@/context/ThemeContext'
+import { useCurrency } from '@/context/CurrencyContext'
+import type { CurrencyCode } from '@/lib/currency'
 import type { TranslationKey } from '@/lib/translations'
 import {
   Sun, Moon, Menu, X, TrendingUp, Target, MessageSquare,
   BarChart2, Tags, Zap, ArrowRight, Banknote, Users, PiggyBank,
-  CalendarDays,
+  CalendarDays, ChevronDown, Mic, FileText, Crown,
 } from 'lucide-react'
+
+// ─── Preview amounts per currency ────────────────────────────────────────────
+
+const PREVIEW_AMOUNTS: Record<CurrencyCode, { income: string; expense: string }> = {
+  PHP: { income: '₱42,500', expense: '₱31,200' },
+  QAR: { income: '﷼5,800',  expense: '﷼4,250'  },
+  USD: { income: '$750',    expense: '$550'     },
+}
 
 // ─── Dashboard Preview Card ──────────────────────────────────────────────────
 
 function DashboardPreview({ t, isDark }: { t: (k: TranslationKey) => string; isDark: boolean }) {
+  const { currency } = useCurrency()
+  const preview = PREVIEW_AMOUNTS[currency]
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -116,8 +128,8 @@ function DashboardPreview({ t, isDark }: { t: (k: TranslationKey) => string; isD
         {/* mini stats */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
           {([
-            { label: t('landing.preview.income'),  val: '₱42,500', color: '#4ADE80' },
-            { label: t('landing.preview.expense'), val: '₱31,200', color: '#F87171' },
+            { label: t('landing.preview.income'),  val: preview.income,  color: '#4ADE80' },
+            { label: t('landing.preview.expense'), val: preview.expense, color: '#F87171' },
             { label: t('landing.preview.rate'),    val: '26.6%',   color: '#34D399' },
           ]).map(({ label, val, color }) => (
             <div
@@ -211,11 +223,19 @@ function useCounter(target: number, duration = 1800) {
 
 // ─── Main Landing Page ───────────────────────────────────────────────────────
 
+const CURRENCY_OPTIONS: { code: CurrencyCode; label: string; flag: string }[] = [
+  { code: 'PHP', label: 'PHP', flag: '🇵🇭' },
+  { code: 'QAR', label: 'QAR', flag: '🇶🇦' },
+  { code: 'USD', label: 'USD', flag: '🇺🇸' },
+]
+
 export default function LandingPage() {
   const { language, setLanguage, t } = useLanguage()
   const { theme, toggleTheme } = useTheme()
-  const [menuOpen, setMenuOpen]   = useState(false)
-  const [scrolled, setScrolled]   = useState(false)
+  const { currency, setCurrency } = useCurrency()
+  const [menuOpen, setMenuOpen]       = useState(false)
+  const [scrolled, setScrolled]       = useState(false)
+  const [currencyOpen, setCurrencyOpen] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -223,19 +243,24 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => {
+    if (!currencyOpen) return
+    const close = () => setCurrencyOpen(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [currencyOpen])
+
   const isDark = theme === 'dark'
 
-  const { count: userCount, ref: userRef }  = useCounter(5200)
-  const { count: txCount,   ref: txRef }    = useCounter(120000)
-  const { count: rateCount, ref: rateRef }  = useCounter(18)
-
-  const features: { icon: React.ElementType; titleKey: TranslationKey; descKey: TranslationKey; color: string }[] = [
-    { icon: Banknote,       titleKey: 'landing.f1.title', descKey: 'landing.f1.desc', color: '#166534' },
-    { icon: BarChart2,      titleKey: 'landing.f2.title', descKey: 'landing.f2.desc', color: '#16A34A' },
-    { icon: Target,         titleKey: 'landing.f3.title', descKey: 'landing.f3.desc', color: '#15803D' },
-    { icon: MessageSquare,  titleKey: 'landing.f4.title', descKey: 'landing.f4.desc', color: '#166534' },
-    { icon: TrendingUp,     titleKey: 'landing.f5.title', descKey: 'landing.f5.desc', color: '#16A34A' },
-    { icon: Tags,           titleKey: 'landing.f6.title', descKey: 'landing.f6.desc', color: '#15803D' },
+  const features: { icon: React.ElementType; titleKey: TranslationKey; descKey: TranslationKey; color: string; badge?: 'premium' | 'new' }[] = [
+    { icon: Banknote,      titleKey: 'landing.f1.title', descKey: 'landing.f1.desc', color: '#166534' },
+    { icon: BarChart2,     titleKey: 'landing.f2.title', descKey: 'landing.f2.desc', color: '#16A34A' },
+    { icon: Target,        titleKey: 'landing.f3.title', descKey: 'landing.f3.desc', color: '#15803D' },
+    { icon: Crown,         titleKey: 'landing.f4.title', descKey: 'landing.f4.desc', color: '#D97706', badge: 'premium' },
+    { icon: Mic,           titleKey: 'landing.f7.title', descKey: 'landing.f7.desc', color: '#16A34A', badge: 'new' },
+    { icon: FileText,      titleKey: 'landing.f8.title', descKey: 'landing.f8.desc', color: '#15803D', badge: 'new' },
+    { icon: TrendingUp,    titleKey: 'landing.f5.title', descKey: 'landing.f5.desc', color: '#16A34A' },
+    { icon: Tags,          titleKey: 'landing.f6.title', descKey: 'landing.f6.desc', color: '#15803D' },
   ]
 
   const filipinoFeatures: { icon: React.ElementType; titleKey: TranslationKey; descKey: TranslationKey }[] = [
@@ -316,6 +341,57 @@ export default function LandingPage() {
 
         {/* Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* Currency selector — hidden on mobile */}
+          <div className="hidden sm:block" style={{ position: 'relative' }}>
+            <button
+              onClick={() => setCurrencyOpen(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+                background: 'var(--color-elevated)',
+                border: '1px solid var(--color-border)',
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
+                color: 'var(--color-accent)',
+              }}
+            >
+              {CURRENCY_OPTIONS.find(c => c.code === currency)?.flag}{' '}
+              {currency}
+              <ChevronDown size={11} style={{ opacity: 0.6, marginLeft: 1 }} />
+            </button>
+            {currencyOpen && (
+              <div
+                style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 100,
+                  background: 'var(--color-card)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 10, overflow: 'hidden',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                  minWidth: 130,
+                }}
+              >
+                {CURRENCY_OPTIONS.map(({ code, label, flag }) => (
+                  <button
+                    key={code}
+                    onClick={() => { setCurrency(code); setCurrencyOpen(false) }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      width: '100%', padding: '9px 14px',
+                      background: currency === code ? 'var(--color-elevated)' : 'transparent',
+                      border: 'none', cursor: 'pointer', textAlign: 'left',
+                      fontSize: 13, fontWeight: currency === code ? 700 : 500,
+                      color: currency === code ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                    }}
+                    onMouseEnter={e => { if (currency !== code) e.currentTarget.style.background = 'var(--color-elevated)' }}
+                    onMouseLeave={e => { if (currency !== code) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <span style={{ fontSize: 15 }}>{flag}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* EN / TL — hidden on mobile, shown sm+ */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'tl' : 'en')}
@@ -412,6 +488,27 @@ export default function LandingPage() {
 
           {/* Divider */}
           <div style={{ height: 1, background: 'var(--color-border)' }} />
+
+          {/* Currency selector row */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {CURRENCY_OPTIONS.map(({ code, flag, label }) => (
+              <button
+                key={code}
+                onClick={() => setCurrency(code)}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                  background: currency === code ? 'var(--color-elevated)' : 'transparent',
+                  border: `1px solid ${currency === code ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                  fontSize: 12, fontWeight: currency === code ? 700 : 500,
+                  color: currency === code ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{flag}</span>
+                {label}
+              </button>
+            ))}
+          </div>
 
           {/* Utility row: EN/TL + theme */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -618,53 +715,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── STATS STRIP ───────────────────────────────────────────────────── */}
-      <div
-        style={{
-          borderTop: '1px solid var(--color-border)',
-          borderBottom: '1px solid var(--color-border)',
-          background: isDark ? 'rgba(22,101,52,0.06)' : 'rgba(22,101,52,0.04)',
-          padding: '28px clamp(16px, 5vw, 64px)',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1200, margin: '0 auto',
-            display: 'flex', justifyContent: 'center', flexWrap: 'wrap',
-          }}
-        >
-          {([
-            { counterRef: userRef,  value: userCount,  suffix: '+',  label: t('landing.stats.users'),   prefix: ''      },
-            { counterRef: txRef,    value: txCount,    suffix: '+',  label: t('landing.stats.tracked'), prefix: ''      },
-            { counterRef: rateRef,  value: rateCount,  suffix: '%',  label: t('landing.stats.savings'), prefix: 'Avg. ' },
-          ]).map(({ counterRef, value, suffix, label, prefix }, i) => (
-            <div
-              key={label}
-              ref={counterRef}
-              style={{
-                flex: '1 1 120px', textAlign: 'center',
-                padding: 'clamp(8px, 2vw, 10px) clamp(12px, 4vw, 28px)',
-                borderRight: i < 2 ? '1px solid var(--color-border)' : 'none',
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: 'var(--font-playfair), Georgia, serif',
-                  fontSize: 'clamp(30px, 4vw, 46px)',
-                  fontWeight: 700, color: 'var(--color-accent)',
-                  letterSpacing: '-0.02em', lineHeight: 1,
-                }}
-              >
-                {prefix}{value.toLocaleString()}{suffix}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 6, fontWeight: 500 }}>
-                {label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ── FEATURES ──────────────────────────────────────────────────────── */}
       <section id="features" style={{ padding: 'clamp(60px, 8vw, 100px) clamp(16px, 5vw, 64px)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -691,20 +741,56 @@ export default function LandingPage() {
               gap: 20,
             }}
           >
-            {features.map(({ icon: Icon, titleKey, descKey, color }) => (
+            {features.map(({ icon: Icon, titleKey, descKey, color, badge }) => (
               <div
                 key={titleKey}
                 style={{
                   background: 'var(--color-card)',
                   borderRadius: 16,
-                  border: '1px solid var(--color-border)',
+                  border: badge === 'premium'
+                    ? '1px solid rgba(217,119,6,0.35)'
+                    : '1px solid var(--color-border)',
                   borderLeft: `3px solid ${color}`,
                   padding: 24, cursor: 'default',
+                  position: 'relative', overflow: 'hidden',
                   transition: 'transform 0.22s, box-shadow 0.22s',
                 }}
                 onMouseEnter={cardHoverIn}
                 onMouseLeave={cardHoverOut}
               >
+                {/* Badge */}
+                {badge === 'premium' && (
+                  <div
+                    style={{
+                      position: 'absolute', top: 14, right: 14,
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '3px 9px', borderRadius: 100,
+                      background: 'rgba(217,119,6,0.15)',
+                      border: '1px solid rgba(217,119,6,0.4)',
+                      fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
+                      color: '#D97706', textTransform: 'uppercase',
+                    }}
+                  >
+                    <Crown size={9} />
+                    Premium
+                  </div>
+                )}
+                {badge === 'new' && (
+                  <div
+                    style={{
+                      position: 'absolute', top: 14, right: 14,
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '3px 9px', borderRadius: 100,
+                      background: isDark ? 'rgba(74,222,128,0.12)' : 'rgba(22,101,52,0.1)',
+                      border: '1px solid rgba(74,222,128,0.35)',
+                      fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
+                      color: 'var(--color-accent)', textTransform: 'uppercase',
+                    }}
+                  >
+                    New
+                  </div>
+                )}
+
                 <div
                   style={{
                     width: 42, height: 42, borderRadius: 11,

@@ -33,10 +33,12 @@ export async function PUT(req: NextRequest) {
   if (!match) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
 
   const hashed = await bcrypt.hash(newPassword, 12)
+  const now = new Date()
   await users.updateOne(
     { _id: new ObjectId(session.user.id) },
-    { $set: { password: hashed, updatedAt: new Date() } }
+    { $set: { password: hashed, passwordChangedAt: now, updatedAt: now } }
   )
 
-  return NextResponse.json({ message: 'Password updated successfully' })
+  // The response includes a flag so the client can force a re-login
+  return NextResponse.json({ message: 'Password updated successfully', requireReLogin: true })
 }

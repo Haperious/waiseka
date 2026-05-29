@@ -2,11 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getDb } from '@/lib/mongodb'
 import { sendResetPasswordEmail } from '@/lib/email'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import type { IUser } from '@/lib/models/User'
 
 const EXPIRY_MINUTES = 30
+// 3 requests per IP per 15 minutes
+const RATE_LIMIT = 3
+const RATE_WINDOW_MS = 15 * 60 * 1000
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const rl = rateLimit(`forgot-password:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    )
+  }
+
   const { email } = await req.json()
   if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
@@ -18,6 +31,12 @@ export async function POST(req: NextRequest) {
 
   const token = crypto.randomBytes(32).toString('hex')
   const expiresAt = new Date(Date.now() + EXPIRY_MINUTES * 60 * 1000)
+
+  // Invalidate any previous unused tokens for this user so only the latest link works
+  await db.collection('passwordResetTokens').updateMany(
+    { userId: user._id.toString(), used: false },
+    { $set: { used: true } }
+  )
 
   await db.collection('passwordResetTokens').insertOne({
     userId: user._id.toString(),

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { User, Lock, DollarSign, Bell, Sun, Moon, Mic } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -192,8 +193,9 @@ export default function SettingsPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        toast('Password updated successfully', 'success')
-        setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' })
+        toast('Password updated. Please log in again.', 'success')
+        // Force re-login so the old JWT (potentially stolen) is invalidated
+        setTimeout(() => signOut({ callbackUrl: '/login' }), 1500)
       } else {
         toast(data.error ?? 'Failed to update password', 'error')
       }

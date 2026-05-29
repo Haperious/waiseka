@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
-  const initialCurrency = (session?.user?.currency ?? 'USD') as CurrencyCode
+  const initialCurrency = (session?.user?.currency ?? 'PHP') as CurrencyCode
 
   return (
     <html lang="en" className={`${geist.variable} ${playfair.variable} h-full antialiased dark`} suppressHydrationWarning>

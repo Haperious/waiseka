@@ -2,8 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/mongodb'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
+
+// 5 attempts per IP per 15 minutes
+const RATE_LIMIT = 5
+const RATE_WINDOW_MS = 15 * 60 * 1000
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const rl = rateLimit(`reset-password:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    )
+  }
+
   const { token, password } = await req.json()
 
   if (!token || !password) {

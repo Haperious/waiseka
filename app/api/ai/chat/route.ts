@@ -15,6 +15,9 @@ export async function POST(req: NextRequest) {
   if (!message || typeof message !== 'string') {
     return NextResponse.json({ error: 'message is required' }, { status: 400 })
   }
+  if (message.length > 2000) {
+    return NextResponse.json({ error: 'Message must be 2,000 characters or fewer' }, { status: 400 })
+  }
 
   const db = await getDb()
   const users = db.collection<IUser>('users')
