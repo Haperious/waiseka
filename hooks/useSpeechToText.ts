@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-export type SpeechLang = 'fil-PH' | 'en-PH'
-export const FALLBACK_LANG: SpeechLang = 'en-PH'
+export type SpeechLang = 'fil-PH' | 'en-US'
+export const FALLBACK_LANG: SpeechLang = 'en-US'
 
 // Web Speech API types not included in TypeScript's DOM lib
 interface SpeechRecognitionInstance extends EventTarget {
@@ -52,7 +52,7 @@ export function useSpeechToText(): UseSpeechToTextReturn {
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [language, setLanguage] = useState<SpeechLang>('fil-PH')
+  const [language, setLanguage] = useState<SpeechLang>('en-US')
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
 
   useEffect(() => {

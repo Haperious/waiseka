@@ -25,6 +25,11 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
   const [uiState, setUiState] = useState<UIState>('idle')
   const [parsed, setParsed] = useState<ParsedTransaction | null>(null)
   const [showKeywordManager, setShowKeywordManager] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
+
+  useEffect(() => {
+    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent))
+  }, [])
 
   // When transcript arrives, parse it
   useEffect(() => {
@@ -100,15 +105,17 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
           {isFil ? 'Input ng boses' : 'Voice input'}
         </span>
 
-        {/* Language toggle */}
-        <button
-          type="button"
-          onClick={() => setLanguage(isFil ? 'en-PH' : 'fil-PH')}
-          className="text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-          title={isFil ? 'Switch to English' : 'Palitan ng Filipino'}
-        >
-          {isFil ? '🇵🇭 FIL' : '🇵🇭 ENG'}
-        </button>
+        {/* Language toggle — hidden on iOS since fil-PH is unsupported */}
+        {!isIOS && (
+          <button
+            type="button"
+            onClick={() => setLanguage(isFil ? 'en-US' : 'fil-PH')}
+            className="text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            title={isFil ? 'Switch to English' : 'Palitan ng Filipino'}
+          >
+            {isFil ? '🇵🇭 FIL' : '🇵🇭 ENG'}
+          </button>
+        )}
 
         {/* Microphone button */}
         <div className="relative">
