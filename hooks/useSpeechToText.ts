@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 export type SpeechLang = 'fil-PH' | 'en-PH'
+export const FALLBACK_LANG: SpeechLang = 'en-PH'
 
 // Web Speech API types not included in TypeScript's DOM lib
 interface SpeechRecognitionInstance extends EventTarget {
@@ -75,6 +76,9 @@ export function useSpeechToText(): UseSpeechToTextReturn {
 
     recognition.onerror = (event: Event) => {
       const errorCode = (event as Event & { error?: string }).error ?? 'unknown'
+      if (errorCode === 'language-not-supported' && language !== FALLBACK_LANG) {
+        setLanguage(FALLBACK_LANG)
+      }
       setError(errorCode)
       setIsListening(false)
     }

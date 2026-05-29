@@ -181,6 +181,8 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
               ? (isFil ? 'Network error. Suriin ang iyong koneksyon.' : 'Network error — check your internet connection.')
               : error === 'no-speech'
               ? (isFil ? 'Walang narinig na boses. Subukan ulit.' : 'No speech detected — please try again.')
+              : error === 'language-not-supported'
+              ? 'Filipino not supported on this device — switched to English. Enable it in iOS Settings → General → Keyboard → Keyboards.'
               : (isFil ? `Error sa speech recognition: ${error}` : `Speech recognition error: ${error}`)}
           </p>
           <button
