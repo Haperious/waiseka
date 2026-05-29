@@ -1,48 +1,40 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+
 
 export default function TestMicPage() {
   const [log, setLog] = useState<string[]>([])
-  const recognitionRef = useRef<unknown>(null)
 
   const addLog = (msg: string) => {
     setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev])
   }
 
   const handleTest = () => {
-    const SpeechRecognition =
-      (window as Window & { SpeechRecognition?: new () => SpeechRecognition; webkitSpeechRecognition?: new () => SpeechRecognition }).SpeechRecognition ??
-      (window as Window & { webkitSpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition
+    const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition
 
-    if (!SpeechRecognition) {
+    if (!Ctor) {
       addLog('ERROR: SpeechRecognition not supported in this browser')
       return
     }
 
     addLog('Creating recognition instance...')
-    const recognition = new SpeechRecognition()
-    recognitionRef.current = recognition
+    const recognition = new Ctor()
 
     recognition.lang = 'en-US'
     recognition.interimResults = false
 
-    recognition.onstart = () => addLog('Started — speak now')
-    recognition.onaudiostart = () => addLog('Audio capture started')
-    recognition.onsoundstart = () => addLog('Sound detected')
-    recognition.onspeechstart = () => addLog('Speech detected')
-    recognition.onspeechend = () => addLog('Speech ended')
-    recognition.onaudioend = () => addLog('Audio capture ended')
     recognition.onend = () => addLog('Recognition session ended')
 
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    recognition.onresult = (e) => {
       const transcript = e.results[0][0].transcript
       const confidence = (e.results[0][0].confidence * 100).toFixed(1)
       addLog(`RESULT: "${transcript}" (${confidence}% confidence)`)
     }
 
-    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-      addLog(`ERROR: ${e.error} — ${e.message || 'no message'}`)
+    recognition.onerror = (e) => {
+      const err = e as Event & { error?: string; message?: string }
+      addLog(`ERROR: ${err.error ?? 'unknown'} — ${err.message ?? 'no message'}`)
     }
 
     try {
