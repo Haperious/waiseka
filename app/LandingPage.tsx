@@ -263,7 +263,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg)', color: 'var(--color-text-primary)', overflowX: 'hidden' }}>
 
       {/* ── NAVBAR ────────────────────────────────────────────────────────── */}
       <nav
@@ -315,12 +315,13 @@ export default function LandingPage() {
         </div>
 
         {/* Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {/* EN / TL */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* EN / TL — hidden on mobile, shown sm+ */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'tl' : 'en')}
+            className="hidden sm:flex"
             style={{
-              display: 'flex', alignItems: 'center', gap: 2,
+              alignItems: 'center', gap: 2,
               padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
               background: 'var(--color-elevated)',
               border: '1px solid var(--color-border)',
@@ -336,7 +337,7 @@ export default function LandingPage() {
           <button
             onClick={toggleTheme}
             style={{
-              padding: 8, borderRadius: 8, cursor: 'pointer',
+              padding: 7, borderRadius: 8, cursor: 'pointer',
               background: 'transparent', border: 'none', display: 'flex',
               color: 'var(--color-text-secondary)',
             }}
@@ -345,11 +346,11 @@ export default function LandingPage() {
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
-          {/* Sign In */}
+          {/* Sign In — hidden on mobile */}
           <Link
             href="/login"
             style={{
-              padding: '7px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600,
+              padding: '7px 14px', borderRadius: 9, fontSize: 13, fontWeight: 600,
               color: 'var(--color-text-secondary)', textDecoration: 'none',
               border: '1px solid var(--color-border)', transition: 'all 0.2s',
             }}
@@ -358,11 +359,11 @@ export default function LandingPage() {
             {t('landing.nav.signIn')}
           </Link>
 
-          {/* Get Started */}
+          {/* Get Started — hidden on mobile */}
           <Link
             href="/register"
             style={{
-              padding: '7px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700,
+              padding: '7px 16px', borderRadius: 9, fontSize: 13, fontWeight: 700,
               background: 'var(--color-accent)',
               color: isDark ? '#0C100E' : '#fff',
               textDecoration: 'none',
@@ -373,12 +374,13 @@ export default function LandingPage() {
             {t('landing.nav.getStarted')}
           </Link>
 
-          {/* Mobile hamburger */}
+          {/* Mobile hamburger — visible only on mobile */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
-              padding: 8, borderRadius: 8, background: 'transparent',
-              border: 'none', cursor: 'pointer', display: 'flex',
+              padding: 7, borderRadius: 8, background: menuOpen ? 'var(--color-elevated)' : 'transparent',
+              border: '1px solid ' + (menuOpen ? 'var(--color-border)' : 'transparent'),
+              cursor: 'pointer', display: 'flex',
               color: 'var(--color-text-secondary)',
             }}
             className="sm:hidden"
@@ -396,22 +398,57 @@ export default function LandingPage() {
             position: 'fixed', top: 64, left: 0, right: 0, zIndex: 49,
             background: isDark ? '#111C14' : '#FAFAF5',
             borderBottom: '1px solid var(--color-border)',
-            padding: '16px 24px 24px',
-            display: 'flex', flexDirection: 'column', gap: 14,
+            padding: '20px 24px 28px',
+            display: 'flex', flexDirection: 'column', gap: 16,
           }}
         >
+          {/* Nav links */}
           <a href="#features" onClick={() => setMenuOpen(false)} style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)', textDecoration: 'none' }}>
             {t('landing.nav.features')}
           </a>
           <a href="#how" onClick={() => setMenuOpen(false)} style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)', textDecoration: 'none' }}>
             {t('landing.nav.howItWorks')}
           </a>
-          <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--color-border)' }} />
+
+          {/* Utility row: EN/TL + theme */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => setLanguage(language === 'en' ? 'tl' : 'en')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 2,
+                padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+                background: 'var(--color-elevated)',
+                border: '1px solid var(--color-border)',
+                fontSize: 12, fontWeight: 700, letterSpacing: '0.05em',
+              }}
+            >
+              <span style={{ color: language === 'en' ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>EN</span>
+              <span style={{ color: 'var(--color-text-muted)', margin: '0 3px' }}>·</span>
+              <span style={{ color: language === 'tl' ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>TL</span>
+            </button>
+            <button
+              onClick={toggleTheme}
+              style={{
+                padding: '6px 14px', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                background: 'var(--color-elevated)', border: '1px solid var(--color-border)',
+                color: 'var(--color-text-secondary)', fontSize: 12, fontWeight: 600,
+              }}
+            >
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
+              {isDark ? 'Light' : 'Dark'}
+            </button>
+          </div>
+
+          {/* CTA buttons */}
+          <div style={{ display: 'flex', gap: 10 }}>
             <Link
               href="/login"
               onClick={() => setMenuOpen(false)}
               style={{
-                flex: 1, textAlign: 'center', padding: '10px', borderRadius: 10,
+                flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10,
                 border: '1px solid var(--color-border)', fontSize: 14, fontWeight: 600,
                 color: 'var(--color-text-primary)', textDecoration: 'none',
               }}
@@ -422,7 +459,7 @@ export default function LandingPage() {
               href="/register"
               onClick={() => setMenuOpen(false)}
               style={{
-                flex: 1, textAlign: 'center', padding: '10px', borderRadius: 10,
+                flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10,
                 background: 'var(--color-accent)', fontSize: 14, fontWeight: 700,
                 color: isDark ? '#0C100E' : '#fff', textDecoration: 'none',
               }}
@@ -464,7 +501,7 @@ export default function LandingPage() {
         />
 
         {/* Left — text */}
-        <div style={{ flex: '1 1 340px', maxWidth: 520, position: 'relative', zIndex: 1 }}>
+        <div style={{ flex: '1 1 280px', maxWidth: 520, position: 'relative', zIndex: 1, minWidth: 0 }}>
           {/* Badge */}
           <div
             style={{
@@ -566,8 +603,9 @@ export default function LandingPage() {
         {/* Right — dashboard preview */}
         <div
           style={{
-            flex: '1 1 300px', maxWidth: 440, position: 'relative', zIndex: 1,
+            flex: '1 1 280px', maxWidth: 440, position: 'relative', zIndex: 1,
             display: 'flex', justifyContent: 'center', alignItems: 'center',
+            minWidth: 0,
           }}
         >
           <div
@@ -604,8 +642,8 @@ export default function LandingPage() {
               key={label}
               ref={counterRef}
               style={{
-                flex: '1 1 180px', textAlign: 'center',
-                padding: '10px 28px',
+                flex: '1 1 120px', textAlign: 'center',
+                padding: 'clamp(8px, 2vw, 10px) clamp(12px, 4vw, 28px)',
                 borderRight: i < 2 ? '1px solid var(--color-border)' : 'none',
               }}
             >
@@ -649,7 +687,7 @@ export default function LandingPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
               gap: 20,
             }}
           >
@@ -721,7 +759,7 @@ export default function LandingPage() {
           }}
         >
           {/* Left */}
-          <div style={{ flex: '1 1 300px', maxWidth: 440 }}>
+          <div style={{ flex: '1 1 280px', maxWidth: 440, minWidth: 0 }}>
             <div
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,

@@ -205,7 +205,10 @@ function BudgetBar({ budget, formatAmount }: { budget: Budget; formatAmount: (v:
               backgroundColor: budget.color, flexShrink: 0,
             }} />
           )}
-          <span style={{ fontSize: '0.83rem', fontWeight: '500', color: 'var(--color-text-primary)' }}>
+          <span style={{
+            fontSize: '0.83rem', fontWeight: '500', color: 'var(--color-text-primary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '14ch',
+          }}>
             {budget.category}
           </span>
         </div>
@@ -362,7 +365,7 @@ function GoalBar({
         </div>
 
         {/* Right: amounts + pct + deadline */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
             {formatAmount(goal.savedAmount)}{' '}
             <span style={{ color: 'var(--color-text-muted)', opacity: 0.5 }}>/</span>{' '}
@@ -570,34 +573,28 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Period selector ─────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ width: 160 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 130, flex: '1 1 130px', maxWidth: 180 }}>
           <Select value={selectedMonth} onValueChange={setSelectedMonth} options={MONTHS} />
         </div>
-        <div style={{ width: 100 }}>
+        <div style={{ minWidth: 90, flex: '0 0 auto' }}>
           <Select value={selectedYear} onValueChange={setSelectedYear} options={years} />
         </div>
       </div>
 
       {/* ── Hero: health ring + 4 stat cards ──────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'auto 1fr',
-        gap: 16,
-        alignItems: 'stretch',
-      }} className="flex-col sm:grid">
+      <div className="flex flex-col sm:flex-row" style={{ gap: 16, alignItems: 'stretch' }}>
         {/* Health ring card */}
         <div style={{
           backgroundColor: 'var(--color-card)',
           borderRadius: 16,
           border: '1px solid var(--color-border)',
-          padding: '28px 32px',
+          padding: '24px 28px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 4,
-          minWidth: 200,
         }}>
           <p style={{
             fontSize: '0.7rem', textTransform: 'uppercase',
@@ -613,7 +610,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 2×2 stat grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, flex: 1 }}>
           <StatCard
             label={t('dashboard.totalIncome')}
             value={analyticsLoading ? '—' : formatAmount(analyticsSummary?.totalIncome ?? 0)}
@@ -710,7 +707,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Budget health + Category breakdown ─────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="grid-cols-1 lg:grid-cols-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 16 }}>
 
         {/* Budget health */}
         <div style={{

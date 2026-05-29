@@ -63,8 +63,8 @@ async function sendBudgetReminders() {
 
     for (const user of users) {
       const frequency = user.notifications?.email?.frequency ?? 'weekly'
-      const lastSent = user.notifications?.email?.lastSent
-        ? new Date(user.notifications.email.lastSent).getTime() : 0
+      const lastSent = user.notifications?.email?.lastSentBudget
+        ? new Date(user.notifications.email.lastSentBudget).getTime() : 0
       const daysSinceEmail = (Date.now() - lastSent) / (1000 * 60 * 60 * 24)
       if (daysSinceEmail < (EMAIL_THRESHOLD[frequency] ?? 7)) continue
 
@@ -107,7 +107,7 @@ async function sendBudgetReminders() {
 
       await db.collection<IUser>('users').updateOne(
         { _id: user._id },
-        { $set: { 'notifications.email.lastSent': new Date() } }
+        { $set: { 'notifications.email.lastSentBudget': new Date() } }
       )
 
       sendBudgetReminderEmail({
@@ -149,8 +149,8 @@ async function sendReEngageEmails() {
 
     for (const user of users) {
       const frequency = user.notifications?.email?.frequency ?? 'weekly'
-      const lastSent = user.notifications?.email?.lastSent
-        ? new Date(user.notifications.email.lastSent).getTime() : 0
+      const lastSent = user.notifications?.email?.lastSentReEngage
+        ? new Date(user.notifications.email.lastSentReEngage).getTime() : 0
       const daysSinceEmail = (Date.now() - lastSent) / (1000 * 60 * 60 * 24)
       if (daysSinceEmail < (EMAIL_THRESHOLD[frequency] ?? 7)) continue
 
@@ -174,7 +174,7 @@ async function sendReEngageEmails() {
 
       await db.collection<IUser>('users').updateOne(
         { _id: user._id },
-        { $set: { 'notifications.email.lastSent': new Date() } }
+        { $set: { 'notifications.email.lastSentReEngage': new Date() } }
       )
 
       sendReEngageEmail({
@@ -272,7 +272,7 @@ async function sendMonthlyReports() {
 
       await db.collection<IUser>('users').updateOne(
         { _id: user._id },
-        { $set: { 'notifications.email.lastSent': new Date() } }
+        { $set: { 'notifications.email.lastSentMonthly': new Date() } }
       )
 
       sendMonthlyReportEmail({

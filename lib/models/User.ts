@@ -34,7 +34,11 @@ export interface IUser {
       enabled: boolean
       frequency: 'daily' | 'weekly' | 'monthly'
       count?: number
+      /** @deprecated use lastSentBudget / lastSentReEngage / lastSentMonthly */
       lastSent?: Date
+      lastSentBudget?: Date
+      lastSentReEngage?: Date
+      lastSentMonthly?: Date
     }
     push: {
       enabled: boolean
