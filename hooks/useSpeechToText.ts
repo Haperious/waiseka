@@ -88,12 +88,28 @@ export function useSpeechToText(): UseSpeechToTextReturn {
 
   const startListening = useCallback(() => {
     if (!isSupported) return
-    recognitionRef.current?.abort()
     setTranscript('')
-    const recognition = buildRecognition()
-    recognitionRef.current = recognition
-    recognition.start()
-    setIsListening(true)
+
+    const launch = () => {
+      const recognition = buildRecognition()
+      recognitionRef.current = recognition
+      recognition.start()
+      setIsListening(true)
+    }
+
+    const current = recognitionRef.current
+    if (current) {
+      // On iOS Safari, start() after abort() without waiting for onend triggers
+      // service-not-allowed. Wait for the session to close first.
+      const prev = current.onend
+      current.onend = () => {
+        prev?.()
+        launch()
+      }
+      current.abort()
+    } else {
+      launch()
+    }
   }, [isSupported, buildRecognition])
 
   const stopListening = useCallback(() => {
