@@ -2,8 +2,15 @@
 
 import { useState } from 'react'
 
+const LANGS = [
+  { code: 'en-US', label: '🇺🇸 en-US' },
+  { code: 'en-PH', label: '🇵🇭 en-PH' },
+  { code: 'fil-PH', label: '🇵🇭 fil-PH' },
+  { code: 'tl-PH', label: '🇵🇭 tl-PH' },
+]
 
 export default function TestMicPage() {
+  const [lang, setLang] = useState('en-US')
   const [log, setLog] = useState<string[]>([])
 
   const addLog = (msg: string) => {
@@ -18,13 +25,13 @@ export default function TestMicPage() {
       return
     }
 
-    addLog('Creating recognition instance...')
+    addLog(`Starting with lang="${lang}"...`)
     const recognition = new Ctor()
 
-    recognition.lang = 'en-US'
+    recognition.lang = lang
     recognition.interimResults = false
 
-    recognition.onend = () => addLog('Recognition session ended')
+    recognition.onend = () => addLog('Session ended')
 
     recognition.onresult = (e) => {
       const transcript = e.results[0][0].transcript
@@ -47,11 +54,33 @@ export default function TestMicPage() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto', fontFamily: 'monospace' }}>
-      <h1 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>Mic Test</h1>
-      <p style={{ fontSize: '13px', color: '#666', marginBottom: '20px' }}>
-        Tap the button below. On iOS, the permission prompt must appear — if it does not, go to{' '}
-        <strong>Settings → Safari → Microphone</strong> and set it to &ldquo;Allow&rdquo;.
+      <h1 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Mic Language Test</h1>
+
+      <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
+        Select a language, tap Test, then speak. Check which lang codes work on your device.
       </p>
+
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        {LANGS.map((l) => (
+          <button
+            key={l.code}
+            onClick={() => setLang(l.code)}
+            style={{
+              padding: '8px 14px',
+              fontSize: '13px',
+              borderRadius: '8px',
+              border: '2px solid',
+              borderColor: lang === l.code ? '#3b82f6' : '#e2e8f0',
+              background: lang === l.code ? '#eff6ff' : '#fff',
+              color: lang === l.code ? '#1d4ed8' : '#334155',
+              cursor: 'pointer',
+              fontFamily: 'monospace',
+            }}
+          >
+            {l.label}
+          </button>
+        ))}
+      </div>
 
       <button
         onClick={handleTest}
@@ -67,7 +96,7 @@ export default function TestMicPage() {
           marginBottom: '20px',
         }}
       >
-        Test Microphone
+        Test — {lang}
       </button>
 
       <div style={{ fontSize: '12px', background: '#f1f5f9', borderRadius: '8px', padding: '12px', minHeight: '120px' }}>
