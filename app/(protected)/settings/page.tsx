@@ -11,7 +11,7 @@ import { useTheme } from '@/context/ThemeContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { getAllCurrencies, CurrencyCode } from '@/lib/currency'
 import { useToast } from '@/components/ui/Toast'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 
 type Frequency = 'daily' | 'weekly' | 'monthly'
 
