@@ -19,9 +19,11 @@ interface BudgetFormProps {
   budget?: Budget
   onSuccess: () => void
   onCancel: () => void
+  /** Called when the server rejects creation due to the free-tier budget cap. */
+  onCapHit?: () => void
 }
 
-export default function BudgetForm({ budget, onSuccess, onCancel }: BudgetFormProps) {
+export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: BudgetFormProps) {
   const { toast } = useToast()
   const { categories } = useCategories()
   const [loading, setLoading] = useState(false)
@@ -57,7 +59,12 @@ export default function BudgetForm({ budget, onSuccess, onCancel }: BudgetFormPr
       })
       if (!res.ok) {
         const data = await res.json()
-        toast(data.error ?? 'Failed to save budget', 'error')
+        if (res.status === 403 && onCapHit) {
+          onCancel()
+          onCapHit()
+        } else {
+          toast(data.error ?? 'Failed to save budget', 'error')
+        }
       } else {
         toast(budget ? 'Budget updated' : 'Budget created', 'success')
         onSuccess()

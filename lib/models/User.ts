@@ -47,6 +47,7 @@ export interface IUser {
     count: number
     resetAt: Date
   }
+  lastLogin?: Date
   createdAt: Date
   updatedAt: Date
 }

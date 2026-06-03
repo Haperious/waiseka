@@ -332,7 +332,7 @@ async function sendPushNotifications() {
 
       const type = daysSince >= threshold * 2 ? 'inactivity' : 'reminder'
       if (user.notifications?.push?.fcmToken) {
-        sendPushNotification({ fcmToken: user.notifications.push.fcmToken, type }).catch((err) =>
+        sendPushNotification({ fcmToken: user.notifications.push.fcmToken, type, user }).catch((err) =>
           console.error(`[scheduler] push error for ${user.email}:`, err)
         )
       }

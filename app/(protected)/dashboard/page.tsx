@@ -10,6 +10,8 @@ import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useSession } from 'next-auth/react'
+import { isPremium } from '@/lib/tier'
 import { useLanguage } from '@/context/LanguageContext'
 import { TranslationKey } from '@/lib/translations'
 import Link from 'next/link'
@@ -18,8 +20,10 @@ import type { Goal } from '@/hooks/useGoals'
 import { useTransactions } from '@/hooks/useTransactions'
 import TransactionForm from '../transactions/TransactionForm'
 import dynamic from 'next/dynamic'
+import type { CategoryTrendData } from '@/components/charts/CategoryTrendChart'
 
 const IncomeExpenseChart = dynamic(() => import('@/components/charts/IncomeExpenseChart'), { ssr: false })
+const CategoryTrendChart  = dynamic(() => import('@/components/charts/CategoryTrendChart'),  { ssr: false })
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -419,6 +423,12 @@ export default function DashboardPage() {
   const [goals,            setGoals]            = useState<Goal[]>([])
   const [goalsLoading,     setGoalsLoading]     = useState(true)
 
+  const { data: session } = useSession()
+  const userIsPremium = session?.user ? isPremium(session.user as { tier: string; premiumOverride: boolean }) : false
+
+  const [categoryTrendData, setCategoryTrendData] = useState<{ months: string[]; categories: CategoryTrendData[]; restricted: boolean } | null>(null)
+  const [categoryTrendLoading, setCategoryTrendLoading] = useState(true)
+
   const { refetch } = useTransactions({ limit: 1 })
 
   const MONTHS = useMemo(() => [
@@ -461,6 +471,16 @@ export default function DashboardPage() {
     setYearlyLoading(false)
   }, [selectedYear])
 
+  const loadCategoryTrend = useCallback(async () => {
+    setCategoryTrendLoading(true)
+    try {
+      const res  = await fetch(`/api/summary/categories-by-month?year=${selectedYear}`)
+      const data = await res.json()
+      setCategoryTrendData(data)
+    } catch { /* ignore */ }
+    finally  { setCategoryTrendLoading(false) }
+  }, [selectedYear])
+
   const loadAnalyticsSummary = useCallback(async () => {
     setAnalyticsLoading(true)
     try {
@@ -497,6 +517,7 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => { loadYearlyTrend() },      [loadYearlyTrend])
+  useEffect(() => { loadCategoryTrend() },    [loadCategoryTrend])
   useEffect(() => { loadAnalyticsSummary() }, [loadAnalyticsSummary])
   useEffect(() => { loadBudgets() },          [loadBudgets])
   useEffect(() => { loadGoals() },            [loadGoals])
@@ -547,6 +568,37 @@ export default function DashboardPage() {
     loadAnalyticsSummary()
     loadBudgets()
   }, [refetch, loadAnalyticsSummary, loadBudgets])
+
+  // For free-tier users: show only current month + last 2 months (3 total).
+  // For premium users: show the full year.
+  const chartMonths = useMemo(() => {
+    if (userIsPremium) return allMonths
+    // lastMonthIndex is 0-based index into the 12-month array
+    const lastMonthIndex =
+      parseInt(selectedYear) === currentYear
+        ? currentMonth - 1   // currentMonth is 1-based, so -1 for 0-based index
+        : 11
+    const start = Math.max(0, lastMonthIndex - 2)
+    return allMonths.slice(start, lastMonthIndex + 1)
+  }, [allMonths, userIsPremium, selectedYear, currentYear, currentMonth])
+
+  const visibleCategoryTrendData = useMemo(() => {
+    if (!categoryTrendData) return null
+    if (userIsPremium) return categoryTrendData
+    const lastMonthIndex =
+      parseInt(selectedYear) === currentYear
+        ? currentMonth - 1
+        : 11
+    const start = Math.max(0, lastMonthIndex - 2)
+    return {
+      ...categoryTrendData,
+      months: categoryTrendData.months.slice(start, lastMonthIndex + 1),
+      categories: categoryTrendData.categories.map(cat => ({
+        ...cat,
+        data: cat.data.slice(start, lastMonthIndex + 1),
+      })),
+    }
+  }, [categoryTrendData, userIsPremium, selectedYear, currentYear, currentMonth])
 
   const hasYearlyData = allMonths.some(d => d.income > 0 || d.expenses > 0)
 
@@ -675,6 +727,13 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* ── Charts: side-by-side (free) or stacked (premium) ──────────── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: userIsPremium ? '1fr' : '1fr 1fr',
+        gap: 16,
+      }}>
+
       {/* ── Yearly chart ───────────────────────────────────────────────── */}
       <div style={{
         backgroundColor: 'var(--color-card)',
@@ -688,10 +747,31 @@ export default function DashboardPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 12,
         }}>
           <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-            {t('dashboard.incomeVsExpenses')} — {selectedYear}
+            {t('dashboard.incomeVsExpenses')} —{' '}
+            {userIsPremium
+              ? selectedYear
+              : chartMonths.length > 0
+                ? `${chartMonths[0].month} – ${chartMonths[chartMonths.length - 1].month} ${selectedYear}`
+                : selectedYear}
           </h2>
+          {!userIsPremium && (
+            <Link
+              href="/premium"
+              style={{
+                fontSize: '0.72rem', fontWeight: 600,
+                padding: '3px 10px', borderRadius: 999,
+                backgroundColor: 'var(--color-sage)',
+                color: 'var(--color-accent)',
+                border: '1px solid var(--color-accent)',
+                textDecoration: 'none', flexShrink: 0,
+              }}
+            >
+              Upgrade for full year ↗
+            </Link>
+          )}
         </div>
         <div style={{ padding: '16px 24px' }}>
           {yearlyLoading ? (
@@ -704,10 +784,71 @@ export default function DashboardPage() {
               {t('dashboard.noData')} {selectedYear}
             </div>
           ) : (
-            <IncomeExpenseChart data={allMonths} />
+            <IncomeExpenseChart data={chartMonths} />
           )}
         </div>
       </div>
+
+
+      {/* Category Spending by Month chart */}
+      <div style={{
+        backgroundColor: 'var(--color-card)',
+        borderRadius: 16,
+        border: '1px solid var(--color-border)',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          padding: '16px 24px',
+          borderBottom: '1px solid var(--color-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
+            Spending by Category —{' '}
+            {userIsPremium
+              ? selectedYear
+              : visibleCategoryTrendData && visibleCategoryTrendData.months.length > 0
+                ? `${visibleCategoryTrendData.months[0]} – ${visibleCategoryTrendData.months[visibleCategoryTrendData.months.length - 1]} ${selectedYear}`
+                : selectedYear}
+          </h2>
+          {!userIsPremium && (
+            <Link
+              href="/premium"
+              style={{
+                fontSize: '0.72rem', fontWeight: 600,
+                padding: '3px 10px', borderRadius: 999,
+                backgroundColor: 'var(--color-sage)',
+                color: 'var(--color-accent)',
+                border: '1px solid var(--color-accent)',
+                textDecoration: 'none', flexShrink: 0,
+              }}
+            >
+              Upgrade for full year ↗
+            </Link>
+          )}
+        </div>
+        <div style={{ padding: '16px 24px' }}>
+          {categoryTrendLoading ? (
+            <Skeleton className="h-56 w-full" />
+          ) : !visibleCategoryTrendData || visibleCategoryTrendData.categories.length === 0 ? (
+            <div style={{
+              height: 128, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--color-text-muted)', fontSize: '0.85rem',
+            }}>
+              No expense data for {selectedYear}
+            </div>
+          ) : (
+            <CategoryTrendChart
+              months={visibleCategoryTrendData.months}
+              categories={visibleCategoryTrendData.categories}
+            />
+          )}
+        </div>
+      </div>
+
+      </div>{/* end charts grid */}
 
       {/* ── Budget health + Category breakdown ─────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="grid-cols-1 lg:grid-cols-2">

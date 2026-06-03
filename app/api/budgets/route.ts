@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { getDb } from '@/lib/mongodb'
+import { isPremium } from '@/lib/tier'
+import { FREE_BUDGET_LIMIT } from '@/lib/constants'
+import { ObjectId } from 'mongodb'
 import type { IBudget } from '@/lib/models/Budget'
+import type { IUser } from '@/lib/models/User'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -30,7 +34,6 @@ export async function GET(req: NextRequest) {
   weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
   weekEnd.setUTCHours(23, 59, 59, 999)
 
-  // Aggregate spent amounts per category for each period
   const [monthlySpent, weeklySpent] = await Promise.all([
     db.collection('transactions').aggregate([
       {
@@ -78,6 +81,21 @@ export async function POST(req: NextRequest) {
 
   const now = new Date()
   const db = await getDb()
+
+  // -- Tier gate: free users capped at FREE_BUDGET_LIMIT active budgets
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
+  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  if (!isPremium(user)) {
+    const existingCount = await db.collection<IBudget>('budgets').countDocuments({ userId: session.user.id })
+    if (existingCount >= FREE_BUDGET_LIMIT) {
+      return NextResponse.json(
+        { error: `Free plan is limited to ${FREE_BUDGET_LIMIT} budgets. Upgrade to Premium to add more.` },
+        { status: 403 }
+      )
+    }
+  }
+
   const result = await db.collection<IBudget>('budgets').insertOne({
     userId: session.user.id,
     category,

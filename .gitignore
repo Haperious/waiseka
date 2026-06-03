@@ -44,3 +44,6 @@ next-env.d.ts
 TASKS.md
 
 /memory
+
+waiseka_tests.py
+*.md

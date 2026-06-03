@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer'
 import admin from 'firebase-admin'
+import { isPremium } from '@/lib/tier'
+import type { IUser } from '@/lib/models/User'
 
 type NotificationType = 'reminder' | 'inactivity'
 
@@ -54,13 +56,24 @@ function initFirebase() {
   })
 }
 
+/**
+ * Send an FCM push notification.
+ * Silently skips if the user is not on the premium tier.
+ * Free users can still configure email frequency in settings but FCM push is premium-only.
+ */
 export async function sendPushNotification({
   fcmToken,
   type,
+  user,
 }: {
   fcmToken: string
   type: NotificationType
+  user: Pick<IUser, 'tier' | 'premiumOverride'>
 }) {
+  if (!isPremium(user)) {
+    return
+  }
+
   initFirebase()
   const message = MESSAGES[type]
 
