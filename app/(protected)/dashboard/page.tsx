@@ -750,7 +750,7 @@ export default function DashboardPage() {
           gap: 12,
         }}>
           <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-            {t('dashboard.incomeVsExpenses')} —{' '}
+            {t('dashboard.incomeVsExpenses')} | {' '}
             {userIsPremium
               ? selectedYear
               : chartMonths.length > 0
@@ -806,7 +806,7 @@ export default function DashboardPage() {
           gap: 12,
         }}>
           <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-            Spending by Category —{' '}
+            Spending by Category | {' '}
             {userIsPremium
               ? selectedYear
               : visibleCategoryTrendData && visibleCategoryTrendData.months.length > 0
