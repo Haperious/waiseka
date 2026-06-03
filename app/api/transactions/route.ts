@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Db } from 'mongodb'
+import { Db, ObjectId } from 'mongodb'
 import { auth } from '@/auth'
 import { getDb } from '@/lib/mongodb'
+import { isPremium } from '@/lib/tier'
+import { FREE_HISTORY_DAYS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
@@ -21,23 +23,41 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '20')
 
+  const db = await getDb()
+
+  // -- Tier gate: clamp history to rolling FREE_HISTORY_DAYS for free users
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
+  const userIsPremium = user ? isPremium(user) : false
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { userId: session.user.id }
   if (type) query.type = type
   if (category) query.category = category
-  if (startDate || endDate) {
-    query.date = {}
-    if (startDate) query.date.$gte = new Date(startDate)
+
+  if (!userIsPremium) {
+    const freeWindowStart = new Date()
+    freeWindowStart.setDate(freeWindowStart.getDate() - FREE_HISTORY_DAYS)
+    freeWindowStart.setHours(0, 0, 0, 0)
+
+    const callerStart = startDate ? new Date(startDate) : null
+    const effectiveStart = callerStart && callerStart > freeWindowStart ? callerStart : freeWindowStart
+
+    query.date = { $gte: effectiveStart }
     if (endDate) query.date.$lte = new Date(endDate)
+  } else {
+    if (startDate || endDate) {
+      query.date = {}
+      if (startDate) query.date.$gte = new Date(startDate)
+      if (endDate) query.date.$lte = new Date(endDate)
+    }
   }
+
   if (tags) query.tags = { $in: tags.split(',') }
   if (search) {
-    // Escape special regex characters to prevent ReDoS
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     query.description = { $regex: escapedSearch, $options: 'i' }
   }
 
-  const db = await getDb()
   const col = db.collection<ITransaction>('transactions')
   const [total, transactions] = await Promise.all([
     col.countDocuments(query),
@@ -78,7 +98,6 @@ export async function POST(req: NextRequest) {
 
   const transaction = await db.collection<ITransaction>('transactions').findOne({ _id: result.insertedId })
 
-  // Fire spending alert if this is an expense that pushes a budget over its limit
   if (type === 'expense') {
     checkSpendingAlert(session.user.id, category, description ?? category, amount, db).catch(
       (err) => console.error('[transactions] spending alert error:', err)
@@ -112,19 +131,16 @@ async function checkSpendingAlert(userId: string, category: string, merchantName
   ])
 
   const totalSpent = spentAgg[0]?.total ?? 0
-  if (totalSpent <= budget.limit) return // Not over budget
+  if (totalSpent <= budget.limit) return
 
-  // Already sent alert this month? Check by looking if previousSpent was under limit
-  // (simple approach: only alert when first crossing, not on every subsequent transaction)
   const previousTotal = totalSpent - triggerAmount
-  if (previousTotal >= budget.limit) return // Was already over before this transaction
+  if (previousTotal >= budget.limit) return
 
   if (!user) return
 
   const sym = user.preferences?.currencySymbol ?? '₱'
   const fmt = (n: number) => `${sym}${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
 
-  // Find a category with remaining budget as a tip
   const allBudgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
   const spentMap = Object.fromEntries(allBudgetSpent.map((r) => [(r as { _id: string; total: number })._id, (r as { _id: string; total: number }).total]))
   const surplus = allBudgets

@@ -24,9 +24,11 @@ interface GoalFormProps {
   goal?: Goal
   onSuccess: () => void
   onCancel: () => void
+  /** Called when the server rejects creation due to the free-tier active-goal cap. */
+  onCapHit?: () => void
 }
 
-export default function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
+export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFormProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -70,7 +72,12 @@ export default function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
       })
       if (!res.ok) {
         const data = await res.json()
-        toast(data.error ?? 'Failed to save goal', 'error')
+        if (res.status === 403 && onCapHit) {
+          onCancel()
+          onCapHit()
+        } else {
+          toast(data.error ?? 'Failed to save goal', 'error')
+        }
       } else {
         toast(goal ? 'Goal updated' : 'Goal created', 'success')
         onSuccess()

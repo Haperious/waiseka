@@ -1,20 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ObjectId } from 'mongodb'
 import { auth } from '@/auth'
 import { getDb } from '@/lib/mongodb'
+import { isPremium } from '@/lib/tier'
+import { FREE_HISTORY_DAYS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
+import type { IUser } from '@/lib/models/User'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const month = parseInt(searchParams.get('month') ?? String(new Date().getMonth() + 1))
-  const year = parseInt(searchParams.get('year') ?? String(new Date().getFullYear()))
-
-  const startDate = new Date(Date.UTC(year, month - 1, 1))
-  const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
+  const now = new Date()
+  const month = parseInt(searchParams.get('month') ?? String(now.getMonth() + 1))
+  const year = parseInt(searchParams.get('year') ?? String(now.getFullYear()))
 
   const db = await getDb()
+
+  // -- Tier gate: free users cannot query beyond FREE_HISTORY_DAYS
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
+  const userIsPremium = user ? isPremium(user) : false
+
+  const requestedStart = new Date(Date.UTC(year, month - 1, 1))
+  const requestedEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
+
+  let startDate: Date
+  let endDate: Date
+
+  if (!userIsPremium) {
+    const freeWindowStart = new Date()
+    freeWindowStart.setDate(freeWindowStart.getDate() - FREE_HISTORY_DAYS)
+    freeWindowStart.setUTCHours(0, 0, 0, 0)
+
+    if (requestedEnd < freeWindowStart) {
+      return NextResponse.json({
+        totalIncome: 0,
+        totalExpenses: 0,
+        totalSavings: 0,
+        netSavings: 0,
+        savingsRate: 0,
+        categoryBreakdown: [],
+        restricted: true,
+      })
+    }
+
+    startDate = requestedStart < freeWindowStart ? freeWindowStart : requestedStart
+    endDate = requestedEnd
+  } else {
+    startDate = requestedStart
+    endDate = requestedEnd
+  }
+
   const col = db.collection<ITransaction>('transactions')
 
   const [summary] = await col.aggregate([

@@ -17,7 +17,7 @@ export const authConfig: NextAuthConfig = {
           isAdmin: boolean
           tier: string
           premiumOverride: boolean
-          passwordChangedAt?: Date
+          isVerified: boolean
         }
         token.id = u.id
         token.role = u.role
@@ -26,7 +26,7 @@ export const authConfig: NextAuthConfig = {
         token.isAdmin = u.isAdmin
         token.tier = u.tier
         token.premiumOverride = u.premiumOverride
-        token.passwordChangedAt = u.passwordChangedAt?.getTime() ?? null
+        token.isVerified = u.isVerified
       }
       return token
     },
@@ -39,6 +39,7 @@ export const authConfig: NextAuthConfig = {
         session.user.isAdmin = token.isAdmin as boolean
         session.user.tier = token.tier as string
         session.user.premiumOverride = token.premiumOverride as boolean
+        session.user.isVerified = token.isVerified as boolean
       }
       return session
     },

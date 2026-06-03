@@ -2,14 +2,13 @@ import { auth } from '@/auth'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
 import { getMonthlyImportCount } from '@/lib/importUsage'
+import { FREE_IMPORT_LIMIT, PREMIUM_IMPORT_LIMIT } from '@/lib/constants'
 import { extractFromPDF } from '@/lib/parsers/pdfParser'
 import { extractTextWithTextract } from '@/lib/parsers/textractParser'
 import { extractWithClaude } from '@/lib/parsers/claudeParser'
 import { parseTransactionsFromText } from '@/lib/parsers/transactionParser'
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-
-const FREE_IMPORT_LIMIT = 5
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -22,11 +21,10 @@ export async function POST(req: NextRequest) {
 
   const premium = isPremium({ tier: user.tier, premiumOverride: user.premiumOverride })
 
-  if (!premium) {
-    const count = await getMonthlyImportCount(userId)
-    if (count >= FREE_IMPORT_LIMIT) {
-      return NextResponse.json({ error: 'IMPORT_LIMIT_REACHED' }, { status: 429 })
-    }
+  const importLimit = premium ? PREMIUM_IMPORT_LIMIT : FREE_IMPORT_LIMIT
+  const count = await getMonthlyImportCount(userId)
+  if (count >= importLimit) {
+    return NextResponse.json({ error: 'IMPORT_LIMIT_REACHED' }, { status: 429 })
   }
 
   const formData = await req.formData()

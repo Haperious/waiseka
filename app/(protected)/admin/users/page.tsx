@@ -16,7 +16,7 @@ interface AdminUser {
   tier: 'free' | 'premium'
   premiumOverride: boolean
   isVerified: boolean
-  notifications: { lastSeen: string | null }
+  lastLogin: string | null
   ai: {
     enabled: boolean
     queriesUsed: number
@@ -177,7 +177,7 @@ export default function AdminUsersPage() {
                   {/* Last Login */}
                   <td className="px-4 py-3">
                     <span className="text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: "'DM Mono', monospace" }}>
-                      {relativeTime(user.notifications?.lastSeen ?? null)}
+                      {relativeTime(user.lastLogin ?? null)}
                     </span>
                   </td>
 

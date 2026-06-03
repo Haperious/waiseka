@@ -49,6 +49,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const passwordMatch = await bcrypt.compare(password, user.password)
         if (!passwordMatch) return null
 
+        await db.collection<IUser>('users').updateOne(
+          { _id: user._id },
+          { $set: { lastLogin: new Date() } }
+        )
+
         return {
           id: user._id.toString(),
           name: user.name,
@@ -59,7 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           isAdmin: user.isAdmin,
           tier: user.tier,
           premiumOverride: user.premiumOverride,
-          passwordChangedAt: user.passwordChangedAt ?? null,
+          isVerified: user.isVerified,
         }
       },
     }),

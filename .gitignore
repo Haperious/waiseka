@@ -46,5 +46,4 @@ TASKS.md
 /memory
 
 waiseka_tests.py
-
-.venv
+*.md

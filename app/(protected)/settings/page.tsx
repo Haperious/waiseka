@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { signOut } from 'next-auth/react'
-import { User, Lock, DollarSign, Bell, Sun, Moon, Mic } from 'lucide-react'
+import { User, Lock, DollarSign, Bell, Sun, Moon, Mic, MailCheck, MailWarning } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import PasswordInput from '@/components/ui/PasswordInput'
@@ -12,6 +11,7 @@ import { useTheme } from '@/context/ThemeContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { getAllCurrencies, CurrencyCode } from '@/lib/currency'
 import { useToast } from '@/components/ui/Toast'
+import { useSession } from 'next-auth/react'
 
 type Frequency = 'daily' | 'weekly' | 'monthly'
 
@@ -108,8 +108,31 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const { t } = useLanguage()
   const { toast } = useToast()
+  const { data: session } = useSession()
   const router = useRouter()
   const currencies = getAllCurrencies()
+  const isVerified = session?.user?.isVerified ?? true
+
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
+
+  const handleResendVerification = async () => {
+    setResendLoading(true)
+    try {
+      const res = await fetch('/api/auth/resend-verification', { method: 'POST' })
+      if (res.ok) {
+        setResendSent(true)
+        toast('Verification email sent! Check your inbox.', 'success')
+      } else {
+        const data = await res.json()
+        toast(data.error ?? 'Failed to send verification email', 'error')
+      }
+    } catch {
+      toast('Something went wrong', 'error')
+    } finally {
+      setResendLoading(false)
+    }
+  }
 
   const [profile, setProfile] = useState({ name: '', avatar: '' })
   const [profileLoading, setProfileLoading] = useState(false)
@@ -378,6 +401,40 @@ export default function SettingsPage() {
         </form>
       </SettingsSection>
 
+      {/* ── Email Verification ───────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={isVerified ? MailCheck : MailWarning}
+        iconColor={isVerified ? 'var(--color-income)' : 'var(--color-warning)'}
+        iconBg={isVerified ? 'var(--color-income-bg)' : 'var(--color-warning-bg)'}
+        title="Email Verification"
+        subtitle="Status of your account email address"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+              backgroundColor: isVerified ? 'var(--color-income)' : 'var(--color-warning)',
+            }} />
+            <p style={{ fontSize: '0.88rem', color: 'var(--color-text-primary)' }}>
+              {isVerified
+                ? 'Your email address has been verified.'
+                : 'Your email address has not been verified yet.'}
+            </p>
+          </div>
+          {!isVerified && (
+            <Button
+              size="sm"
+              variant="outline"
+              loading={resendLoading}
+              disabled={resendSent}
+              onClick={handleResendVerification}
+            >
+              {resendSent ? 'Email sent!' : 'Resend verification email'}
+            </Button>
+          )}
+        </div>
+      </SettingsSection>
+
       {/* ── Password ─────────────────────────────────────────────────────────── */}
       <SettingsSection
         icon={Lock}
@@ -425,7 +482,7 @@ export default function SettingsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+            gridTemplateColumns: `repeat(${currencies.length}, 1fr)`,
             gap: 10,
           }}>
             {currencies.map((c) => {

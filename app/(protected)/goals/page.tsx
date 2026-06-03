@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Plus, Pencil, Trash2, PlusCircle, Calendar, Flag } from 'lucide-react'
+import { Plus, Pencil, Trash2, PlusCircle, Calendar, Flag, Lock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
@@ -321,6 +321,7 @@ export default function GoalsPage() {
   const { goals, loading, deleteGoal, addFunds, refetch } = useGoals()
 
   const [addOpen, setAddOpen] = useState(false)
+  const [showCapBanner, setShowCapBanner] = useState(false)
   const [editGoal, setEditGoal] = useState<Goal | null>(null)
   const [deleteGoalItem, setDeleteGoalItem] = useState<Goal | null>(null)
   const [addFundsGoal, setAddFundsGoal] = useState<Goal | null>(null)
@@ -379,6 +380,34 @@ export default function GoalsPage() {
         </Button>
       </div>
 
+      {/* ── Free-tier cap banner ─────────────────────────────────────────────── */}
+      {showCapBanner && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 16px',
+          borderRadius: 12,
+          backgroundColor: 'var(--color-sage)',
+          border: '1px solid var(--color-accent)',
+        }}>
+          <Lock style={{ width: 16, height: 16, color: 'var(--color-accent)', flexShrink: 0 }} />
+          <p style={{ fontSize: '0.82rem', color: 'var(--color-accent)', flex: 1, lineHeight: 1.5 }}>
+            You&apos;ve reached the free plan limit of 3 active goals.{' '}
+            <strong>Upgrade to Premium</strong> to track unlimited goals.
+          </p>
+          <button
+            onClick={() => setShowCapBanner(false)}
+            aria-label="Dismiss"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '1rem', color: 'var(--color-accent)', lineHeight: 1,
+              padding: 0, flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* ── Content ──────────────────────────────────────────────────────────── */}
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(272px, 1fr))', gap: 16 }}>
@@ -425,6 +454,7 @@ export default function GoalsPage() {
         <GoalForm
           onSuccess={() => { setAddOpen(false); refetch() }}
           onCancel={() => setAddOpen(false)}
+          onCapHit={() => setShowCapBanner(true)}
         />
       </Modal>
 

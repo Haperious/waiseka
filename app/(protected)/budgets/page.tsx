@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Lock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
@@ -221,6 +221,7 @@ export default function BudgetsPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [editBudget, setEditBudget] = useState<Budget | null>(null)
   const [deleteBudgetItem, setDeleteBudgetItem] = useState<Budget | null>(null)
+  const [showCapBanner, setShowCapBanner] = useState(false)
 
   const handleDelete = async () => {
     if (!deleteBudgetItem) return
@@ -256,6 +257,34 @@ export default function BudgetsPage() {
           <span className="hidden sm:inline">{t('budget.add')}</span>
         </Button>
       </div>
+
+      {/* ── Free-tier cap banner ─────────────────────────────────────────────── */}
+      {showCapBanner && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 16px',
+          borderRadius: 12,
+          backgroundColor: 'var(--color-sage)',
+          border: '1px solid var(--color-accent)',
+        }}>
+          <Lock style={{ width: 16, height: 16, color: 'var(--color-accent)', flexShrink: 0 }} />
+          <p style={{ fontSize: '0.82rem', color: 'var(--color-accent)', flex: 1, lineHeight: 1.5 }}>
+            You&apos;ve reached the free plan limit of 3 budgets.{' '}
+            <strong>Upgrade to Premium</strong> to create unlimited budgets.
+          </p>
+          <button
+            onClick={() => setShowCapBanner(false)}
+            aria-label="Dismiss"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '1rem', color: 'var(--color-accent)', lineHeight: 1,
+              padding: 0, flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ── Content ──────────────────────────────────────────────────────────── */}
       {loading ? (
@@ -302,6 +331,7 @@ export default function BudgetsPage() {
         <BudgetForm
           onSuccess={() => { setAddOpen(false); refetch() }}
           onCancel={() => setAddOpen(false)}
+          onCapHit={() => setShowCapBanner(true)}
         />
       </Modal>
 

@@ -1,6 +1,8 @@
 import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
+export { FREE_IMPORT_LIMIT, PREMIUM_IMPORT_LIMIT } from '@/lib/constants'
+
 function nextMonthStart(): Date {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth() + 1, 1)
