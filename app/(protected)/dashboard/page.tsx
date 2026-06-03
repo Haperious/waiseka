@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
-  TrendingUp, TrendingDown, PiggyBank, Percent, Plus, Lightbulb,
+  TrendingUp, TrendingDown, PiggyBank, Percent, Plus, Lightbulb, MailWarning,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -18,6 +18,7 @@ import Link from 'next/link'
 import type { Budget } from '@/hooks/useBudgets'
 import type { Goal } from '@/hooks/useGoals'
 import { useTransactions } from '@/hooks/useTransactions'
+import { useToast } from '@/components/ui/Toast'
 import TransactionForm from '../transactions/TransactionForm'
 import dynamic from 'next/dynamic'
 import type { CategoryTrendData } from '@/components/charts/CategoryTrendChart'
@@ -407,6 +408,7 @@ function GoalBar({
 export default function DashboardPage() {
   const { formatAmount } = useCurrency()
   const { t } = useLanguage()
+  const { toast } = useToast()
   const now = new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear  = now.getFullYear()
@@ -425,6 +427,28 @@ export default function DashboardPage() {
 
   const { data: session } = useSession()
   const userIsPremium = session?.user ? isPremium(session.user as { tier: string; premiumOverride: boolean }) : false
+  const isVerified = session?.user?.isVerified ?? true
+
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
+
+  const handleResendVerification = async () => {
+    setResendLoading(true)
+    try {
+      const res = await fetch('/api/auth/resend-verification', { method: 'POST' })
+      if (res.ok) {
+        setResendSent(true)
+        toast('Verification email sent! Check your inbox.', 'success')
+      } else {
+        const data = await res.json()
+        toast(data.error ?? 'Failed to send verification email', 'error')
+      }
+    } catch {
+      toast('Something went wrong', 'error')
+    } finally {
+      setResendLoading(false)
+    }
+  }
 
   const [categoryTrendData, setCategoryTrendData] = useState<{ months: string[]; categories: CategoryTrendData[]; restricted: boolean } | null>(null)
   const [categoryTrendLoading, setCategoryTrendLoading] = useState(true)
@@ -631,6 +655,44 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Email verification banner ──────────────────────────────────── */}
+      {!isVerified && (
+        <div style={{
+          borderRadius: 12,
+          backgroundColor: 'var(--color-warning-bg)',
+          border: '1px solid var(--color-border)',
+          borderLeft: '4px solid var(--color-warning)',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}>
+          <MailWarning style={{ width: 18, height: 18, color: 'var(--color-warning)', flexShrink: 0 }} />
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-primary)', lineHeight: 1.5, flex: 1 }}>
+            Your email address hasn&apos;t been verified. Check your inbox or resend the verification email.
+          </p>
+          <button
+            onClick={handleResendVerification}
+            disabled={resendLoading || resendSent}
+            style={{
+              flexShrink: 0,
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              color: resendSent ? 'var(--color-income)' : 'var(--color-warning)',
+              background: 'none',
+              border: 'none',
+              cursor: resendLoading || resendSent ? 'default' : 'pointer',
+              padding: '4px 8px',
+              borderRadius: 6,
+              opacity: resendLoading ? 0.6 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {resendSent ? 'Email sent!' : resendLoading ? 'Sending…' : 'Resend email'}
+          </button>
+        </div>
+      )}
+
       {/* ── Hero: health ring + 4 stat cards ──────────────────────────── */}
       <div style={{
         display: 'grid',
@@ -806,7 +868,7 @@ export default function DashboardPage() {
           gap: 12,
         }}>
           <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-            Spending by Category | {' '}
+            {t('dashboard.categoryBreakdown')} | {' '}
             {userIsPremium
               ? selectedYear
               : visibleCategoryTrendData && visibleCategoryTrendData.months.length > 0

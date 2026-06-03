@@ -13,6 +13,7 @@ declare module 'next-auth' {
       isAdmin: boolean
       tier: string
       premiumOverride: boolean
+      isVerified: boolean
     }
   }
 }
@@ -26,5 +27,6 @@ declare module 'next-auth/jwt' {
     isAdmin: boolean
     tier: string
     premiumOverride: boolean
+    isVerified: boolean
   }
 }
