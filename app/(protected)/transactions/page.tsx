@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import {
   Plus, TrendingUp, TrendingDown, PiggyBank,
-  Pencil, Trash2, Download, Search, Filter, Upload,
+  Pencil, Trash2, Download, Search, Filter, Upload, RefreshCw,
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
@@ -340,6 +340,7 @@ export default function TransactionsPage() {
                 {[
                   { label: t('common.date'),        className: '' },
                   { label: t('common.description'), className: '' },
+                    { label: 'Recurring',             className: 'hidden sm:table-cell' },
                   { label: t('common.category'),    className: 'hidden sm:table-cell' },
                   { label: t('common.type'),        className: 'hidden md:table-cell' },
                   { label: t('common.amount'),      className: '', align: 'right' as const },
@@ -369,14 +370,14 @@ export default function TransactionsPage() {
               {loading ? (
                 [...Array(8)].map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={6} style={{ padding: '0 20px' }}>
+                    <td colSpan={7} style={{ padding: '0 20px' }}>
                       <SkeletonRow />
                     </td>
                   </tr>
                 ))
               ) : transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <div style={{
                       padding: '48px 24px',
                       textAlign: 'center',
@@ -423,6 +424,29 @@ export default function TransactionsPage() {
                       whiteSpace: 'nowrap',
                     }}>
                       {tx.description || '—'}
+                    </td>
+
+                    {/* Recurring */}
+                    <td className="hidden sm:table-cell" style={{ padding: '12px 20px' }}>
+                      {tx.isRecurring && (
+                        <span
+                          title="Recurring"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            fontSize: '0.65rem', fontWeight: 700,
+                            padding: '2px 7px', borderRadius: 999,
+                            backgroundColor: 'var(--color-sage)',
+                            color: 'var(--color-accent)',
+                            border: '1px solid var(--color-accent)',
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <RefreshCw style={{ width: 9, height: 9 }} />
+                          Recurring
+                        </span>
+                      )}
                     </td>
 
                     {/* Category */}

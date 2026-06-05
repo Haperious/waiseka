@@ -23,6 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (body.category !== undefined) update.category = body.category
   if (body.description !== undefined) update.description = body.description
   if (body.date !== undefined) update.date = new Date(body.date)
+  if (body.isRecurring !== undefined) update.isRecurring = Boolean(body.isRecurring)
 
   const db = await getDb()
   const transaction = await db.collection<ITransaction>('transactions').findOneAndUpdate(

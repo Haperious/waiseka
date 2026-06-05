@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
   const col = db.collection<ITransaction>('transactions')
   const [total, transactions] = await Promise.all([
     col.countDocuments(query),
-    col.find(query).sort({ date: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
+    col.find(query).sort({ date: -1, createdAt: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
   ])
 
   return NextResponse.json({ transactions, total, page, totalPages: Math.ceil(total / limit) })
