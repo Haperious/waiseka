@@ -9,7 +9,7 @@ const options = {
     strict: true,
     deprecationErrors: true,
   },
-  maxPoolSize: 1,
+  maxPoolSize: 5,
   serverSelectionTimeoutMS: 10000,
   connectTimeoutMS: 10000,
   socketTimeoutMS: 45000,
