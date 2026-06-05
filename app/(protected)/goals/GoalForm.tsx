@@ -34,6 +34,7 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
   const [form, setForm] = useState({
     title: goal?.title ?? '',
     targetAmount: goal?.targetAmount ? String(goal.targetAmount) : '',
+    savedAmount: goal?.savedAmount != null ? String(goal.savedAmount) : '',
     deadline: goal?.deadline ? format(new Date(goal.deadline), "yyyy-MM-dd'T'HH:mm") : '',
     priority: goal?.priority ?? 'medium',
     status: goal?.status ?? 'active',
@@ -58,12 +59,15 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
     try {
       const url = goal ? `/api/goals/${goal._id}` : '/api/goals'
       const method = goal ? 'PUT' : 'POST'
-      const payload = {
+      const payload: Record<string, unknown> = {
         title: form.title,
         targetAmount: Number(form.targetAmount),
         priority: form.priority,
         status: form.status,
         deadline: form.deadline,
+      }
+      if (goal && form.savedAmount !== '') {
+        payload.savedAmount = Number(form.savedAmount)
       }
       const res = await fetch(url, {
         method,
@@ -108,6 +112,17 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
         onChange={(e) => setForm({ ...form, targetAmount: e.target.value })}
         error={errors.targetAmount}
       />
+      {goal && (
+        <Input
+          label="Current Savings"
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="0.00"
+          value={form.savedAmount}
+          onChange={(e) => setForm({ ...form, savedAmount: e.target.value })}
+        />
+      )}
       <Input
         label="Deadline"
         type="datetime-local"

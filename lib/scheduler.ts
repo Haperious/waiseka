@@ -135,7 +135,7 @@ async function sendReEngageEmails() {
   try {
     const db = await getDb()
     const now = new Date()
-    const cutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+    const cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
     const daysRemaining = monthEnd.getUTCDate() - now.getUTCDate()
     const monthName = MONTH_NAMES[now.getMonth()]

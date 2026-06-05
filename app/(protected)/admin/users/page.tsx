@@ -50,6 +50,8 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [confirmReset, setConfirmReset] = useState<string | null>(null)
+  const [confirmReminder, setConfirmReminder] = useState<string | null>(null)
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null)
   const limit = 20
 
   // Admin-only guard
@@ -108,6 +110,24 @@ export default function AdminUsersPage() {
     setConfirmReset(null)
   }
 
+  const sendReminder = async (id: string) => {
+    setSendingReminder(id)
+    try {
+      const res = await fetch(`/api/admin/users/${id}/send-reengage`, { method: 'POST' })
+      if (res.ok) {
+        toast('Reminder email sent', 'success')
+      } else {
+        const body = await res.json()
+        toast(body.error ?? 'Failed to send email', 'error')
+      }
+    } catch {
+      toast('Failed to send email', 'error')
+    } finally {
+      setSendingReminder(null)
+      setConfirmReminder(null)
+    }
+  }
+
   if (status === 'loading' || !session?.user?.isAdmin) return null
 
   const totalPages = Math.ceil(total / limit)
@@ -134,7 +154,7 @@ export default function AdminUsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                {['User', 'Last Login', 'Verified', 'Tier', 'AI', 'Queries', 'Actions'].map(h => (
+                {['User', 'Last Login', 'Verified', 'Tier', 'AI', 'Queries', 'Actions', ''].map(h => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-xs font-semibold"
@@ -149,7 +169,7 @@ export default function AdminUsersPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--color-border)', width: j === 0 ? '120px' : '60px' }} />
                       </td>
@@ -221,7 +241,7 @@ export default function AdminUsersPage() {
                     </span>
                   </td>
 
-                  {/* Actions */}
+                  {/* Actions — Reset Queries */}
                   <td className="px-4 py-3">
                     {confirmReset === user._id ? (
                       <div className="flex items-center gap-2">
@@ -256,12 +276,50 @@ export default function AdminUsersPage() {
                       </button>
                     )}
                   </td>
+
+                  {/* Actions — Send Reminder */}
+                  <td className="px-4 py-3">
+                    {confirmReminder === user._id ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => sendReminder(user._id)}
+                          disabled={sendingReminder === user._id}
+                          className="text-xs px-2 py-1 rounded"
+                          style={{ backgroundColor: 'var(--color-accent)', color: '#fff', opacity: sendingReminder === user._id ? 0.6 : 1 }}
+                        >
+                          {sendingReminder === user._id ? 'Sending…' : 'Send'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmReminder(null)}
+                          disabled={sendingReminder === user._id}
+                          className="text-xs px-2 py-1 rounded"
+                          style={{ backgroundColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmReminder(user._id)}
+                        className="text-xs px-2 py-1 rounded"
+                        style={{
+                          border: '1px solid var(--color-border)',
+                          color: 'var(--color-text-secondary)',
+                          fontFamily: "'Sora', sans-serif",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-elevated)')}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        Send Reminder
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
 
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
                     No users found.
                   </td>
                 </tr>
