@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import {
   Plus, TrendingUp, TrendingDown, PiggyBank,
@@ -41,6 +41,15 @@ export default function TransactionsPage() {
   const { data: session } = useSession()
 
   const [page, setPage] = useState(1)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
   const [filterType, setFilterType] = useState('all')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -581,14 +590,15 @@ export default function TransactionsPage() {
             padding: '14px 24px',
             borderTop: '1px solid var(--color-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            flexWrap: 'wrap',
+            flexWrap: 'nowrap',
           }}>
             {/* Previous */}
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
               style={{
-                height: 32, padding: '0 12px',
+                height: 32,
+                padding: isMobile ? '0 10px' : '0 12px',
                 borderRadius: 8,
                 border: '1px solid var(--color-border)',
                 backgroundColor: 'transparent',
@@ -596,41 +606,60 @@ export default function TransactionsPage() {
                 fontSize: '0.8rem', fontWeight: 500, cursor: page <= 1 ? 'default' : 'pointer',
                 opacity: page <= 1 ? 0.45 : 1,
                 transition: 'all 0.12s',
+                whiteSpace: 'nowrap',
               }}
             >
-              {t('tx.previous')}
+              {isMobile ? '←' : t('tx.previous')}
             </button>
 
             {/* Page number buttons */}
             {(() => {
               const buttons: React.ReactNode[] = []
-              const delta = 2 // pages to show either side of current
 
-              let start = Math.max(1, page - delta)
-              let end   = Math.min(totalPages, page + delta)
+              if (isMobile) {
+                // Mobile: always show first | … | current | … | last
+                if (page === 1) {
+                  // On first page: just show 1 (active) … last
+                  buttons.push(<PageBtn key={1} n={1} current={page} onClick={setPage} />)
+                  if (totalPages > 2) buttons.push(<Ellipsis key="e1" />)
+                  if (totalPages > 1) buttons.push(<PageBtn key={totalPages} n={totalPages} current={page} onClick={setPage} />)
+                } else if (page === totalPages) {
+                  // On last page: first … last (active)
+                  buttons.push(<PageBtn key={1} n={1} current={page} onClick={setPage} />)
+                  if (totalPages > 2) buttons.push(<Ellipsis key="e1" />)
+                  buttons.push(<PageBtn key={totalPages} n={totalPages} current={page} onClick={setPage} />)
+                } else {
+                  // Middle page: first … current … last
+                  buttons.push(<PageBtn key={1} n={1} current={page} onClick={setPage} />)
+                  if (page > 2) buttons.push(<Ellipsis key="e1" />)
+                  if (page !== 1) buttons.push(<PageBtn key={page} n={page} current={page} onClick={setPage} />)
+                  if (page < totalPages - 1) buttons.push(<Ellipsis key="e2" />)
+                  buttons.push(<PageBtn key={totalPages} n={totalPages} current={page} onClick={setPage} />)
+                }
+              } else {
+                // Desktop: delta = 2, show up to 5 pages around current
+                const delta = 2
+                let start = Math.max(1, page - delta)
+                let end   = Math.min(totalPages, page + delta)
 
-              // Always show at least 5 slots when possible
-              if (end - start < delta * 2) {
-                if (start === 1) end   = Math.min(totalPages, start + delta * 2)
-                else             start = Math.max(1, end - delta * 2)
-              }
+                if (end - start < delta * 2) {
+                  if (start === 1) end   = Math.min(totalPages, start + delta * 2)
+                  else             start = Math.max(1, end - delta * 2)
+                }
 
-              if (start > 1) {
-                buttons.push(
-                  <PageBtn key={1} n={1} current={page} onClick={setPage} />,
-                )
-                if (start > 2) buttons.push(<Ellipsis key="e1" />)
-              }
+                if (start > 1) {
+                  buttons.push(<PageBtn key={1} n={1} current={page} onClick={setPage} />)
+                  if (start > 2) buttons.push(<Ellipsis key="e1" />)
+                }
 
-              for (let n = start; n <= end; n++) {
-                buttons.push(<PageBtn key={n} n={n} current={page} onClick={setPage} />)
-              }
+                for (let n = start; n <= end; n++) {
+                  buttons.push(<PageBtn key={n} n={n} current={page} onClick={setPage} />)
+                }
 
-              if (end < totalPages) {
-                if (end < totalPages - 1) buttons.push(<Ellipsis key="e2" />)
-                buttons.push(
-                  <PageBtn key={totalPages} n={totalPages} current={page} onClick={setPage} />,
-                )
+                if (end < totalPages) {
+                  if (end < totalPages - 1) buttons.push(<Ellipsis key="e2" />)
+                  buttons.push(<PageBtn key={totalPages} n={totalPages} current={page} onClick={setPage} />)
+                }
               }
 
               return buttons
@@ -641,7 +670,8 @@ export default function TransactionsPage() {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
               style={{
-                height: 32, padding: '0 12px',
+                height: 32,
+                padding: isMobile ? '0 10px' : '0 12px',
                 borderRadius: 8,
                 border: '1px solid var(--color-border)',
                 backgroundColor: 'transparent',
@@ -649,9 +679,10 @@ export default function TransactionsPage() {
                 fontSize: '0.8rem', fontWeight: 500, cursor: page >= totalPages ? 'default' : 'pointer',
                 opacity: page >= totalPages ? 0.45 : 1,
                 transition: 'all 0.12s',
+                whiteSpace: 'nowrap',
               }}
             >
-              {t('tx.next')}
+              {isMobile ? '→' : t('tx.next')}
             </button>
           </div>
         )}
