@@ -3,11 +3,12 @@ import { Db, ObjectId } from 'mongodb'
 import { auth } from '@/auth'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
-import { FREE_HISTORY_DAYS } from '@/lib/constants'
+import { FREE_HISTORY_DAYS, PREMIUM_HISTORY_DAYS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
 import { sendSpendingAlertEmail } from '@/lib/email'
+import { formatCurrency } from '@/lib/utils'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -34,28 +35,26 @@ export async function GET(req: NextRequest) {
   if (type) query.type = type
   if (category) query.category = category
 
-  if (!userIsPremium) {
-    const freeWindowStart = new Date()
-    freeWindowStart.setDate(freeWindowStart.getDate() - FREE_HISTORY_DAYS)
-    freeWindowStart.setHours(0, 0, 0, 0)
+  const historyDays = userIsPremium ? PREMIUM_HISTORY_DAYS : FREE_HISTORY_DAYS
+  const retentionWindowStart = new Date()
+  retentionWindowStart.setDate(retentionWindowStart.getDate() - historyDays)
+  retentionWindowStart.setHours(0, 0, 0, 0)
 
-    const callerStart = startDate ? new Date(startDate) : null
-    const effectiveStart = callerStart && callerStart > freeWindowStart ? callerStart : freeWindowStart
-
-    query.date = { $gte: effectiveStart }
-    if (endDate) query.date.$lte = new Date(endDate)
-  } else {
-    if (startDate || endDate) {
-      query.date = {}
-      if (startDate) query.date.$gte = new Date(startDate)
-      if (endDate) query.date.$lte = new Date(endDate)
-    }
-  }
+  // Always exclude archived transactions and enforce retention window
+  query.isArchived = { $ne: true }
+  const callerStart = startDate ? new Date(startDate) : null
+  const effectiveStart = callerStart && callerStart > retentionWindowStart ? callerStart : retentionWindowStart
+  query.date = { $gte: effectiveStart }
+  if (endDate) query.date.$lte = new Date(endDate)
 
   if (tags) query.tags = { $in: tags.split(',') }
   if (search) {
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    query.description = { $regex: escapedSearch, $options: 'i' }
+    const searchRegex = { $regex: escapedSearch, $options: 'i' }
+    query.$or = [
+      { description: searchRegex },
+      { category: searchRegex },
+    ]
   }
 
   const col = db.collection<ITransaction>('transactions')
@@ -72,7 +71,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { amount, type, category, description, date, tags, isRecurring } = body
+  const { amount, type, category, description, date, tags, isRecurring, currency } = body
 
   if (!type || !category || !date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -81,25 +80,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
   }
 
-  const now = new Date()
   const db = await getDb()
+
+  // Fetch user once — used both for currency resolution and spending alert below
+  const postUser = await db.collection<IUser>('users').findOne(
+    { _id: new ObjectId(session.user.id) as never },
+    { projection: { name: 1, email: 1, preferences: 1 } }
+  )
+  const resolvedCurrency: ITransaction['currency'] =
+    currency ?? postUser?.preferences?.currency ?? 'PHP'
+
+  const now = new Date()
   const result = await db.collection<ITransaction>('transactions').insertOne({
     userId: session.user.id,
     amount,
+    currency: resolvedCurrency,
     type,
     category,
     description,
     date: new Date(date),
     tags: tags ?? [],
     isRecurring: isRecurring ?? false,
+    isArchived: false,
     createdAt: now,
     updatedAt: now,
   } as ITransaction)
 
   const transaction = await db.collection<ITransaction>('transactions').findOne({ _id: result.insertedId })
 
-  if (type === 'expense') {
-    checkSpendingAlert(session.user.id, category, description ?? category, amount, db).catch(
+  if (type === 'expense' && postUser) {
+    checkSpendingAlert(session.user.id, category, description ?? category, amount, db, postUser).catch(
       (err) => console.error('[transactions] spending alert error:', err)
     )
   }
@@ -107,7 +117,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(transaction, { status: 201 })
 }
 
-async function checkSpendingAlert(userId: string, category: string, merchantName: string, triggerAmount: number, db: Db) {
+async function checkSpendingAlert(
+  userId: string,
+  category: string,
+  merchantName: string,
+  triggerAmount: number,
+  db: Db,
+  user: Pick<IUser, 'name' | 'email' | 'preferences'>,
+) {
   const budget = await db.collection<IBudget>('budgets').findOne({ userId, category })
   if (!budget) return
 
@@ -115,7 +132,7 @@ async function checkSpendingAlert(userId: string, category: string, merchantName
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
 
-  const [spentAgg, recentTxns, user, allBudgetSpent] = await Promise.all([
+  const [spentAgg, recentTxns, allBudgetSpent] = await Promise.all([
     db.collection<ITransaction>('transactions').aggregate([
       { $match: { userId, category, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
@@ -123,7 +140,6 @@ async function checkSpendingAlert(userId: string, category: string, merchantName
     db.collection<ITransaction>('transactions')
       .find({ userId, category, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } })
       .sort({ date: -1 }).limit(3).toArray(),
-    db.collection<IUser>('users').findOne({ _id: userId } as never, { projection: { name: 1, email: 1, preferences: 1 } }),
     db.collection<ITransaction>('transactions').aggregate([
       { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
@@ -136,10 +152,8 @@ async function checkSpendingAlert(userId: string, category: string, merchantName
   const previousTotal = totalSpent - triggerAmount
   if (previousTotal >= budget.limit) return
 
-  if (!user) return
-
   const sym = user.preferences?.currencySymbol ?? '₱'
-  const fmt = (n: number) => `${sym}${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+  const fmt = (n: number) => formatCurrency(n, sym)
 
   const allBudgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
   const spentMap = Object.fromEntries(allBudgetSpent.map((r) => [(r as { _id: string; total: number })._id, (r as { _id: string; total: number }).total]))

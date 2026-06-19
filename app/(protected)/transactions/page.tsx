@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import {
   Plus, TrendingUp, TrendingDown, PiggyBank,
-  Pencil, Trash2, Download, Search, Filter, Upload, RefreshCw,
+  Pencil, Trash2, Download, Search, Filter, Upload, RefreshCw, X,
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
@@ -151,6 +151,36 @@ export default function TransactionsPage() {
     )
   }
 
+  // ── Pagination helpers ────────────────────────────────────────────────────
+  function PageBtn({ n, current, onClick }: { n: number; current: number; onClick: (n: number) => void }) {
+    const isActive = n === current
+    return (
+      <button
+        onClick={() => onClick(n)}
+        style={{
+          width: 32, height: 32,
+          borderRadius: 8,
+          border: isActive ? '1px solid var(--color-accent)' : '1px solid var(--color-border)',
+          backgroundColor: isActive ? 'var(--color-sage)' : 'transparent',
+          color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+          fontSize: '0.8rem', fontWeight: isActive ? 700 : 500,
+          cursor: 'pointer',
+          transition: 'all 0.12s',
+        }}
+      >
+        {n}
+      </button>
+    )
+  }
+
+  function Ellipsis() {
+    return (
+      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0 2px', lineHeight: '32px' }}>
+        …
+      </span>
+    )
+  }
+
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -204,7 +234,7 @@ export default function TransactionsPage() {
                 backgroundColor: 'var(--color-elevated)',
                 color: 'var(--color-text-primary)',
                 fontSize: '0.85rem',
-                paddingLeft: 38, paddingRight: 12,
+                paddingLeft: 38, paddingRight: 36,
                 outline: 'none',
                 transition: 'border-color 0.15s',
               }}
@@ -217,6 +247,31 @@ export default function TransactionsPage() {
               onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-accent)' }}
               onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)' }}
             />
+            {(searchInput || search || filterType !== 'all' || startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setSearchInput('')
+                  setSearch('')
+                  setFilterType('all')
+                  setStartDate('')
+                  setEndDate('')
+                  setPage(1)
+                }}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 20, height: 20, borderRadius: '50%',
+                  border: 'none', backgroundColor: 'var(--color-text-muted)',
+                  cursor: 'pointer', padding: 0,
+                  opacity: 0.7,
+                }}
+                title="Clear all filters"
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+              >
+                <X style={{ width: 11, height: 11, color: 'var(--color-card)' }} />
+              </button>
+            )}
           </div>
 
           {/* Type select */}
@@ -423,7 +478,7 @@ export default function TransactionsPage() {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                     }}>
-                      {tx.description || '—'}
+                      {tx.description || '-'}
                     </td>
 
                     {/* Recurring */}
@@ -525,27 +580,79 @@ export default function TransactionsPage() {
           <div style={{
             padding: '14px 24px',
             borderTop: '1px solid var(--color-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+            flexWrap: 'wrap',
           }}>
-            <Button
-              variant="outline"
-              size="sm"
+            {/* Previous */}
+            <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
+              style={{
+                height: 32, padding: '0 12px',
+                borderRadius: 8,
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'transparent',
+                color: page <= 1 ? 'var(--color-text-muted)' : 'var(--color-text-secondary)',
+                fontSize: '0.8rem', fontWeight: 500, cursor: page <= 1 ? 'default' : 'pointer',
+                opacity: page <= 1 ? 0.45 : 1,
+                transition: 'all 0.12s',
+              }}
             >
               {t('tx.previous')}
-            </Button>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              {t('tx.page')} {page} {t('common.of')} {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
+            </button>
+
+            {/* Page number buttons */}
+            {(() => {
+              const buttons: React.ReactNode[] = []
+              const delta = 2 // pages to show either side of current
+
+              let start = Math.max(1, page - delta)
+              let end   = Math.min(totalPages, page + delta)
+
+              // Always show at least 5 slots when possible
+              if (end - start < delta * 2) {
+                if (start === 1) end   = Math.min(totalPages, start + delta * 2)
+                else             start = Math.max(1, end - delta * 2)
+              }
+
+              if (start > 1) {
+                buttons.push(
+                  <PageBtn key={1} n={1} current={page} onClick={setPage} />,
+                )
+                if (start > 2) buttons.push(<Ellipsis key="e1" />)
+              }
+
+              for (let n = start; n <= end; n++) {
+                buttons.push(<PageBtn key={n} n={n} current={page} onClick={setPage} />)
+              }
+
+              if (end < totalPages) {
+                if (end < totalPages - 1) buttons.push(<Ellipsis key="e2" />)
+                buttons.push(
+                  <PageBtn key={totalPages} n={totalPages} current={page} onClick={setPage} />,
+                )
+              }
+
+              return buttons
+            })()}
+
+            {/* Next */}
+            <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
+              style={{
+                height: 32, padding: '0 12px',
+                borderRadius: 8,
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'transparent',
+                color: page >= totalPages ? 'var(--color-text-muted)' : 'var(--color-text-secondary)',
+                fontSize: '0.8rem', fontWeight: 500, cursor: page >= totalPages ? 'default' : 'pointer',
+                opacity: page >= totalPages ? 0.45 : 1,
+                transition: 'all 0.12s',
+              }}
             >
               {t('tx.next')}
-            </Button>
+            </button>
           </div>
         )}
       </div>

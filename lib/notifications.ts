@@ -1,5 +1,5 @@
-import nodemailer from 'nodemailer'
 import admin from 'firebase-admin'
+import { getMailTransporter } from '@/lib/email'
 import { isPremium } from '@/lib/tier'
 import type { IUser } from '@/lib/models/User'
 
@@ -8,17 +8,6 @@ type NotificationType = 'reminder' | 'inactivity'
 const MESSAGES: Record<NotificationType, string> = {
   reminder: "Time to log your expenses!",
   inactivity: "It's been a while - come back and update your budget!",
-}
-
-function getTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT ?? '587'),
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
 }
 
 export async function sendEmailNotification({
@@ -30,10 +19,9 @@ export async function sendEmailNotification({
   name: string
   type: NotificationType
 }) {
-  const transporter = getTransporter()
   const message = MESSAGES[type]
 
-  await transporter.sendMail({
+  await getMailTransporter().sendMail({
     from: process.env.EMAIL_FROM,
     to,
     subject: type === 'reminder' ? 'Budget Reminder - Waiseka' : 'We miss you - Waiseka',

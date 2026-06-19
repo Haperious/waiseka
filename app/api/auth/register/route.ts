@@ -85,6 +85,11 @@ export async function POST(req: NextRequest) {
         push: { enabled: false, frequency: 'weekly', fcmToken: null },
         lastSeen: now,
       },
+      onboarding: {
+        completedAt: null,
+        stepsCompleted: [],
+        dismissed: false,
+      },
       createdAt: now,
       updatedAt: now,
     })

@@ -24,8 +24,12 @@ export async function GET() {
       updatedAt: now,
     })) as Omit<ICategory, '_id'>[]
 
-    await col.insertMany(docs as ICategory[])
-    categories = await col.find({ userId: session.user.id }).sort({ name: 1 }).toArray()
+    const result = await col.insertMany(docs as ICategory[])
+    // Return the seeded docs directly — avoid a second round trip to the DB.
+    categories = docs.map((doc, i) => ({
+      ...doc,
+      _id: result.insertedIds[i],
+    } as ICategory)).sort((a, b) => a.name.localeCompare(b.name))
   }
 
   return NextResponse.json(categories)

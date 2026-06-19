@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Transaction } from '@/hooks/useTransactions'
 import { useCategories } from '@/hooks/useCategories'
+import { useCurrency } from '@/context/CurrencyContext'
 import MicrophoneButton from '@/components/MicrophoneButton'
 
 interface TransactionFormProps {
@@ -19,6 +20,7 @@ interface TransactionFormProps {
 export default function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast()
   const { categories } = useCategories()
+  const { currency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     type: (transaction?.type ?? 'expense') as 'income' | 'expense' | 'savings',
@@ -51,7 +53,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, amount: Number(form.amount) }),
+        body: JSON.stringify({ ...form, amount: Number(form.amount), currency }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -77,7 +79,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   const typeOptions = [
     { value: 'expense', label: 'Expense' },
     { value: 'income', label: 'Income' },
-    { value: 'savings', label: '🏦 Savings' },
+    { value: 'savings', label: 'Savings' },
   ]
 
   return (

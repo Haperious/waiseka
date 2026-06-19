@@ -4,19 +4,26 @@ const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
 
 // ─── Transport ────────────────────────────────────────────────────────────────
 
-function createTransporter() {
+// Singleton transporter — reused across all sends in the same process lifetime.
+// Nodemailer transporters maintain an SMTP connection pool, so creating one per
+// send wastes connections and TCP handshakes.
+let _transporter: nodemailer.Transporter | null = null
+
+export function getMailTransporter(): nodemailer.Transporter {
+  if (_transporter) return _transporter
   const port = parseInt(process.env.SMTP_PORT ?? '587')
-  return nodemailer.createTransport({
+  _transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port,
     secure: port === 465,
     requireTLS: port === 587,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   })
+  return _transporter
 }
 
 async function sendMail(to: string, subject: string, html: string) {
-  await createTransporter().sendMail({
+  await getMailTransporter().sendMail({
     from: process.env.EMAIL_FROM ?? 'Waiseka <noreply@waiseka.app>',
     to,
     subject,

@@ -25,14 +25,10 @@ import type { CategoryTrendData } from '@/components/charts/CategoryTrendChart'
 
 const IncomeExpenseChart = dynamic(() => import('@/components/charts/IncomeExpenseChart'), { ssr: false })
 const CategoryTrendChart  = dynamic(() => import('@/components/charts/CategoryTrendChart'),  { ssr: false })
+const CategoryPieChart    = dynamic(() => import('@/components/charts/CategoryPieChart'),    { ssr: false })
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-// Category bar color palette — sage-adjacent, works dark + light
-const CAT_COLORS = [
-  '#166534', '#16A34A', '#4ADE80', '#84CC16',
-  '#D97706', '#B45309', '#2563EB', '#7C3AED',
-]
 
 interface Summary {
   totalIncome: number
@@ -250,54 +246,6 @@ function BudgetBar({ budget, formatAmount }: { budget: Budget; formatAmount: (v:
   )
 }
 
-// ── Category horizontal bar ──────────────────────────────────────────────────
-function CategoryBar({
-  cat, color, formatAmount,
-}: {
-  cat: { category: string; total: number; percentage: number }
-  color: string
-  formatAmount: (v: number) => string
-}) {
-  const [animated, setAnimated] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setAnimated(true), 100)
-    return () => clearTimeout(t)
-  }, [])
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color, flexShrink: 0 }} />
-          <span style={{ fontSize: '0.82rem', fontWeight: '500', color: 'var(--color-text-primary)' }}>
-            {cat.category}
-          </span>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
-            {formatAmount(cat.total)}
-          </span>
-          <span style={{ fontSize: '0.7rem', fontWeight: '600', color, minWidth: 32, textAlign: 'right' }}>
-            {cat.percentage}%
-          </span>
-        </div>
-      </div>
-      <div style={{
-        height: 4, borderRadius: 999,
-        backgroundColor: 'var(--color-elevated)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          height: '100%', borderRadius: 999,
-          backgroundColor: color,
-          opacity: 0.85,
-          width: animated ? `${cat.percentage}%` : '0%',
-          transition: 'width 1s cubic-bezier(0.4,0,0.2,1)',
-        }} />
-      </div>
-    </div>
-  )
-}
 
 // ── Goal progress row ────────────────────────────────────────────────────────
 function GoalBar({
@@ -957,22 +905,15 @@ export default function DashboardPage() {
               {t('dashboard.categoryBreakdown')}
             </h2>
           </div>
-          <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: '16px 24px' }}>
             {analyticsLoading ? (
-              <>{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-7 w-full" />)}</>
+              <Skeleton className="h-64 w-full" />
             ) : !analyticsSummary || analyticsSummary.categoryBreakdown.length === 0 ? (
               <p style={{ fontSize: '0.83rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '16px 0' }}>
                 {t('dashboard.noTransactionData')}
               </p>
             ) : (
-              analyticsSummary.categoryBreakdown.slice(0, 7).map((c, i) => (
-                <CategoryBar
-                  key={c.category}
-                  cat={c}
-                  color={CAT_COLORS[i % CAT_COLORS.length]}
-                  formatAmount={formatAmount}
-                />
-              ))
+              <CategoryPieChart data={analyticsSummary.categoryBreakdown} />
             )}
           </div>
         </div>

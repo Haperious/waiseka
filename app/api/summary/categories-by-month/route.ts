@@ -9,11 +9,12 @@ import type { IUser } from '@/lib/models/User'
 import type { ICategory } from '@/lib/models/Category'
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const TOP_CATEGORY_LIMIT = 6
 // Fallback palette when a category has no stored color
 const FALLBACK_COLORS = [
   '#166534', '#16A34A', '#4ADE80', '#84CC16',
   '#D97706', '#B45309', '#2563EB', '#7C3AED',
+  '#EC4899', '#14B8A6', '#F97316', '#6366F1',
+  '#EF4444', '#F59E0B', '#10B981', '#3B82F6',
 ]
 
 export async function GET(req: NextRequest) {
@@ -85,14 +86,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ months: MONTH_LABELS, categories: [], restricted: !userIsPremium })
   }
 
-  // Sort by annual total desc, take top 6, bucket the rest into 'Other'
+  // Sort by annual total desc — show all active categories, no cap
   const sorted = activeCategories.sort((a, b) => (categoryAnnualTotal[b] ?? 0) - (categoryAnnualTotal[a] ?? 0))
-  const top    = sorted.slice(0, TOP_CATEGORY_LIMIT)
-  const rest   = sorted.slice(TOP_CATEGORY_LIMIT)
 
-  // Fetch stored colors from the categories collection
+  // Fetch stored colors from the categories collection for all active categories
   const categoryDocs = await db.collection<ICategory>('categories')
-    .find({ userId: session.user.id, name: { $in: top } })
+    .find({ userId: session.user.id, name: { $in: sorted } })
     .project({ name: 1, color: 1 })
     .toArray()
 
@@ -101,22 +100,11 @@ export async function GET(req: NextRequest) {
     if (doc.color) colorMap[doc.name] = doc.color
   }
 
-  const result = top.map((cat, i) => ({
+  const result = sorted.map((cat, i) => ({
     name:  cat,
     color: colorMap[cat] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
     data:  categoryMonthMap[cat],
   }))
-
-  // Aggregate the 'Other' bucket
-  if (rest.length > 0) {
-    const otherData = new Array(12).fill(0)
-    for (const cat of rest) {
-      for (let m = 0; m < 12; m++) {
-        otherData[m] += categoryMonthMap[cat]?.[m] ?? 0
-      }
-    }
-    result.push({ name: 'Other', color: '#94a3b8', data: otherData })
-  }
 
   // For free users, zero out months outside the free window
   if (!userIsPremium) {

@@ -6,6 +6,18 @@ export interface IConversationMessage {
   createdAt: Date
 }
 
+export type OnboardingStepId =
+  | 'dashboard'
+  | 'transactions'
+  | 'categories'
+  | 'goals'
+
+export interface IOnboarding {
+  completedAt: Date | null
+  stepsCompleted: OnboardingStepId[]
+  dismissed: boolean
+}
+
 export interface IUser {
   _id: ObjectId
   name: string
@@ -22,6 +34,7 @@ export interface IUser {
     currencySymbol: string
     theme?: 'light' | 'dark'
   }
+  onboarding: IOnboarding
   ai: {
     enabled: boolean
     queriesUsed: number

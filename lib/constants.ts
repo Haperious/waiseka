@@ -21,8 +21,11 @@ export const FREE_BUDGET_LIMIT = 3
 export const FREE_GOAL_LIMIT = 3
 
 // ── Transaction history ──────────────────────────────────────────────────────
-/** Rolling look-back window (in days) for free-tier transaction queries. */
-export const FREE_HISTORY_DAYS = 90
+/** Rolling retention window (in days) for free-tier transactions. 3 years = 1095 days. */
+export const FREE_HISTORY_DAYS = 1095
+
+/** Rolling retention window (in days) for premium-tier transactions. 7 years = 2555 days. */
+export const PREMIUM_HISTORY_DAYS = 2555
 
 // ── AI query cap ─────────────────────────────────────────────────────────────
 /** Default monthly AI query cap for premium users (overridable per user in DB). */

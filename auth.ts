@@ -15,6 +15,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!token) return null
 
       // Subsequent requests: verify the password hasn't changed since this token was issued
+      // Also refresh lastLogin so the admin panel reflects active sessions
       if (!params.user && token.id) {
         try {
           const db = await getDb()
@@ -27,6 +28,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (dbChangedAt && dbChangedAt !== tokenChangedAt) {
             return null
+          }
+
+          // Update lastLogin on each active session refresh (throttled to once per hour to
+          // avoid excessive writes — we only care about day-level accuracy in the admin panel)
+          const lastSeenHour = (token.lastSeenHour as number | undefined) ?? 0
+          const currentHour = Math.floor(Date.now() / 3_600_000)
+          if (currentHour > lastSeenHour) {
+            await db.collection<IUser>('users').updateOne(
+              { _id: new ObjectId(token.id as string) },
+              { $set: { lastLogin: new Date() } }
+            )
+            token.lastSeenHour = currentHour
           }
         } catch {
           // If the DB check fails, let the request through rather than locking everyone out
