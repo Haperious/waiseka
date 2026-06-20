@@ -735,11 +735,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Charts: side-by-side (free) or stacked (premium) ──────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: userIsPremium ? '1fr' : '1fr 1fr',
-        gap: 16,
-      }}>
+      <div className={`grid gap-4 grid-cols-1${userIsPremium ? '' : ' sm:grid-cols-2'}`}>
 
       {/* ── Yearly chart ───────────────────────────────────────────────── */}
       <div style={{
