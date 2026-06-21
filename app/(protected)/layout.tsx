@@ -14,7 +14,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     <SessionProvider>
       <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0" style={{ overflow: 'visible', minHeight: 0 }}>
           <Navbar onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 pb-20 lg:pb-6">
             {children}

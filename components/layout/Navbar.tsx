@@ -19,10 +19,23 @@ export default function Navbar({ onMenuClick, title }: NavbarProps) {
 
   return (
     <header
-      className="h-16 flex items-center justify-between px-4 md:px-6 border-b backdrop-blur-md sticky top-0 z-10"
-      style={{ backgroundColor: 'var(--color-surface-blur)', borderColor: 'var(--color-border)' }}
+      className="h-16 flex items-center justify-between px-4 md:px-6 border-b sticky top-0 z-10"
+      style={{ borderColor: 'var(--color-border)', position: 'relative' }}
     >
-      <div className="flex items-center gap-3">
+      {/* Blur layer as a pseudo-element so it doesn't create a stacking context on the header itself */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          backgroundColor: 'var(--color-surface-blur)',
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <div className="flex items-center gap-3" style={{ position: 'relative', zIndex: 1 }}>
         {/* Logo - mobile only, sidebar handles desktop */}
         <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
           <Image
@@ -41,7 +54,7 @@ export default function Navbar({ onMenuClick, title }: NavbarProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5" style={{ position: 'relative', zIndex: 1 }}>
         {/* Language toggle */}
         <button
           onClick={() => setLanguage(language === 'en' ? 'tl' : 'en')}

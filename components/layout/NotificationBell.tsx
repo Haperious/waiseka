@@ -7,6 +7,7 @@ import NotificationItem from './NotificationItem'
 
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
+  const [panelPos, setPanelPos] = useState<{ top: number; right: number } | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const hasFetched = useRef(false)
@@ -21,6 +22,42 @@ export default function NotificationBell() {
     markAllRead,
     deleteNotification,
   } = useNotifications()
+
+  // Compute fixed panel position from button's viewport rect on open
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      const panelWidth = Math.min(360, window.innerWidth - 16)
+      // Align right edge of panel with right edge of button, but clamp so left edge stays on screen
+      const rightFromViewport = window.innerWidth - rect.right
+      const maxRight = window.innerWidth - panelWidth - 8
+      setPanelPos({
+        top: rect.bottom + 8,
+        right: Math.min(rightFromViewport, maxRight),
+      })
+    }
+    if (!isOpen) setPanelPos(null)
+  }, [isOpen])
+
+  // Recompute on resize/scroll while open
+  useEffect(() => {
+    if (!isOpen) return
+    const update = () => {
+      if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect()
+        const panelWidth = Math.min(360, window.innerWidth - 16)
+        const rightFromViewport = window.innerWidth - rect.right
+        const maxRight = window.innerWidth - panelWidth - 8
+        setPanelPos({ top: rect.bottom + 8, right: Math.min(rightFromViewport, maxRight) })
+      }
+    }
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [isOpen])
 
   // Fetch full list when dropdown opens (once per open)
   useEffect(() => {
@@ -86,14 +123,14 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown panel */}
-      {isOpen && (
+      {/* Dropdown panel — fixed so it never clips outside the viewport */}
+      {isOpen && panelPos && (
         <div
           ref={panelRef}
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
+            position: 'fixed',
+            top: panelPos.top,
+            right: panelPos.right,
             width: 'min(360px, calc(100vw - 16px))',
             maxHeight: '480px',
             display: 'flex',
@@ -102,7 +139,7 @@ export default function NotificationBell() {
             border: '1px solid var(--color-border)',
             borderRadius: '12px',
             boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            zIndex: 50,
+            zIndex: 9999,
             overflow: 'hidden',
           }}
         >

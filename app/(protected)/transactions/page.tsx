@@ -196,37 +196,42 @@ export default function TransactionsPage() {
     <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Page header ──────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <h1 style={{
-            fontSize: '1.6rem', fontWeight: 900,
-            color: 'var(--color-text-primary)',
-            fontFamily: 'var(--font-playfair), Georgia, serif',
-            lineHeight: 1.1,
-          }}>
-            {t('tx.title')}
-          </h1>
-          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-            {total} {t('tx.totalRecords')}
-          </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div>
+            <h1 style={{
+              fontSize: '1.6rem', fontWeight: 900,
+              color: 'var(--color-text-primary)',
+              fontFamily: 'var(--font-playfair), Georgia, serif',
+              lineHeight: 1.1,
+            }}>
+              {t('tx.title')}
+            </h1>
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+              {total} {t('tx.totalRecords')}
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <Button variant="outline" size="sm" onClick={exportCSV} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
-            <Download style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
+        {/* Button row — full width on mobile so all 4 buttons are always visible */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="outline" size="sm" onClick={exportCSV} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
+            <Download className="w-3.5 h-3.5 mr-1" />
             <span className="hidden sm:inline">{t('tx.exportLabel')}</span>
+            <span className="sm:hidden">Export</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
-            <Upload style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
+            <Upload className="w-3.5 h-3.5 mr-1" />
             <span className="hidden sm:inline">{t('tx.import')}</span>
+            <span className="sm:hidden">Import</span>
           </Button>
-          <Button  size="sm" onClick={() => setBulkOpen(true)} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
-            <Plus style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
+          <Button size="sm" onClick={() => setBulkOpen(true)} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
+            <Plus className="w-3.5 h-3.5 mr-1" />
             <span className="hidden sm:inline">Add Multiple</span>
             <span className="sm:hidden">Bulk</span>
           </Button>
-          <Button size="sm" onClick={() => setAddOpen(true)} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
-            <Plus style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
+          <Button size="sm" onClick={() => setAddOpen(true)} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
+            <Plus className="w-3.5 h-3.5 mr-1" />
             <span>{t('common.add')}</span>
           </Button>
         </div>

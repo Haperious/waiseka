@@ -15,6 +15,9 @@ import {
   Bot,
   Shield,
   Tags,
+  Users,
+  Mail,
+  Flag,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/context/LanguageContext'
@@ -112,28 +115,42 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </nav>
 
         {isAdmin && (
-          <div className="px-3 pb-4 border-t pt-3" style={{ borderColor: 'var(--color-border)' }}>
-            <Link
-              href="/admin/users"
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-                pathname.startsWith('/admin') ? 'font-semibold' : 'hover:bg-[var(--color-elevated)]'
-              )}
-              style={pathname.startsWith('/admin')
-                ? {
-                    backgroundColor: 'var(--color-sage)',
-                    borderLeft: '2px solid var(--color-accent)',
-                    color: 'var(--color-accent)',
-                    paddingLeft: 'calc(0.75rem - 2px)',
-                    paddingRight: '0.75rem',
+          <div className="px-3 pb-4 border-t pt-3 space-y-0.5" style={{ borderColor: 'var(--color-border)' }}>
+            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)', fontFamily: "'Sora', sans-serif" }}>
+              <Shield className="inline h-3 w-3 mr-1 mb-0.5" />
+              Admin
+            </p>
+            {[
+              { href: '/admin/users',      label: 'Users',      icon: Users },
+              { href: '/admin/email-logs', label: 'Email Logs', icon: Mail  },
+              { href: '/admin/flags',      label: 'Flags',      icon: Flag  },
+            ].map(({ href, label, icon: Icon }) => {
+              const isActive = pathname === href || pathname.startsWith(href + '/')
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={onClose}
+                  className={cn(
+                    'flex items-center gap-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+                    isActive ? 'font-semibold' : 'hover:bg-[var(--color-elevated)]'
+                  )}
+                  style={isActive
+                    ? {
+                        backgroundColor: 'var(--color-sage)',
+                        borderLeft: '2px solid var(--color-accent)',
+                        color: 'var(--color-accent)',
+                        paddingLeft: 'calc(0.75rem - 2px)',
+                        paddingRight: '0.75rem',
+                      }
+                    : { color: 'var(--color-text-secondary)', paddingLeft: '0.75rem', paddingRight: '0.75rem' }
                   }
-                : { color: 'var(--color-text-secondary)', paddingLeft: '0.75rem', paddingRight: '0.75rem' }
-              }
-            >
-              <Shield className="h-5 w-5 shrink-0" />
-              {t('nav.admin')}
-            </Link>
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {label}
+                </Link>
+              )
+            })}
           </div>
         )}
       </aside>
