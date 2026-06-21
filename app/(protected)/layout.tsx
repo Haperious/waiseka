@@ -22,7 +22,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         </div>
         <BottomNav onMoreClick={() => setSidebarOpen(true)} />
       </div>
-      {/* Onboarding checklist — renders for new users only, self-dismisses */}
+      {/* Onboarding checklist - renders for new users only, self-dismisses */}
       <OnboardingProvider />
     </SessionProvider>
   )

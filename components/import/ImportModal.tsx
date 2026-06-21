@@ -191,7 +191,7 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
         <div className="flex flex-col gap-4">
           <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4">
             <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-1">
-              {wrongPassword ? 'Incorrect password — try again' : 'This PDF is password protected'}
+              {wrongPassword ? 'Incorrect password - try again' : 'This PDF is password protected'}
             </p>
             <p className="text-xs text-amber-600 dark:text-amber-500">
               {wrongPassword

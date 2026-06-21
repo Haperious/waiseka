@@ -422,11 +422,11 @@ export default function DashboardPage() {
   ], [t])
 
   const years = useMemo(
-    () => Array.from({ length: 5 }, (_, i) => {
+    () => Array.from({ length: userIsPremium ? 5 : 3 }, (_, i) => {
       const y = currentYear - i
       return { value: String(y), label: String(y) }
     }),
-    [currentYear],
+    [currentYear, userIsPremium],
   )
 
   const loadYearlyTrend = useCallback(async () => {
@@ -675,28 +675,28 @@ export default function DashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, flex: 1 }}>
           <StatCard
             label={t('dashboard.totalIncome')}
-            value={analyticsLoading ? '—' : formatAmount(analyticsSummary?.totalIncome ?? 0)}
+            value={analyticsLoading ? '-' : formatAmount(analyticsSummary?.totalIncome ?? 0)}
             icon={TrendingUp}
             type="income"
             loading={analyticsLoading}
           />
           <StatCard
             label={t('dashboard.totalExpenses')}
-            value={analyticsLoading ? '—' : formatAmount(analyticsSummary?.totalExpenses ?? 0)}
+            value={analyticsLoading ? '-' : formatAmount(analyticsSummary?.totalExpenses ?? 0)}
             icon={TrendingDown}
             type="expense"
             loading={analyticsLoading}
           />
           <StatCard
             label={t('dashboard.totalSavings')}
-            value={analyticsLoading ? '—' : formatAmount(analyticsSummary?.totalSavings ?? 0)}
+            value={analyticsLoading ? '-' : formatAmount(analyticsSummary?.totalSavings ?? 0)}
             icon={PiggyBank}
             type="savings"
             loading={analyticsLoading}
           />
           <StatCard
             label={t('dashboard.savingsRate')}
-            value={analyticsLoading ? '—' : `${analyticsSummary?.savingsRate ?? 0}%`}
+            value={analyticsLoading ? '-' : `${analyticsSummary?.savingsRate ?? 0}%`}
             icon={Percent}
             type="rate"
             loading={analyticsLoading}
@@ -724,7 +724,7 @@ export default function DashboardPage() {
             <strong>{topCategory.category}</strong>{' '}
             {t('dashboard.thisPeriod')}
             {(analyticsSummary?.savingsRate ?? 0) > 0 && (
-              <> — {t('dashboard.saving')}{' '}
+              <> - {t('dashboard.saving')}{' '}
                 <strong style={{ color: 'var(--color-income)' }}>{analyticsSummary!.savingsRate}%</strong>{' '}
                 {t('dashboard.ofYourIncome')}
               </>
@@ -973,7 +973,7 @@ export default function DashboardPage() {
               ))}
               {goals.length > 5 && (
                 <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', paddingTop: 4 }}>
-                  +{goals.length - 5} more —{' '}
+                  +{goals.length - 5} more -{' '}
                   <Link href="/goals" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}>
                     {t('dashboard.viewAll')}
                   </Link>

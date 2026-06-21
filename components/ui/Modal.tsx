@@ -21,11 +21,12 @@ export default function Modal({ open, onClose, title, description, children, cla
         <Dialog.Content
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl',
+            'flex flex-col max-h-[90vh]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
             className
           )}
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-shrink-0">
             {title && (
               <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
                 {title}
@@ -40,11 +41,13 @@ export default function Modal({ open, onClose, title, description, children, cla
             </Dialog.Close>
           </div>
           {description && (
-            <Dialog.Description className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <Dialog.Description className="text-sm text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
               {description}
             </Dialog.Description>
           )}
-          {children}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {children}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

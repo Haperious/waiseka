@@ -4,7 +4,7 @@ const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
 
 // ─── Transport ────────────────────────────────────────────────────────────────
 
-// Singleton transporter — reused across all sends in the same process lifetime.
+// Singleton transporter - reused across all sends in the same process lifetime.
 // Nodemailer transporters maintain an SMTP connection pool, so creating one per
 // send wastes connections and TCP handshakes.
 let _transporter: nodemailer.Transporter | null = null
@@ -39,7 +39,7 @@ const BASE_CSS = `
   body{font-family:'Sora',sans-serif;background:#DFF0E4;padding:2rem 1rem;color:#0D3D1F}
   .wrap{max-width:600px;margin:0 auto}
   .shell{background:#F4FBF6;border-radius:18px;overflow:hidden;border:1px solid #C8E3C4}
-  .mhead{background:#1A6B3A;padding:24px 40px;display:flex;align-items:center;gap:10px}
+  .mhead{background:#1A6B3A;padding:24px 40px;display:flex;align-items:center}
   .mbrand{font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.01em}
   .mbrand span{color:#C2EDD0}
   .hero{background:#FFFFFF;padding:36px 44px 32px;text-align:center;border-bottom:1px solid #C8E3C4}
@@ -79,7 +79,7 @@ const BASE_CSS = `
 `
 
 function emailHeader() {
-  return `<div class="mhead"><img src="${APP_URL}/logo.png" width="32" height="32" alt="WaiseKa" style="border-radius:9px;display:block;flex-shrink:0"><span class="mbrand">Waise<span>Ka</span></span></div>`
+  return `<div class="mhead"><img src="${APP_URL}/logo.png" width="32" height="32" alt="WaiseKa" style="border-radius:9px;display:block;flex-shrink:0;margin-right:10px"><span class="mbrand">Waise<span>Ka</span></span></div>`
 }
 
 function emailFooter(links: Array<{ href: string; label: string }>, note: string, brand = 'WaiseKa') {
@@ -100,6 +100,17 @@ function statsTable(cards: Array<{ emoji: string; label: string; value: string; 
         <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:${c.color}">${c.value}</div>
       </td>`).join('')
   return `<table class="stats" style="display:table;width:calc(100% - 88px);margin:0 44px 20px;border-collapse:separate;border-spacing:10px 0"><tr>${cellHtml}</tr></table>`
+}
+
+// Replace flex gap with margin-right on the preceding sibling - gap is unreliable
+// in Outlook and older Gmail clients. Use this wrapper for all icon+text alert rows.
+function alertRow(iconHtml: string, contentHtml: string, bgColor: string, borderColor: string, extraStyle = '') {
+  return `<div style="border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.65;color:#0D3D1F;background:${bgColor};border:1px solid ${borderColor};${extraStyle}">
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+      <td style="width:28px;vertical-align:top;padding-right:10px;font-size:18px;padding-top:1px">${iconHtml}</td>
+      <td style="vertical-align:top">${contentHtml}</td>
+    </tr></table>
+  </div>`
 }
 
 function barClass(pct: number) {
@@ -135,7 +146,7 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
   const settingsUrl = `${APP_URL}/settings`
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Welcome to WaiseKa!</title><style>${BASE_CSS}
-  .fi{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #C8E3C4}
+  .fi{display:flex;align-items:flex-start;padding:9px 0;border-bottom:1px solid #C8E3C4}
   .fi:last-child{border-bottom:none}
   .fchk{width:20px;height:20px;border-radius:50%;background:#EEF9F3;border:1px solid #C8E3C4;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:11px;color:#2A9654}
   .ft{font-size:13px;color:#0D3D1F;line-height:1.55}
@@ -154,10 +165,10 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
     <p class="p">Here's how to hit the ground running:</p>
   </div>
   <div style="margin:0 44px 20px">
-    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Log your first transaction</b> - manual entry or connect your account to get started instantly.</div></div>
-    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Set a monthly budget</b> - define limits per category so you always know where you stand.</div></div>
-    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Create a savings goal</b> - travel fund, emergency buffer, or big purchase - we track your progress.</div></div>
-    <div class="fi"><div class="fchk">✓</div><div class="ft"><b>Get monthly insights</b> - WaiseKa surfaces patterns and tips tailored to your habits.</div></div>
+    <div class="fi"><div class="fchk" style="margin-right:10px">✓</div><div class="ft"><b>Log your first transaction</b> - manual entry or connect your account to get started instantly.</div></div>
+    <div class="fi"><div class="fchk" style="margin-right:10px">✓</div><div class="ft"><b>Set a monthly budget</b> - define limits per category so you always know where you stand.</div></div>
+    <div class="fi"><div class="fchk" style="margin-right:10px">✓</div><div class="ft"><b>Create a savings goal</b> - travel fund, emergency buffer, or big purchase - we track your progress.</div></div>
+    <div class="fi"><div class="fchk" style="margin-right:10px">✓</div><div class="ft"><b>Get monthly insights</b> - WaiseKa surfaces patterns and tips tailored to your habits.</div></div>
   </div>
   <div class="cta">
     <a href="${APP_URL}/budgets" class="btn">Set up my budget</a>
@@ -190,10 +201,10 @@ export async function sendResetPasswordEmail(data: ResetPasswordEmailData) {
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>WaiseKa - Reset Your Password</title><style>${BASE_CSS}
   .secinfo{margin:20px 44px;background:#EEF9F3;border-radius:12px;padding:14px 18px}
-  .sr{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;color:#0D3D1F;border-bottom:1px solid #C8E3C4}
+  .sr{display:flex;align-items:center;padding:5px 0;font-size:12px;color:#0D3D1F;border-bottom:1px solid #C8E3C4}
   .sr:last-child{border-bottom:none}
-  .sk{font-weight:700;min-width:96px;color:#1A6B3A;font-size:11px}
-  .alert-sec{margin:16px 44px;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
+  .sk{font-weight:700;min-width:96px;color:#1A6B3A;font-size:11px;margin-right:8px}
+  .alert-sec{margin:16px 44px;border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
   .muted{font-size:12px;color:#5A7A60;line-height:1.8}
 </style></head><body>
 <div class="wrap"><div class="shell">
@@ -221,8 +232,10 @@ export async function sendResetPasswordEmail(data: ResetPasswordEmailData) {
     <p class="muted">Didn't request this? Your account is still safe - just ignore this email. Your password won't change unless you use the link above.</p>
   </div>
   <div class="alert-sec" style="margin:16px 44px">
-    <span style="font-size:18px;flex-shrink:0;margin-top:1px">🛡️</span>
-    <div><b>Security reminder:</b> WaiseKa will never ask for your password via email, chat, or phone. Always access your account directly at ${APP_URL}.</div>
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+      <td style="width:28px;vertical-align:top;padding-right:10px;font-size:18px;padding-top:1px">🛡️</td>
+      <td style="vertical-align:top"><b>Security reminder:</b> WaiseKa will never ask for your password via email, chat, or phone. Always access your account directly at ${APP_URL}.</td>
+    </tr></table>
   </div>
   <div style="height:16px"></div>
   ${emailFooter([
@@ -272,8 +285,10 @@ export async function sendBudgetReminderEmail(data: BudgetReminderEmailData) {
 
   const alertBlock = data.alertCategory && data.projectedOverage ? `
   <div class="budget-alert">
-    <span class="aico">⚠️</span>
-    <div><b>Heads up:</b> At your current ${data.alertCategory} spend rate, you'll exceed that budget by about ${data.projectedOverage} before month-end. Consider pulling back for the next few days.</div>
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+      <td style="width:28px;vertical-align:top;padding-right:10px;font-size:18px;padding-top:1px">⚠️</td>
+      <td style="vertical-align:top"><b>Heads up:</b> At your current ${data.alertCategory} spend rate, you'll exceed that budget by about ${data.projectedOverage} before month-end. Consider pulling back for the next few days.</td>
+    </tr></table>
   </div>` : ''
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -289,7 +304,7 @@ export async function sendBudgetReminderEmail(data: BudgetReminderEmailData) {
   .pf{height:7px;border-radius:100px;background:#2A9654}
   .pf.w{background:#D4950A}
   .pf.d{background:#C0392B}
-  .budget-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#FEF6E4;border:1px solid #F0D078}
+  .budget-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#FEF6E4;border:1px solid #F0D078}
   .aico{font-size:18px;flex-shrink:0;margin-top:1px}
 </style></head><body>
 <div class="wrap"><div class="shell">
@@ -340,7 +355,7 @@ export async function sendReEngageEmail(data: ReEngageEmailData) {
   const settingsUrl = `${APP_URL}/settings`
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>WaiseKa - We've Missed You</title><style>${BASE_CSS}
-  .goal-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
+  .goal-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
 </style></head><body>
 <div class="wrap"><div class="shell">
   ${emailHeader()}
@@ -359,8 +374,10 @@ export async function sendReEngageEmail(data: ReEngageEmailData) {
     { emoji: '🎯', label: 'Goal progress', value: `${data.topGoalPercent}%`, color: '#1A6B3A' },
   ])}
   <div class="goal-alert">
-    <span style="font-size:18px;flex-shrink:0;margin-top:1px">💡</span>
-    <div><b>Your savings goal is still alive.</b> You're ${data.topGoalPercent}% of the way to your ${data.topGoalName} target of ${data.topGoalTarget}. Don't let a gap in logging throw off your momentum.</div>
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+      <td style="width:28px;vertical-align:top;padding-right:10px;font-size:18px;padding-top:1px">💡</td>
+      <td style="vertical-align:top"><b>Your savings goal is still alive.</b> You're ${data.topGoalPercent}% of the way to your ${data.topGoalName} target of ${data.topGoalTarget}. Don't let a gap in logging throw off your momentum.</td>
+    </tr></table>
   </div>
   <div class="cta">
     <a href="${APP_URL}/dashboard" class="btn">Log back in</a>
@@ -411,19 +428,23 @@ export interface MonthlyReportEmailData {
 export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
   const settingsUrl = `${APP_URL}/settings`
   const categoryRows = data.topCategories.map((c) => `
-    <div style="display:flex;align-items:center;padding:10px 14px;border-top:1px solid #C8E3C4;gap:10px">
-      <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${c.dotColor}"></div>
-      <span style="font-size:12px;color:#0D3D1F;flex:1">${c.name}</span>
-      <span style="font-size:10px;color:#2A9654;font-family:'DM Mono',monospace">${c.txnCount} transactions</span>
-      <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:#C0392B">${c.totalSpent}</span>
-    </div>`).join('')
+    <table role="presentation" style="width:100%;border-collapse:collapse;border-top:1px solid #C8E3C4">
+      <tr>
+        <td style="width:17px;padding:10px 10px 10px 14px;vertical-align:middle">
+          <div style="width:7px;height:7px;border-radius:50%;background:${c.dotColor}"></div>
+        </td>
+        <td style="padding:10px 8px 10px 0;vertical-align:middle;font-size:12px;color:#0D3D1F">${c.name}</td>
+        <td style="padding:10px 8px 10px 0;vertical-align:middle;font-size:10px;color:#2A9654;font-family:'DM Mono',monospace;white-space:nowrap">${c.txnCount} transactions</td>
+        <td style="padding:10px 14px 10px 0;vertical-align:middle;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:#C0392B;white-space:nowrap;text-align:right">${c.totalSpent}</td>
+      </tr>
+    </table>`).join('')
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>WaiseKa - Your ${data.monthName} ${data.year} Monthly Report</title><style>${BASE_CSS}
   .sect-lbl{font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.08em;text-transform:uppercase;padding:0 44px;margin-bottom:10px}
   .txns{margin:0 44px 20px;border:1px solid #C8E3C4;border-radius:12px;overflow:hidden}
   .txnhd{background:#EEF9F3;padding:9px 14px;font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.06em;text-transform:uppercase}
-  .insight-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
+  .insight-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
 </style></head><body>
 <div class="wrap"><div class="shell">
   ${emailHeader()}
@@ -448,8 +469,10 @@ export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
   </div>
   <div style="height:12px"></div>
   <div class="insight-alert">
-    <span style="font-size:18px;flex-shrink:0;margin-top:1px">🔍</span>
-    <div><b>WaiseKa insight:</b> Your ${data.insight.comparedCategory} spend ${data.insight.changeDirection} ${data.insight.changePercent}% vs. ${data.insight.comparedMonth}. If you maintain this trend, you'll free up an extra ${data.insight.monthlySavingsFree}/month for savings.</div>
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+      <td style="width:28px;vertical-align:top;padding-right:10px;font-size:18px;padding-top:1px">🔍</td>
+      <td style="vertical-align:top"><b>WaiseKa insight:</b> Your ${data.insight.comparedCategory} spend ${data.insight.changeDirection} ${data.insight.changePercent}% vs. ${data.insight.comparedMonth}. If you maintain this trend, you'll free up an extra ${data.insight.monthlySavingsFree}/month for savings.</td>
+    </tr></table>
   </div>
   <div class="cta">
     <a href="${APP_URL}/reports" class="btn">View full ${data.monthName} report</a>
@@ -491,19 +514,25 @@ export interface SpendingAlertEmailData {
 export async function sendSpendingAlertEmail(data: SpendingAlertEmailData) {
   const settingsUrl = `${APP_URL}/settings`
   const txnRows = data.recentTxns.map((t) => `
-    <div style="display:flex;align-items:center;padding:10px 14px;border-top:1px solid #C8E3C4;gap:10px">
-      <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#E05A5A"></div>
-      <span style="font-size:12px;color:#0D3D1F;flex:1">${t.merchantName} <span style="font-size:10px;color:#999">${t.date}</span></span>
-      <span style="font-size:10px;color:#2A9654;font-family:'DM Mono',monospace">${t.label}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:#C0392B">${t.amount}</span>
-    </div>`).join('')
+    <table role="presentation" style="width:100%;border-collapse:collapse;border-top:1px solid #C8E3C4">
+      <tr>
+        <td style="width:17px;padding:10px 10px 10px 14px;vertical-align:middle">
+          <div style="width:7px;height:7px;border-radius:50%;background:#E05A5A"></div>
+        </td>
+        <td style="padding:10px 8px 10px 0;vertical-align:middle;font-size:12px;color:#0D3D1F">
+          ${t.merchantName} <span style="font-size:10px;color:#999">${t.date}</span>
+        </td>
+        <td style="padding:10px 8px 10px 0;vertical-align:middle;font-size:10px;color:#2A9654;font-family:'DM Mono',monospace;white-space:nowrap">${t.label}</td>
+        <td style="padding:10px 14px 10px 0;vertical-align:middle;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:#C0392B;white-space:nowrap;text-align:right">${t.amount}</td>
+      </tr>
+    </table>`).join('')
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>WaiseKa - Budget Alert: ${data.categoryName} Limit Exceeded</title><style>${BASE_CSS}
   .sect-lbl{font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.08em;text-transform:uppercase;padding:0 44px;margin-bottom:10px}
   .txns{margin:0 44px 20px;border:1px solid #C8E3C4;border-radius:12px;overflow:hidden}
   .txnhd{background:#EEF9F3;padding:9px 14px;font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.06em;text-transform:uppercase}
-  .alert-dng{margin:0 44px 20px;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#FDE8E8;border:1px solid #F0A0A0}
+  .alert-dng{margin:0 44px 20px;border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#FDE8E8;border:1px solid #F0A0A0}
 </style></head><body>
 <div class="wrap"><div class="shell">
   ${emailHeader()}
@@ -522,8 +551,10 @@ export async function sendSpendingAlertEmail(data: SpendingAlertEmailData) {
     { emoji: '📛', label: 'Over by', value: data.overBy, color: '#C0392B' },
   ])}
   <div class="alert-dng">
-    <span style="font-size:18px;flex-shrink:0;margin-top:1px">❌</span>
-    <div><b>Budget exceeded.</b> Your last transaction of ${data.triggerAmount} at ${data.triggerMerchant} crossed the limit. You still have ${data.daysRemaining} days left in ${data.monthName}.</div>
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+      <td style="width:28px;vertical-align:top;padding-right:10px;font-size:18px;padding-top:1px">❌</td>
+      <td style="vertical-align:top"><b>Budget exceeded.</b> Your last transaction of ${data.triggerAmount} at ${data.triggerMerchant} crossed the limit. You still have ${data.daysRemaining} days left in ${data.monthName}.</td>
+    </tr></table>
   </div>
   <p class="sect-lbl">Recent ${data.categoryName} transactions</p>
   <div class="txns">
@@ -599,7 +630,7 @@ export async function sendSavingsMilestoneEmail(data: SavingsMilestoneEmailData)
   .ms-bar-bg{background:rgba(255,255,255,0.2);border-radius:100px;height:8px;margin:14px 0 6px}
   .ms-bar-f{height:8px;border-radius:100px;background:#56C97F}
   .ms-range{display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;color:#C2EDD0}
-  .insight-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
+  .insight-alert{margin:0 44px 20px;border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.65;color:#0D3D1F;background:#EEF9F3;border:1px solid #C8E3C4}
 </style></head><body>
 <div class="wrap"><div class="shell">
   ${emailHeader()}
@@ -624,8 +655,10 @@ export async function sendSavingsMilestoneEmail(data: SavingsMilestoneEmailData)
     { emoji: '🏁', label: 'Est. completion', value: data.estCompletionMonthYear, color: '#0D3D1F' },
   ])}
   <div class="insight-alert">
-    <span style="font-size:18px;flex-shrink:0;margin-top:1px">🦉</span>
-    <div><b>WaiseKa insight:</b> You're in the top ${data.userRankPercent}% of WaiseKa users for savings consistency. Maintaining your current ${data.avgPerMonth}/month pace puts you on track to finish by ${data.estCompletionMonthYear}.</div>
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+      <td style="width:28px;vertical-align:top;padding-right:10px;font-size:18px;padding-top:1px">🦉</td>
+      <td style="vertical-align:top"><b>WaiseKa insight:</b> You're in the top ${data.userRankPercent}% of WaiseKa users for savings consistency. Maintaining your current ${data.avgPerMonth}/month pace puts you on track to finish by ${data.estCompletionMonthYear}.</td>
+    </tr></table>
   </div>
   <div class="cta">
     <a href="${APP_URL}/goals" class="btn">View my savings goals</a>
@@ -639,4 +672,178 @@ export async function sendSavingsMilestoneEmail(data: SavingsMilestoneEmailData)
   ], "You're receiving this because milestone notifications are enabled.<br>WaiseKa · waiseKa.app")}
 </div></div></body></html>`
   await sendMail(data.email, `🎉 ${data.goalName} milestone reached - WaiseKa`, html)
+}
+
+// ─── 9. Setup Nudge (Marketing) ───────────────────────────────────────────────
+// Sent on the 1st of each month to users who:
+//   - registered > 7 days ago
+//   - have no budget set, no goals set, or both
+//   - have not received this email type in the current calendar month
+//
+// Dynamic sections: budget section shows if noBudget=true, goals section if noGoals=true.
+
+export interface SetupNudgeEmailData {
+  firstName: string
+  email: string
+  noBudget: boolean
+  noGoals: boolean
+  monthName: string  // e.g. "July"
+}
+
+export async function sendSetupNudgeEmail(data: SetupNudgeEmailData) {
+  const settingsUrl = `${APP_URL}/settings`
+
+  // Derive subject line based on what's missing
+  const subject =
+    data.noBudget && data.noGoals
+      ? `${data.firstName}, your WaiseKa account is missing a few things`
+      : data.noBudget
+        ? `${data.firstName}, you still haven't set a budget - here's why it matters`
+        : `${data.firstName}, you're halfway there - add a savings goal`
+
+  const heroCopy =
+    data.noBudget && data.noGoals
+      ? { icon: '🌱', title: 'Your account is almost ready', sub: "Two quick steps will unlock WaiseKa’s full power. Here’s what you’re missing." }
+      : data.noBudget
+        ? { icon: '💰', title: "No budget set yet - let’s fix that", sub: 'Most people who set a budget in their first month save 23% more. Yours takes 3 minutes.' }
+        : { icon: '🎯', title: "You’re close - add a savings goal", sub: "You’ve got a budget. Now give your money somewhere to go. Goals make saving automatic." }
+
+  // ── Budget section ──────────────────────────────────────────────────────────
+  const budgetSection = data.noBudget ? `
+  <div style="margin:0 44px 24px;background:#F4FBF6;border:1px solid #C8E3C4;border-radius:16px;overflow:hidden">
+    <div style="background:#1A6B3A;padding:14px 20px">
+      <span style="font-size:11px;font-weight:700;color:#C2EDD0;letter-spacing:0.08em;text-transform:uppercase">Step 1 - Set a Budget</span>
+    </div>
+    <div style="padding:20px">
+      <p style="font-size:13px;color:#0D3D1F;line-height:1.75;margin-bottom:14px">
+        A budget tells your money where to go instead of wondering where it went.
+        WaiseKa users who set even <b>one budget category</b> in their first month
+        save an average of <b>23% more</b> than those who skip this step.
+      </p>
+      <table role="presentation" style="width:100%;border-collapse:collapse;margin-bottom:16px">
+        <tr>
+          <td style="width:33%;padding:10px 8px 10px 0;vertical-align:top">
+            <div style="background:#EEF9F3;border:1px solid #C8E3C4;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:20px;margin-bottom:4px">📊</div>
+              <div style="font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Know exactly</div>
+              <div style="font-size:11px;color:#2D4A35;line-height:1.4">where every riyal goes</div>
+            </div>
+          </td>
+          <td style="width:33%;padding:10px 8px 10px 0;vertical-align:top">
+            <div style="background:#EEF9F3;border:1px solid #C8E3C4;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:20px;margin-bottom:4px">🚨</div>
+              <div style="font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Get alerts</div>
+              <div style="font-size:11px;color:#2D4A35;line-height:1.4">before you overspend</div>
+            </div>
+          </td>
+          <td style="width:33%;padding:10px 0;vertical-align:top">
+            <div style="background:#EEF9F3;border:1px solid #C8E3C4;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:20px;margin-bottom:4px">📈</div>
+              <div style="font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Monthly report</div>
+              <div style="font-size:11px;color:#2D4A35;line-height:1.4">auto-generated for you</div>
+            </div>
+          </td>
+        </tr>
+      </table>
+      <div style="background:#FEF6E4;border:1px solid #F0D078;border-radius:10px;padding:12px 14px;font-size:12px;color:#0D3D1F;line-height:1.65;margin-bottom:16px">
+        <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+          <td style="width:24px;vertical-align:top;padding-right:8px;font-size:16px;padding-top:1px">💬</td>
+          <td style="vertical-align:top"><b>"I set my Food budget and immediately realized I was spending 40% more than I thought."</b><br><span style="color:#7A9A80;font-size:11px">- WaiseKa user, 3 months in</span></td>
+        </tr></table>
+      </div>
+      <div style="text-align:center">
+        <a href="${APP_URL}/budgets" style="display:inline-block;background:#1A6B3A;color:#fff;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;padding:12px 28px;border-radius:100px;text-decoration:none;letter-spacing:0.01em">Set my first budget →</a>
+        <p style="font-size:10px;color:#2A9654;margin-top:7px;font-family:'DM Mono',monospace">Takes less than 3 minutes</p>
+      </div>
+    </div>
+  </div>` : ''
+
+  // ── Goals section ───────────────────────────────────────────────────────────
+  const goalsSection = data.noGoals ? `
+  <div style="margin:0 44px 24px;background:#F4FBF6;border:1px solid #C8E3C4;border-radius:16px;overflow:hidden">
+    <div style="background:#2A9654;padding:14px 20px">
+      <span style="font-size:11px;font-weight:700;color:#C2EDD0;letter-spacing:0.08em;text-transform:uppercase">${data.noBudget ? 'Step 2 - Create a Savings Goal' : 'Add a Savings Goal'}</span>
+    </div>
+    <div style="padding:20px">
+      <p style="font-size:13px;color:#0D3D1F;line-height:1.75;margin-bottom:14px">
+        People with written financial goals are <b>42% more likely</b> to achieve them.
+        WaiseKa tracks your progress automatically so you always know how close you are.
+      </p>
+      <div style="margin-bottom:16px">
+        <div style="font-size:10px;font-weight:700;color:#1A6B3A;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:8px">Popular goals people start with</div>
+        <table role="presentation" style="width:100%;border-collapse:collapse">
+          <tr>
+            <td style="padding:0 6px 8px 0;width:50%;vertical-align:top">
+              <div style="background:#EEF9F3;border:1px solid #C8E3C4;border-radius:10px;padding:10px 12px;font-size:12px;color:#0D3D1F">
+                <span style="font-size:16px;margin-right:6px">✈️</span><b>Travel fund</b><br>
+                <span style="font-size:11px;color:#5A7A60">Save toward your next trip</span>
+              </div>
+            </td>
+            <td style="padding:0 0 8px 0;width:50%;vertical-align:top">
+              <div style="background:#EEF9F3;border:1px solid #C8E3C4;border-radius:10px;padding:10px 12px;font-size:12px;color:#0D3D1F">
+                <span style="font-size:16px;margin-right:6px">🛡️</span><b>Emergency fund</b><br>
+                <span style="font-size:11px;color:#5A7A60">3–6 months of expenses</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 6px 0 0;width:50%;vertical-align:top">
+              <div style="background:#EEF9F3;border:1px solid #C8E3C4;border-radius:10px;padding:10px 12px;font-size:12px;color:#0D3D1F">
+                <span style="font-size:16px;margin-right:6px">🏠</span><b>House down payment</b><br>
+                <span style="font-size:11px;color:#5A7A60">Long-term wealth building</span>
+              </div>
+            </td>
+            <td style="padding:0;width:50%;vertical-align:top">
+              <div style="background:#EEF9F3;border:1px solid #C8E3C4;border-radius:10px;padding:10px 12px;font-size:12px;color:#0D3D1F">
+                <span style="font-size:16px;margin-right:6px">📱</span><b>Big purchase</b><br>
+                <span style="font-size:11px;color:#5A7A60">Guilt-free when you save for it</span>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div style="text-align:center">
+        <a href="${APP_URL}/goals" style="display:inline-block;background:#2A9654;color:#fff;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;padding:12px 28px;border-radius:100px;text-decoration:none;letter-spacing:0.01em">Create my first goal →</a>
+        <p style="font-size:10px;color:#2A9654;margin-top:7px;font-family:'DM Mono',monospace">Name it, set a target, done</p>
+      </div>
+    </div>
+  </div>` : ''
+
+  // ── Divider between sections ────────────────────────────────────────────────
+  const sectionDivider = data.noBudget && data.noGoals
+    ? `<div style="text-align:center;margin:0 44px 24px;font-size:11px;color:#7A9A80;font-family:'DM Mono',monospace">- and -</div>`
+    : ''
+
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>WaiseKa - Complete Your Setup</title><style>${BASE_CSS}
+  @media only screen and (max-width:600px){
+    .nudge-card{margin:0 16px 20px !important}
+    .nudge-grid td{display:block !important;width:100% !important;padding-right:0 !important;margin-bottom:8px !important}
+  }
+</style></head><body>
+<div class="wrap"><div class="shell">
+  ${emailHeader()}
+  <div class="hero">
+    <div class="hico">${heroCopy.icon}</div>
+    <h1 class="h1">${heroCopy.title}</h1>
+    <p class="hsub">${heroCopy.sub}</p>
+  </div>
+  <div class="body">
+    <p class="gr">Hey ${data.firstName},</p>
+    <p class="p">It's the start of ${data.monthName} - the best time to get your finances in order. WaiseKa is ready to help, but your account needs a little more to work its magic.</p>
+  </div>
+  <div style="height:4px"></div>
+  ${budgetSection}
+  ${sectionDivider}
+  ${goalsSection}
+  <div class="tip"><b>WaiseKa users who complete setup</b> log 3× more consistently and hit their savings targets 2× faster than those who skip these steps. ${data.monthName} is a clean slate - use it.</div>
+  <div style="height:16px"></div>
+  ${emailFooter([
+    { href: `${APP_URL}/budgets`, label: 'Set a budget' },
+    { href: `${APP_URL}/goals`, label: 'Create a goal' },
+    { href: settingsUrl, label: 'Unsubscribe' },
+  ], "You're receiving this because your WaiseKa setup isn't complete yet.<br>WaiseKa · waiseKa.app")}
+</div></div></body></html>`
+
+  await sendMail(data.email, subject, html)
 }

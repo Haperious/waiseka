@@ -93,7 +93,7 @@ export function useSpeechToText(): UseSpeechToTextReturn {
 
   const startListening = useCallback(() => {
     if (!isSupported) return
-    // Abort any lingering session but don't wait for onend — recognition.start()
+    // Abort any lingering session but don't wait for onend - recognition.start()
     // must be called synchronously within the iOS user gesture or mic access is denied.
     recognitionRef.current?.abort()
     recognitionRef.current = null

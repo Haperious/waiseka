@@ -6,6 +6,7 @@ import { adminGate } from '@/lib/admin-gate'
 import { sendReEngageEmail } from '@/lib/email'
 import type { IUser } from '@/lib/models/User'
 import type { IGoal } from '@/lib/models/Goal'
+import type { IEmailLog } from '@/lib/models/EmailLog'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
@@ -63,10 +64,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       topGoalTarget: goalTarget,
     })
 
-    await db.collection<IUser>('users').updateOne(
-      { _id: user._id },
-      { $set: { 'notifications.email.lastSentReEngage': new Date() } }
-    )
+    await Promise.all([
+      db.collection<IUser>('users').updateOne(
+        { _id: user._id },
+        { $set: { 'notifications.email.lastSentReEngage': new Date() } }
+      ),
+      db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
+        userId: id,
+        type: 're_engage',
+        sentAt: new Date(),
+      } as unknown as Omit<IEmailLog, '_id'>),
+    ])
 
     return NextResponse.json({ ok: true, sentTo: user.email })
   } catch (err) {

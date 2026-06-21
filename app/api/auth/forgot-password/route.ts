@@ -4,6 +4,7 @@ import { getDb } from '@/lib/mongodb'
 import { sendResetPasswordEmail } from '@/lib/email'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import type { IUser } from '@/lib/models/User'
+import type { IEmailLog } from '@/lib/models/EmailLog'
 
 const EXPIRY_MINUTES = 30
 // 3 requests per IP per 15 minutes
@@ -64,7 +65,15 @@ export async function POST(req: NextRequest) {
     requestedAt,
     deviceInfo,
     locationApprox: 'Location unavailable',
-  }).catch((err) => console.error('[forgot-password] email error:', err))
+  })
+    .then(() =>
+      db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
+        userId: user._id.toString(),
+        type: 'reset_password',
+        sentAt: new Date(),
+      } as unknown as Omit<IEmailLog, '_id'>)
+    )
+    .catch((err) => console.error('[forgot-password] email error:', err))
 
   return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' })
 }

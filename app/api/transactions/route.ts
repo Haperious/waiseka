@@ -9,6 +9,7 @@ import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
 import { sendSpendingAlertEmail } from '@/lib/email'
 import { formatCurrency } from '@/lib/utils'
+import type { IEmailLog } from '@/lib/models/EmailLog'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
 
   const db = await getDb()
 
-  // Fetch user once — used both for currency resolution and spending alert below
+  // Fetch user once - used both for currency resolution and spending alert below
   const postUser = await db.collection<IUser>('users').findOne(
     { _id: new ObjectId(session.user.id) as never },
     { projection: { name: 1, email: 1, preferences: 1 } }
@@ -152,6 +153,16 @@ async function checkSpendingAlert(
   const previousTotal = totalSpent - triggerAmount
   if (previousTotal >= budget.limit) return
 
+  // Dedup: only one spending alert per category per calendar month
+  const logMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+  const alreadyAlerted = await db.collection<IEmailLog>('email_logs').findOne({
+    userId,
+    type: 'spending_alert',
+    category,
+    sentAt: { $gte: monthStart, $lt: logMonthEnd },
+  })
+  if (alreadyAlerted) return
+
   const sym = user.preferences?.currencySymbol ?? '₱'
   const fmt = (n: number) => formatCurrency(n, sym)
 
@@ -184,4 +195,12 @@ async function checkSpendingAlert(
     surplusCategory: surplus?.category ?? 'Other',
     surplusCategoryRemaining: surplus ? fmt(surplus.limit - (spentMap[surplus.category] ?? 0)) : fmt(0),
   })
+
+  // Log the send so we can dedup future alerts this month
+  await db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
+    userId,
+    type: 'spending_alert',
+    category,
+    sentAt: now,
+  } as unknown as Omit<IEmailLog, '_id'>)
 }

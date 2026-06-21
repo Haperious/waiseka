@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ months: MONTH_LABELS, categories: [], restricted: !userIsPremium })
   }
 
-  // Sort by annual total desc — show all active categories, no cap
+  // Sort by annual total desc - show all active categories, no cap
   const sorted = activeCategories.sort((a, b) => (categoryAnnualTotal[b] ?? 0) - (categoryAnnualTotal[a] ?? 0))
 
   // Fetch stored colors from the categories collection for all active categories

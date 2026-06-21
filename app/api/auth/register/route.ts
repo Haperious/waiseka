@@ -6,6 +6,7 @@ import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
 import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import type { IEmailLog } from '@/lib/models/EmailLog'
 
 // 5 registrations per IP per hour
 const RATE_LIMIT = 5
@@ -118,10 +119,14 @@ export async function POST(req: NextRequest) {
 
     const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/auth/verify-email?token=${verifyToken}`
 
+    const emailLogs = db.collection<Omit<IEmailLog, '_id'>>('email_logs')
+
     sendWelcomeEmail({ firstName, email: lowerEmail })
+      .then(() => emailLogs.insertOne({ userId, type: 'welcome', sentAt: new Date() } as unknown as Omit<IEmailLog, '_id'>))
       .catch((err) => console.error('[register] welcome email error:', err))
 
     sendVerificationEmail({ firstName, email: lowerEmail, verifyUrl })
+      .then(() => emailLogs.insertOne({ userId, type: 'email_verification', sentAt: new Date() } as unknown as Omit<IEmailLog, '_id'>))
       .catch((err) => console.error('[register] verification email error:', err))
 
     return NextResponse.json({ message: 'Account created successfully' }, { status: 201 })

@@ -27,7 +27,7 @@ export function useNotifications() {
       const data = await res.json()
       setUnreadCount(data.count ?? 0)
     } catch {
-      // silent — polling failure shouldn't surface an error
+      // silent - polling failure shouldn't surface an error
     }
   }, [])
 

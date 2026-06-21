@@ -18,6 +18,7 @@ import { useSession } from 'next-auth/react'
 import { isPremium } from '@/lib/tier'
 import ImportModal from '@/components/import/ImportModal'
 import TransactionForm from './TransactionForm'
+import BulkTransactionForm from './BulkTransactionForm'
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: 'var(--color-card)',
@@ -56,6 +57,7 @@ export default function TransactionsPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [addOpen, setAddOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const [deleteTx, setDeleteTx] = useState<Transaction | null>(null)
@@ -217,6 +219,11 @@ export default function TransactionsPage() {
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
             <Upload style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
             <span className="hidden sm:inline">{t('tx.import')}</span>
+          </Button>
+          <Button  size="sm" onClick={() => setBulkOpen(true)} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
+            <Plus style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">Add Multiple</span>
+            <span className="sm:hidden">Bulk</span>
           </Button>
           <Button size="sm" onClick={() => setAddOpen(true)} className="h-10 px-4 text-sm sm:h-8 sm:px-3 sm:text-xs">
             <Plus style={{ width: 16, height: 16, marginRight: 6 }} className="sm:w-3.5 sm:h-3.5 sm:mr-1" />
@@ -701,6 +708,14 @@ export default function TransactionsPage() {
         <TransactionForm
           onSuccess={() => { setAddOpen(false); refetch() }}
           onCancel={() => setAddOpen(false)}
+        />
+      </Modal>
+
+      {/* ── Bulk add modal ───────────────────────────────────────────────────── */}
+      <Modal open={bulkOpen} onClose={() => setBulkOpen(false)} title="Add Multiple Transactions">
+        <BulkTransactionForm
+          onSuccess={() => { setBulkOpen(false); refetch() }}
+          onCancel={() => setBulkOpen(false)}
         />
       </Modal>
 

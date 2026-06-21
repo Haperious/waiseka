@@ -56,10 +56,10 @@ export async function extractFromPDF(fileBuffer: Buffer, password?: string): Pro
     };
   }
 
-  // pdfjs-dist v5 is ESM-only — must use dynamic import()
+  // pdfjs-dist v5 is ESM-only - must use dynamic import()
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-  // On Windows, bare C:\ paths are rejected by the ESM loader — must be a file:// URL
+  // On Windows, bare C:\ paths are rejected by the ESM loader - must be a file:// URL
   const workerPath = path.join(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs')
   pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href
 

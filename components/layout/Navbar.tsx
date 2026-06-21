@@ -23,7 +23,7 @@ export default function Navbar({ onMenuClick, title }: NavbarProps) {
       style={{ backgroundColor: 'var(--color-surface-blur)', borderColor: 'var(--color-border)' }}
     >
       <div className="flex items-center gap-3">
-        {/* Logo — mobile only, sidebar handles desktop */}
+        {/* Logo - mobile only, sidebar handles desktop */}
         <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
           <Image
             src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'}

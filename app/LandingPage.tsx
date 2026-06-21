@@ -356,7 +356,7 @@ export default function LandingPage() {
 
         {/* Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {/* Currency selector — hidden on mobile */}
+          {/* Currency selector - hidden on mobile */}
           <div className="hidden sm:block" style={{ position: 'relative' }}>
             <button
               onClick={() => setCurrencyOpen(o => !o)}
@@ -407,7 +407,7 @@ export default function LandingPage() {
             )}
           </div>
 
-          {/* EN / TL — hidden on mobile, shown sm+ */}
+          {/* EN / TL - hidden on mobile, shown sm+ */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'tl' : 'en')}
             className="hidden sm:flex"
@@ -437,7 +437,7 @@ export default function LandingPage() {
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
-          {/* Sign In — hidden on mobile */}
+          {/* Sign In - hidden on mobile */}
           <Link
             href="/login"
             style={{
@@ -450,7 +450,7 @@ export default function LandingPage() {
             {t('landing.nav.signIn')}
           </Link>
 
-          {/* Get Started — hidden on mobile */}
+          {/* Get Started - hidden on mobile */}
           <Link
             href="/register"
             style={{
@@ -465,7 +465,7 @@ export default function LandingPage() {
             {t('landing.nav.getStarted')}
           </Link>
 
-          {/* Mobile hamburger — visible only on mobile */}
+          {/* Mobile hamburger - visible only on mobile */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
@@ -612,7 +612,7 @@ export default function LandingPage() {
           }}
         />
 
-        {/* Left — text */}
+        {/* Left - text */}
         <div style={{ flex: '1 1 280px', maxWidth: 520, position: 'relative', zIndex: 1, minWidth: 0 }}>
           {/* Badge */}
           <div
@@ -712,7 +712,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        {/* Right — dashboard preview */}
+        {/* Right - dashboard preview */}
         <div
           style={{
             flex: '1 1 280px', maxWidth: 440, position: 'relative', zIndex: 1,
@@ -901,7 +901,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Right — feature cards */}
+          {/* Right - feature cards */}
           <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {filipinoFeatures.map(({ icon: Icon, title, desc }) => (
               <div

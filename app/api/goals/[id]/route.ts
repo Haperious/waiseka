@@ -16,7 +16,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const body = await req.json()
 
-  // Whitelist editable fields — never allow userId, _id, or system fields to be overwritten
+  // Whitelist editable fields - never allow userId, _id, or system fields to be overwritten
   const update: Partial<IGoal> & { updatedAt: Date } = { updatedAt: new Date() }
   if (body.title !== undefined) update.title = body.title
   if (body.targetAmount !== undefined) {

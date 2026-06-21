@@ -5,6 +5,7 @@ import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { sendVerificationEmail } from '@/lib/email'
 import type { IUser } from '@/lib/models/User'
+import type { IEmailLog } from '@/lib/models/EmailLog'
 
 const EXPIRY_HOURS = 24
 
@@ -40,7 +41,15 @@ export async function POST() {
     firstName: user.name.split(' ')[0],
     email: user.email,
     verifyUrl,
-  }).catch((err) => console.error('[resend-verification] email error:', err))
+  })
+    .then(() =>
+      db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
+        userId: session.user.id,
+        type: 'email_verification',
+        sentAt: new Date(),
+      } as unknown as Omit<IEmailLog, '_id'>)
+    )
+    .catch((err) => console.error('[resend-verification] email error:', err))
 
   return NextResponse.json({ message: 'Verification email sent' })
 }

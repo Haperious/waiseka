@@ -63,7 +63,7 @@ function VerifyEmailContent() {
         </p>
         {resent ? (
           <p className="text-sm font-medium" style={{ color: 'var(--color-income)' }}>
-            New verification email sent — check your inbox.
+            New verification email sent - check your inbox.
           </p>
         ) : (
           <Button onClick={resend} loading={resending} className="w-full">
@@ -108,7 +108,7 @@ function VerifyEmailContent() {
       </p>
       {resent ? (
         <p className="text-sm font-medium" style={{ color: 'var(--color-income)' }}>
-          New verification email sent — check your inbox.
+          New verification email sent - check your inbox.
         </p>
       ) : (
         <Button variant="outline" onClick={resend} loading={resending} className="w-full">

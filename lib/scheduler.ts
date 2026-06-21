@@ -11,6 +11,7 @@ import type { IUser } from '@/lib/models/User'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IGoal } from '@/lib/models/Goal'
 import type { ITransaction } from '@/lib/models/Transaction'
+import type { IEmailLog } from '@/lib/models/EmailLog'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -122,7 +123,15 @@ async function sendBudgetReminders() {
         categories,
         alertCategory,
         projectedOverage,
-      }).catch((err) => console.error(`[scheduler] budget reminder error for ${user.email}:`, err))
+      })
+        .then(() =>
+          db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
+            userId,
+            type: 'budget_reminder',
+            sentAt: new Date(),
+          } as unknown as Omit<IEmailLog, '_id'>)
+        )
+        .catch((err) => console.error(`[scheduler] budget reminder error for ${user.email}:`, err))
     }
   } catch (err) {
     console.error('[scheduler] budget reminder job error:', err)
@@ -186,7 +195,15 @@ async function sendReEngageEmails() {
         topGoalName: topGoal.title,
         topGoalPercent: goalPercent,
         topGoalTarget: fmt(topGoal.targetAmount, sym),
-      }).catch((err) => console.error(`[scheduler] re-engage error for ${user.email}:`, err))
+      })
+        .then(() =>
+          db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
+            userId,
+            type: 're_engage',
+            sentAt: new Date(),
+          } as unknown as Omit<IEmailLog, '_id'>)
+        )
+        .catch((err) => console.error(`[scheduler] re-engage error for ${user.email}:`, err))
     }
   } catch (err) {
     console.error('[scheduler] re-engage job error:', err)
@@ -302,7 +319,15 @@ async function sendMonthlyReports() {
           comparedMonth: prevMonthName,
           monthlySavingsFree,
         },
-      }).catch((err) => console.error(`[scheduler] monthly report error for ${user.email}:`, err))
+      })
+        .then(() =>
+          db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
+            userId,
+            type: 'monthly_report',
+            sentAt: new Date(),
+          } as unknown as Omit<IEmailLog, '_id'>)
+        )
+        .catch((err) => console.error(`[scheduler] monthly report error for ${user.email}:`, err))
     }
   } catch (err) {
     console.error('[scheduler] monthly report job error:', err)

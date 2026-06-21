@@ -31,7 +31,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           // Update lastLogin on each active session refresh (throttled to once per hour to
-          // avoid excessive writes — we only care about day-level accuracy in the admin panel)
+          // avoid excessive writes - we only care about day-level accuracy in the admin panel)
           const lastSeenHour = (token.lastSeenHour as number | undefined) ?? 0
           const currentHour = Math.floor(Date.now() / 3_600_000)
           if (currentHour > lastSeenHour) {

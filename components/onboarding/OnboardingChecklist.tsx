@@ -336,7 +336,7 @@ export default function OnboardingChecklist({
         </ul>
       )}
 
-      {/* Footer note for mobile — categories is in More → Sidebar */}
+      {/* Footer note for mobile - categories is in More → Sidebar */}
       {!collapsed && (
         <p
           className="lg:hidden px-4 pb-3 text-[10px] leading-tight"

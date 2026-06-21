@@ -71,7 +71,7 @@ export default function CategoryTrendChart({ months, categories }: CategoryTrend
 
   return (
     <div>
-      {/* Custom chip-row legend — no Recharts Legend component */}
+      {/* Custom chip-row legend - no Recharts Legend component */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',

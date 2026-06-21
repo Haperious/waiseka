@@ -1,6 +1,6 @@
 /**
  * In-memory sliding-window rate limiter.
- * State lives in the Next.js process — resets on redeploy.
+ * State lives in the Next.js process - resets on redeploy.
  * Suitable for single-instance deployments (Netlify, Vercel).
  */
 

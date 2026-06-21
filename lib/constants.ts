@@ -1,8 +1,8 @@
 /**
- * WaiseKa — global app constants
+ * WaiseKa - global app constants
  *
  * All tier limits and feature caps live here.
- * Never hardcode these values elsewhere — import from this file.
+ * Never hardcode these values elsewhere - import from this file.
  */
 
 // ── Import limits ────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const body = await req.json()
 
-  // Whitelist editable fields — never allow userId, _id, or system fields to be overwritten
+  // Whitelist editable fields - never allow userId, _id, or system fields to be overwritten
   const update: Partial<IBudget> & { updatedAt: Date } = { updatedAt: new Date() }
   if (body.category !== undefined) update.category = body.category
   if (body.limit !== undefined) {

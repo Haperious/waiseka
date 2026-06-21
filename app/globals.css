@@ -2,7 +2,7 @@
 
 @custom-variant dark (.dark &);
 
-/* ── Light mode (default) — Sage ── */
+/* ── Light mode (default) - Sage ── */
 :root {
   --color-bg:       #F7F6F0;
   --color-surface:  #FAFAF5;
@@ -33,7 +33,7 @@
   --color-surface-blur: rgba(250, 250, 245, 0.88);
 }
 
-/* ── Dark mode — Sage ── */
+/* ── Dark mode - Sage ── */
 .dark {
   --color-bg:       #0C100E;
   --color-surface:  #111C14;

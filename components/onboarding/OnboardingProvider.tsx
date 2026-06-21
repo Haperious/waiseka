@@ -26,14 +26,14 @@ export default function OnboardingProvider() {
       })
       .catch((err) => {
         console.error('[OnboardingProvider] failed to fetch user:', err)
-        // Fail silently — onboarding is non-critical
+        // Fail silently - onboarding is non-critical
       })
   }, [status])
 
   // Don't render until we have auth + data
   if (!session || !onboarding) return null
 
-  // Already completed or dismissed — nothing to show
+  // Already completed or dismissed - nothing to show
   if (onboarding.completedAt || onboarding.dismissed) return null
 
   return (

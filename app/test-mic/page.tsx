@@ -41,7 +41,7 @@ export default function TestMicPage() {
 
     recognition.onerror = (e) => {
       const err = e as Event & { error?: string; message?: string }
-      addLog(`ERROR: ${err.error ?? 'unknown'} — ${err.message ?? 'no message'}`)
+      addLog(`ERROR: ${err.error ?? 'unknown'} - ${err.message ?? 'no message'}`)
     }
 
     try {
@@ -96,7 +96,7 @@ export default function TestMicPage() {
           marginBottom: '20px',
         }}
       >
-        Test — {lang}
+        Test - {lang}
       </button>
 
       <div style={{ fontSize: '12px', background: '#f1f5f9', borderRadius: '8px', padding: '12px', minHeight: '120px' }}>

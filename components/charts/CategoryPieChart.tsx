@@ -30,7 +30,7 @@ export default function CategoryPieChart({ data }: { data: CategoryData[] }) {
     )
   }
 
-  // Which slice is "active" — pinned takes priority, then hover
+  // Which slice is "active" - pinned takes priority, then hover
   const activeIndex = pinned ?? hovered ?? undefined
 
   const handleLegendClick = (i: number) => {
@@ -89,7 +89,7 @@ export default function CategoryPieChart({ data }: { data: CategoryData[] }) {
         </PieChart>
       </ResponsiveContainer>
 
-      {/* Custom legend — click to pin/highlight */}
+      {/* Custom legend - click to pin/highlight */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -123,7 +123,7 @@ export default function CategoryPieChart({ data }: { data: CategoryData[] }) {
                 transition: 'all 0.15s',
                 flexShrink: 0,
               }}
-              title={`${item.category} — ${formatAmount(item.total)} (${item.percentage}%)`}
+              title={`${item.category} - ${formatAmount(item.total)} (${item.percentage}%)`}
             >
               <div style={{
                 width: 8, height: 8, borderRadius: '50%',

@@ -199,7 +199,7 @@ function cleanGCashDescription(raw: string, type: ITransaction['type']): string 
   const recvMatch = raw.match(/Received GCash from (.+?) with account ending/i)
   if (recvMatch) return `Received from ${recvMatch[1].trim()}`
 
-  // "Transfer from SENDER to RECIPIENT" — shorten to the relevant party
+  // "Transfer from SENDER to RECIPIENT" - shorten to the relevant party
   const xferMatch = raw.match(/Transfer from (\S+) to (\S+)/i)
   if (xferMatch) {
     return type === 'income' ? `Transfer from ${xferMatch[1]}` : `Transfer to ${xferMatch[2]}`
@@ -219,7 +219,7 @@ function detectGoTyme(text: string): boolean {
 function parseGoTyme(rawText: string): Partial<ITransaction>[] {
   const flat = rawText.replace(/\s+/g, ' ').trim()
 
-  // "MM-DD-YYYY" — note this is NOT ISO order (month first)
+  // "MM-DD-YYYY" - note this is NOT ISO order (month first)
   const DATE_RE = /\b(\d{2})-(\d{2})-(\d{4})\b/g
 
   type B = { index: number; raw: string; month: number; day: number; year: number }
@@ -242,7 +242,7 @@ function parseGoTyme(rawText: string): Partial<ITransaction>[] {
       .slice(bounds[i].index + bounds[i].raw.length, bounds[i + 1]?.index ?? flat.length)
       .trim()
 
-    // Collect all decimal amounts — last 3 are: credit, debit, running balance
+    // Collect all decimal amounts - last 3 are: credit, debit, running balance
     const nums = [...seg.matchAll(/[\d,]+\.\d{2}/g)].map((m) => ({
       index: m.index!,
       value: parseFloat(m[0].replace(/,/g, '')),
@@ -335,7 +335,7 @@ function parseCBQ(rawText: string): Partial<ITransaction>[] {
     }
     prevBalance = balance
 
-    // Use transaction date (m[3]) — the actual activity date, not the posting date
+    // Use transaction date (m[3]) - the actual activity date, not the posting date
     const dp = m[3].match(/(\d{2})-([A-Za-z]{3})-(\d{2})/)
     if (!dp) continue
     const month = MONTH_NAMES.indexOf(dp[2].toUpperCase())

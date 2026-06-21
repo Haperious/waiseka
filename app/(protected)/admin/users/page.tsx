@@ -241,7 +241,7 @@ export default function AdminUsersPage() {
                     </span>
                   </td>
 
-                  {/* Actions — Reset Queries */}
+                  {/* Actions - Reset Queries */}
                   <td className="px-4 py-3">
                     {confirmReset === user._id ? (
                       <div className="flex items-center gap-2">
@@ -277,7 +277,7 @@ export default function AdminUsersPage() {
                     )}
                   </td>
 
-                  {/* Actions — Send Reminder */}
+                  {/* Actions - Send Reminder */}
                   <td className="px-4 py-3">
                     {confirmReminder === user._id ? (
                       <div className="flex items-center gap-2">

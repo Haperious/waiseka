@@ -105,7 +105,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
           {isFil ? 'Input ng boses' : 'Voice input'}
         </span>
 
-        {/* Language toggle — hidden on iOS since fil-PH is unsupported */}
+        {/* Language toggle - hidden on iOS since fil-PH is unsupported */}
         {!isIOS && (
           <button
             type="button"
@@ -185,11 +185,11 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
               : error === 'service-not-allowed'
               ? (isFil ? 'Hindi available ang speech recognition sa Safari. Kailangan ng HTTPS at Speech Recognition sa System/iOS Settings.' : 'Speech recognition unavailable in Safari. Requires HTTPS and Speech Recognition enabled in System/iOS Settings.')
               : error === 'network'
-              ? (isFil ? 'Network error. Suriin ang iyong koneksyon.' : 'Network error — check your internet connection.')
+              ? (isFil ? 'Network error. Suriin ang iyong koneksyon.' : 'Network error - check your internet connection.')
               : error === 'no-speech'
-              ? (isFil ? 'Walang narinig na boses. Subukan ulit.' : 'No speech detected — please try again.')
+              ? (isFil ? 'Walang narinig na boses. Subukan ulit.' : 'No speech detected - please try again.')
               : error === 'language-not-supported'
-              ? 'Filipino not supported on this device — switched to English. Enable it in iOS Settings → General → Keyboard → Keyboards.'
+              ? 'Filipino not supported on this device - switched to English. Enable it in iOS Settings → General → Keyboard → Keyboards.'
               : (isFil ? `Error sa speech recognition: ${error}` : `Speech recognition error: ${error}`)}
           </p>
           <button

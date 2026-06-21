@@ -25,7 +25,7 @@ export async function GET() {
     })) as Omit<ICategory, '_id'>[]
 
     const result = await col.insertMany(docs as ICategory[])
-    // Return the seeded docs directly — avoid a second round trip to the DB.
+    // Return the seeded docs directly - avoid a second round trip to the DB.
     categories = docs.map((doc, i) => ({
       ...doc,
       _id: result.insertedIds[i],
