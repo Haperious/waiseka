@@ -18,6 +18,7 @@ import {
   Users,
   Mail,
   Flag,
+  BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/context/LanguageContext'
@@ -30,6 +31,7 @@ const navItems: { href: string; labelKey: TranslationKey; icon: React.ElementTyp
   { href: '/goals',        labelKey: 'nav.goals',        icon: Target          },
   { href: '/categories',   labelKey: 'nav.categories',   icon: Tags            },
   { href: '/ai/chat',      labelKey: 'nav.aiAssistant',  icon: Bot             },
+  { href: '/tips',         labelKey: 'nav.tips',         icon: BookOpen        },
   { href: '/settings',     labelKey: 'nav.settings',     icon: Settings        },
 ]
 

@@ -505,21 +505,25 @@ export default function LandingPage() {
           <div style={{ height: 1, background: 'var(--color-border)' }} />
 
           {/* Currency selector row */}
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', letterSpacing: '0.04em', marginRight: 2 }}>
+              Currency:
+            </span>
             {CURRENCY_OPTIONS.map(({ code, flag, label }) => (
               <button
                 key={code}
                 onClick={() => setCurrency(code)}
                 style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                  padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '5px 10px', borderRadius: 20, cursor: 'pointer',
                   background: currency === code ? 'var(--color-elevated)' : 'transparent',
                   border: `1px solid ${currency === code ? 'var(--color-accent)' : 'var(--color-border)'}`,
                   fontSize: 12, fontWeight: currency === code ? 700 : 500,
                   color: currency === code ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                  transition: 'all 0.15s',
                 }}
               >
-                <span style={{ fontSize: 14 }}>{flag}</span>
+                <span style={{ fontSize: 13 }}>{flag}</span>
                 {label}
               </button>
             ))}
@@ -555,14 +559,16 @@ export default function LandingPage() {
           </div>
 
           {/* CTA buttons */}
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Link
               href="/login"
               onClick={() => setMenuOpen(false)}
               style={{
-                flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10,
-                border: '1px solid var(--color-border)', fontSize: 14, fontWeight: 600,
-                color: 'var(--color-text-primary)', textDecoration: 'none',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                padding: '7px 18px', borderRadius: 20,
+                border: '1px solid var(--color-border)', fontSize: 13, fontWeight: 600,
+                color: 'var(--color-text-secondary)', textDecoration: 'none',
+                transition: 'all 0.15s',
               }}
             >
               {t('landing.nav.signIn')}
@@ -571,9 +577,12 @@ export default function LandingPage() {
               href="/register"
               onClick={() => setMenuOpen(false)}
               style={{
-                flex: 1, textAlign: 'center', padding: '11px', borderRadius: 10,
-                background: 'var(--color-accent)', fontSize: 14, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                padding: '7px 18px', borderRadius: 20,
+                background: 'var(--color-accent)', fontSize: 13, fontWeight: 700,
                 color: isDark ? '#0C100E' : '#fff', textDecoration: 'none',
+                boxShadow: '0 2px 10px rgba(22,163,74,0.3)',
+                transition: 'all 0.15s',
               }}
             >
               {t('landing.nav.getStarted')}

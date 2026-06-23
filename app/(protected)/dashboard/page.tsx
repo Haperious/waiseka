@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
-  TrendingUp, TrendingDown, PiggyBank, Percent, Plus, Lightbulb, MailWarning,
+  TrendingUp, TrendingDown, PiggyBank, Percent, Plus, Lightbulb, MailWarning, ChevronRight,
 } from 'lucide-react'
+import { tips } from '@/lib/tipsContent'
+import type { Tip } from '@/lib/tipsContent'
 import { format } from 'date-fns'
 import { Skeleton } from '@/components/ui/Skeleton'
 import Button from '@/components/ui/Button'
@@ -355,6 +357,92 @@ function GoalBar({
   )
 }
 
+// ── Tip icon (inline SVG, stroke style matching Tips page) ──────────────────
+function DashTipIcon({ iconKey }: { iconKey: Tip['iconKey'] }) {
+  const shared = {
+    width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' as const,
+    stroke: 'currentColor', strokeWidth: 1.8,
+    strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
+  }
+  switch (iconKey) {
+    case 'pie':         return <svg {...shared}><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12L18 16"/><path d="M12 12L6.5 17"/></svg>
+    case 'piggy':       return <svg {...shared}><rect x="4" y="10" width="16" height="9" rx="2"/><path d="M12 3v8M9 8l3 3 3-3"/><path d="M9 14.5h6"/></svg>
+    case 'autoTransfer':return <svg {...shared}><path d="M5 9a7 7 0 0 1 12.5-3.5M19 5v4h-4"/><path d="M19 15a7 7 0 0 1-12.5 3.5M5 19v-4h4"/></svg>
+    case 'shield':      return <svg {...shared}><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg>
+    case 'calendar':    return <svg {...shared}><rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M4 13h16M12 9v11"/><path d="M12 9c-1.5-3-5-3-5 0M12 9c1.5-3 5-3 5 0"/></svg>
+    case 'receipt':     return <svg {...shared} strokeWidth={1.6}><path d="M6 3h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3V3Z"/><path d="M9 8h6M9 11h6M9 14h3"/></svg>
+  }
+}
+
+// ── Dashboard tip teaser card ────────────────────────────────────────────────
+function DashTipCard({ tip, onNext }: { tip: Tip; onNext: () => void }) {
+  const excerpt = tip.body.length > 140 ? tip.body.slice(0, 140).trimEnd() + '…' : tip.body
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-card)',
+      border: '1px solid var(--color-border)',
+      borderLeft: '3px solid var(--color-accent)',
+      borderRadius: 14,
+      padding: '14px 16px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+    }}>
+      {/* Top row: icon + titles + next button */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 9,
+          backgroundColor: 'var(--color-elevated)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, color: 'var(--color-primary)',
+        }}>
+          <DashTipIcon iconKey={tip.iconKey} />
+        </div>
+        <div style={{ flex: 1, paddingTop: 1 }}>
+          <p style={{ fontSize: '0.83rem', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1.3, marginBottom: 2 }}>
+            {tip.title}
+          </p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
+            {tip.filipinoFraming}
+          </p>
+        </div>
+        <button
+          onClick={onNext}
+          title="Next tip"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 2,
+            fontSize: '0.7rem', fontWeight: 600,
+            color: 'var(--color-accent)',
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: '4px 6px', borderRadius: 6,
+            flexShrink: 0,
+          }}
+        >
+          Next <ChevronRight style={{ width: 13, height: 13 }} />
+        </button>
+      </div>
+
+      {/* Excerpt */}
+      <p style={{ fontSize: '0.8rem', lineHeight: 1.6, color: 'var(--color-text-primary)', opacity: 0.88 }}>
+        {excerpt}
+      </p>
+
+      {/* Read more link */}
+      <Link
+        href="/tips"
+        style={{
+          fontSize: '0.75rem', fontWeight: 600,
+          color: 'var(--color-accent)',
+          textDecoration: 'none',
+          alignSelf: 'flex-start',
+        }}
+      >
+        Read full tip →
+      </Link>
+    </div>
+  )
+}
+
 // ── Main dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { formatAmount } = useCurrency()
@@ -364,6 +452,8 @@ export default function DashboardPage() {
   const currentMonth = now.getMonth() + 1
   const currentYear  = now.getFullYear()
 
+  const [tipIndex,        setTipIndex]        = useState(0)
+  useEffect(() => { setTipIndex(Math.floor(Math.random() * tips.length)) }, [])
   const [addTxOpen,       setAddTxOpen]       = useState(false)
   const [selectedYear,    setSelectedYear]    = useState(String(currentYear))
   const [selectedMonth,   setSelectedMonth]   = useState(String(currentMonth))
@@ -733,6 +823,12 @@ export default function DashboardPage() {
           </p>
         </div>
       )}
+
+      {/* ── Tip of the day ─────────────────────────────────────────────── */}
+      <DashTipCard
+        tip={tips[tipIndex]}
+        onNext={() => setTipIndex(i => (i + 1) % tips.length)}
+      />
 
       {/* ── Charts: side-by-side (free) or stacked (premium) ──────────── */}
       <div className={`grid gap-4 grid-cols-1${userIsPremium ? '' : ' sm:grid-cols-2'}`}>
