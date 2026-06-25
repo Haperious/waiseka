@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useFetch, extractApiError } from '@/hooks/useFetch'
 
 export interface Category {
   _id: string
@@ -11,19 +12,21 @@ export interface Category {
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
+
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/categories')
+    if (!res.ok) throw new Error(await extractApiError(res))
+    return res.json() as Promise<Category[]>
+  }, [])
+
+  const { execute, loading, error } = useFetch(fetcher)
 
   const fetchCategories = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/categories')
-      if (res.ok) setCategories(await res.json())
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    const data = await execute()
+    if (data) setCategories(Array.isArray(data) ? data : [])
+  }, [execute])
 
   useEffect(() => { fetchCategories() }, [fetchCategories])
 
-  return { categories, loading, refetch: fetchCategories }
+  return { categories, loading, error, refetch: fetchCategories }
 }

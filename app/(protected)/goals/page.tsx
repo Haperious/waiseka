@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
-import { Plus, Pencil, Trash2, PlusCircle, Calendar, Flag, Lock } from 'lucide-react'
+import { Plus, Pencil, Trash2, PlusCircle, Calendar, Flag, Lock, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
@@ -13,6 +13,16 @@ import { useLanguage } from '@/context/LanguageContext'
 import { TranslationKey } from '@/lib/translations'
 import { useToast } from '@/components/ui/Toast'
 import GoalForm from './GoalForm'
+
+// ── Projection types ─────────────────────────────────────────────────────────
+type ProjectionStatus = 'on_track' | 'off_track' | 'no_data' | 'completed'
+
+interface GoalProjection {
+  status: ProjectionStatus
+  monthsToComplete: number | null
+  estimatedCompletionDate: string | null
+  monthsBehind: number
+}
 
 // ── Priority config ──────────────────────────────────────────────────────────
 const PRIORITY_COLOR: Record<string, string> = {
@@ -77,6 +87,8 @@ function GoalCard({
   goal,
   formatAmount,
   t,
+  projection,
+  projectionLoading,
   onEdit,
   onDelete,
   onAddFunds,
@@ -84,6 +96,8 @@ function GoalCard({
   goal: Goal
   formatAmount: (v: number) => string
   t: (key: TranslationKey) => string
+  projection: GoalProjection | null
+  projectionLoading: boolean
   onEdit: () => void
   onDelete: () => void
   onAddFunds: () => void
@@ -279,6 +293,53 @@ function GoalCard({
         </div>
       </div>
 
+      {/* ── Projection line ── */}
+      {!isCompleted && !isPaused && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '8px 10px', borderRadius: 8,
+          backgroundColor: projectionLoading
+            ? 'var(--color-elevated)'
+            : projection?.status === 'on_track'
+            ? 'var(--color-income-bg)'
+            : projection?.status === 'off_track'
+            ? 'var(--color-warning-bg)'
+            : 'var(--color-elevated)',
+          minHeight: 32,
+        }}>
+          {projectionLoading ? (
+            <div style={{
+              height: 10, width: '70%', borderRadius: 4,
+              backgroundColor: 'var(--color-border)',
+            }} />
+          ) : projection?.status === 'on_track' ? (
+            <>
+              <CheckCircle2 style={{ width: 12, height: 12, color: 'var(--color-income)', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-income)', fontWeight: 600 }}>
+                On track · Est.{' '}
+                {projection.estimatedCompletionDate
+                  ? format(new Date(projection.estimatedCompletionDate), 'MMM yyyy')
+                  : '—'}
+              </span>
+            </>
+          ) : projection?.status === 'off_track' ? (
+            <>
+              <AlertTriangle style={{ width: 12, height: 12, color: 'var(--color-warning)', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-warning)', fontWeight: 600 }}>
+                Off track · ~{projection.monthsBehind} month{projection.monthsBehind !== 1 ? 's' : ''} behind
+              </span>
+            </>
+          ) : (
+            <>
+              <Clock style={{ width: 12, height: 12, color: 'var(--color-text-muted)', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                Add savings to see a projection
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── Add funds button ── */}
       {!isCompleted && !isPaused && (
         <button
@@ -327,6 +388,32 @@ export default function GoalsPage() {
   const [addFundsGoal, setAddFundsGoal] = useState<Goal | null>(null)
   const [fundsAmount, setFundsAmount] = useState('')
   const [fundsLoading, setFundsLoading] = useState(false)
+  const [projections, setProjections] = useState<Record<string, GoalProjection>>({})
+  const [projectionsLoading, setProjectionsLoading] = useState(false)
+
+  // Fetch projections for all active goals in parallel
+  const fetchProjections = useCallback(async (activeGoals: Goal[]) => {
+    if (activeGoals.length === 0) return
+    setProjectionsLoading(true)
+    try {
+      const results = await Promise.allSettled(
+        activeGoals.map((g) =>
+          fetch(`/api/goals/${g._id}/projection`).then((r) => r.json() as Promise<GoalProjection>),
+        ),
+      )
+      const map: Record<string, GoalProjection> = {}
+      results.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+          map[activeGoals[i]._id] = result.value
+        }
+      })
+      setProjections(map)
+    } catch {
+      // Non-critical- projection display degrades gracefully
+    } finally {
+      setProjectionsLoading(false)
+    }
+  }, [])
 
   const handleDelete = async () => {
     if (!deleteGoalItem) return
@@ -345,6 +432,9 @@ export default function GoalsPage() {
     try {
       await addFunds(addFundsGoal._id, Number(fundsAmount))
       toast(`${formatAmount(Number(fundsAmount))} added to "${addFundsGoal.title}"`, 'success')
+      // Re-fetch projection for this goal since savedAmount changed
+      const updated = await fetch(`/api/goals/${addFundsGoal._id}/projection`).then((r) => r.json())
+      setProjections((prev) => ({ ...prev, [addFundsGoal._id]: updated }))
       setAddFundsGoal(null)
       setFundsAmount('')
     } catch {
@@ -355,6 +445,13 @@ export default function GoalsPage() {
   }
 
   const activeCount = goals.filter((g) => g.status === 'active').length
+
+  // Fetch projections whenever goal list changes
+  useEffect(() => {
+    if (!loading) {
+      fetchProjections(goals.filter((g) => g.status === 'active'))
+    }
+  }, [goals, loading, fetchProjections])
 
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -441,6 +538,8 @@ export default function GoalsPage() {
               goal={goal}
               formatAmount={formatAmount}
               t={t}
+              projection={projections[goal._id] ?? null}
+              projectionLoading={projectionsLoading && !projections[goal._id]}
               onEdit={() => setEditGoal(goal)}
               onDelete={() => setDeleteGoalItem(goal)}
               onAddFunds={() => setAddFundsGoal(goal)}

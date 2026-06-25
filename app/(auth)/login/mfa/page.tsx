@@ -27,7 +27,7 @@ export default function MfaLoginPage() {
     setLoading(true)
 
     try {
-      // We use the current session to identify the user — the validate route reads session server-side
+      // We use the current session to identify the user- the validate route reads session server-side
       const res = await fetch('/api/auth/mfa/validate-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

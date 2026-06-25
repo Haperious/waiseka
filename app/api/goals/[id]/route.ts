@@ -6,6 +6,7 @@ import type { IGoal } from '@/lib/models/Goal'
 import type { IUser } from '@/lib/models/User'
 import { sendSavingsMilestoneEmail } from '@/lib/email'
 import { formatCurrency } from '@/lib/utils'
+import { computeGoalProjection } from '@/lib/utils/goalProjection'
 
 const MILESTONES = [25, 50, 75, 100]
 
@@ -54,6 +55,40 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   })
   if (!beforeGoal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // addAmount: atomic server-side increment — avoids client-side race conditions
+  if (body.addAmount !== undefined) {
+    if (typeof body.addAmount !== 'number' || !isFinite(body.addAmount) || body.addAmount <= 0) {
+      return NextResponse.json({ error: 'addAmount must be a positive number' }, { status: 400 })
+    }
+
+    const newSaved = beforeGoal.savedAmount + body.addAmount
+    const autoComplete = newSaved >= beforeGoal.targetAmount
+
+    const goal = await db.collection<IGoal>('goals').findOneAndUpdate(
+      { _id: new ObjectId(id), userId: session.user.id },
+      {
+        $inc: { savedAmount: body.addAmount },
+        $set: {
+          ...(autoComplete ? { status: 'completed' } : {}),
+          updatedAt: new Date(),
+        },
+      },
+      { returnDocument: 'after' }
+    )
+    if (!goal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const beforePercent = Math.floor((beforeGoal.savedAmount / beforeGoal.targetAmount) * 100)
+    const afterPercent = Math.floor((goal.savedAmount / goal.targetAmount) * 100)
+    const crossed = MILESTONES.find((m) => beforePercent < m && afterPercent >= m)
+    if (crossed) {
+      checkMilestone(session.user.id, goal, crossed, db).catch(
+        (err) => console.error('[goals] milestone email error:', err)
+      )
+    }
+
+    return NextResponse.json(goal)
+  }
+
   const goal = await db.collection<IGoal>('goals').findOneAndUpdate(
     { _id: new ObjectId(id), userId: session.user.id },
     { $set: update },
@@ -87,16 +122,15 @@ async function checkMilestone(userId: string, goal: IGoal, reachedPercent: numbe
   const sym = user.preferences?.currencySymbol ?? '₱'
   const fmt = (n: number) => formatCurrency(n, sym)
 
+  const projection = computeGoalProjection(goal)
   const monthsSaving = Math.max(1, Math.round(
     (Date.now() - new Date(goal.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30)
   ))
-  const avgPerMonth = goal.savedAmount / monthsSaving
-  const remaining = goal.targetAmount - goal.savedAmount
-  const monthsToTarget = avgPerMonth > 0 ? Math.ceil(remaining / avgPerMonth) : 99
-
-  const completionDate = new Date()
-  completionDate.setMonth(completionDate.getMonth() + monthsToTarget)
-  const estCompletion = completionDate.toLocaleString('en-US', { month: 'short', year: '2-digit' })
+  const avgPerMonth = projection.avgPerMonth
+  const monthsToTarget = projection.monthsToComplete ?? 99
+  const estCompletion = projection.estimatedCompletionDate
+    ? projection.estimatedCompletionDate.toLocaleString('en-US', { month: 'short', year: '2-digit' })
+    : 'Unknown'
 
   const nextMilestone = MILESTONES.find((m) => m > reachedPercent) ?? 100
   const nextMilestoneAmount = (goal.targetAmount * nextMilestone) / 100

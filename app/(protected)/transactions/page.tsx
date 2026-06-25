@@ -213,7 +213,7 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Button row — full width on mobile so all 4 buttons are always visible */}
+        {/* Button row- full width on mobile so all 4 buttons are always visible */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button variant="outline" size="sm" onClick={exportCSV} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
             <Download className="w-3.5 h-3.5 mr-1" />

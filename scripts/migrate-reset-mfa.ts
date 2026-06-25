@@ -20,7 +20,7 @@ async function main() {
   const collection = db.collection('users')
 
   const affected = await collection.countDocuments({ 'mfa.enabled': true })
-  console.log(`Found ${affected} user(s) with MFA enabled — resetting...`)
+  console.log(`Found ${affected} user(s) with MFA enabled- resetting...`)
 
   if (affected === 0) {
     console.log('Nothing to do.')

@@ -444,6 +444,14 @@ function DashTipCard({ tip, onNext }: { tip: Tip; onNext: () => void }) {
   )
 }
 
+// ── Anomaly item type ────────────────────────────────────────────────────────
+interface AnomalyItem {
+  category: string
+  currentAmount: number
+  averageAmount: number
+  percentageAbove: number
+}
+
 // ── Main dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { formatAmount } = useCurrency()
@@ -494,6 +502,10 @@ export default function DashboardPage() {
 
   const [categoryTrendData, setCategoryTrendData] = useState<{ months: string[]; categories: CategoryTrendData[]; restricted: boolean } | null>(null)
   const [categoryTrendLoading, setCategoryTrendLoading] = useState(true)
+
+  // Anomaly detection state
+  const [anomalies, setAnomalies]               = useState<AnomalyItem[]>([])
+  const [anomalyDismissed, setAnomalyDismissed] = useState(false)
 
   const { refetch } = useTransactions({ limit: 1 })
 
@@ -583,6 +595,27 @@ export default function DashboardPage() {
   useEffect(() => { loadAnalyticsSummary() }, [loadAnalyticsSummary])
   useEffect(() => { loadBudgets() },          [loadBudgets])
   useEffect(() => { loadGoals() },            [loadGoals])
+
+  // Load anomalies on mount- always current month, no dependency on selected period
+  useEffect(() => {
+    const now = new Date()
+    const dismissKey = `waiseka_anomaly_dismissed_${session?.user?.id}_${now.getFullYear()}-${now.getMonth() + 1}`
+    if (localStorage.getItem(dismissKey)) {
+      setAnomalyDismissed(true)
+      return
+    }
+    fetch('/api/ai/anomalies')
+      .then((r) => r.json())
+      .then((data) => { if (data.anomalies?.length) setAnomalies(data.anomalies) })
+      .catch(() => { /* non-critical */ })
+  }, [session?.user?.id])
+
+  const handleDismissAnomaly = () => {
+    const now = new Date()
+    const dismissKey = `waiseka_anomaly_dismissed_${session?.user?.id}_${now.getFullYear()}-${now.getMonth() + 1}`
+    localStorage.setItem(dismissKey, '1')
+    setAnomalyDismissed(true)
+  }
 
   // Compute Pera Health Score 0-100
   const { score, statusLabel, tipKey } = useMemo(() => {
@@ -736,7 +769,61 @@ export default function DashboardPage() {
         <SurveyBanner userId={session.user.id} accountCreatedAt={session.user.createdAt} />
       )}
 
-      {/* ── Hero: health ring + 4 stat cards ──────────────────────────── */}
+      {/* ── Anomaly alert card ──────────────────────────────────────── */}
+      {!anomalyDismissed && anomalies.length > 0 && (
+        <div style={{
+          borderRadius: 12,
+          backgroundColor: 'var(--color-warning-bg)',
+          border: '1px solid var(--color-border)',
+          borderLeft: '4px solid var(--color-warning)',
+          padding: '12px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TrendingUp style={{ width: 16, height: 16, color: 'var(--color-warning)', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                Spending spike detected
+              </span>
+            </div>
+            <button
+              onClick={handleDismissAnomaly}
+              aria-label="Dismiss"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: '1.1rem', lineHeight: 1, padding: 0, flexShrink: 0,
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 24 }}>
+            {anomalies.map((a) => (
+              <p key={a.category} style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                <strong style={{ color: 'var(--color-text-primary)' }}>{a.category}</strong>{' '}
+                is <strong style={{ color: 'var(--color-warning)' }}>{a.percentageAbove}% above</strong> your usual spend this month
+              </p>
+            ))}
+          </div>
+          <Link
+            href="/transactions"
+            style={{
+              fontSize: '0.75rem', fontWeight: 600,
+              color: 'var(--color-warning)',
+              textDecoration: 'none',
+              paddingLeft: 24,
+              alignSelf: 'flex-start',
+            }}
+          >
+            View transactions →
+          </Link>
+        </div>
+      )}
+
+      {/* ── Hero: health ring + 4 stat cards ──────────────────────────────── */}
       <div className="flex flex-col sm:flex-row" style={{ gap: 16, alignItems: 'stretch' }}>
         {/* Health ring card */}
         <div style={{

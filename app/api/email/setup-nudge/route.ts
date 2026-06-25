@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: true, reason: 'grace_period' })
   }
 
-  // ── Once-a-month cap: safety net — trigger already filters this, but guard anyway ──
+  // ── Once-a-month cap: safety net- trigger already filters this, but guard anyway ──
   const now = new Date()
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))

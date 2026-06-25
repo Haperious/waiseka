@@ -15,7 +15,7 @@ export interface IEmailLog {
   _id: ObjectId
   userId: string
   type: EmailLogType
-  /** Populated for spending_alert — enables per-category dedup within a month */
+  /** Populated for spending_alert- enables per-category dedup within a month */
   category?: string
   sentAt: Date
 }

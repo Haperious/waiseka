@@ -11,11 +11,11 @@ import type { IUser } from '@/lib/models/User'
  * GET /api/balance
  *
  * Returns the all-time net balance (income − expenses) for the authenticated user.
- * Savings transactions are intentionally excluded — they are neutral (money set aside,
+ * Savings transactions are intentionally excluded- they are neutral (money set aside,
  * not spent or earned in the budget sense).
  *
  * Query params:
- *   upTo?: ISO date string — if provided, only transactions up to (and including)
+ *   upTo?: ISO date string- if provided, only transactions up to (and including)
  *          this date are counted. Used by the transactions page to anchor the
  *          running balance at a page boundary.
  *
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (upToParam) {
-    // Use the exact timestamp provided — the caller already handles boundary precision
+    // Use the exact timestamp provided- the caller already handles boundary precision
     matchStage.date.$lte = new Date(upToParam)
   }
 

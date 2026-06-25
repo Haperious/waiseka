@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useFetch, extractApiError } from '@/hooks/useFetch'
 
 export interface Budget {
   _id: string
@@ -15,49 +16,50 @@ export interface Budget {
 
 export function useBudgets() {
   const [budgets, setBudgets] = useState<Budget[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+
+  const fetcher = useCallback(async () => {
+    const res = await fetch('/api/budgets')
+    if (!res.ok) throw new Error(await extractApiError(res))
+    return res.json() as Promise<Budget[]>
+  }, [])
+
+  const { execute, loading, error } = useFetch(fetcher)
 
   const fetchBudgets = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/budgets')
-      const data = await res.json()
-      setBudgets(Array.isArray(data) ? data : [])
-    } catch {
-      setError('Failed to load budgets')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    const data = await execute()
+    if (data) setBudgets(Array.isArray(data) ? data : [])
+  }, [execute])
 
   useEffect(() => { fetchBudgets() }, [fetchBudgets])
 
-  const createBudget = async (data: Omit<Budget, '_id' | 'userId' | 'spent' | 'createdAt'>) => {
+  const createBudget = async (data: Omit<Budget, '_id' | 'userId' | 'spent' | 'createdAt'>): Promise<Budget> => {
     const res = await fetch('/api/budgets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
-    if (!res.ok) throw new Error('Failed to create budget')
-    await fetchBudgets()
+    if (!res.ok) throw new Error(await extractApiError(res))
+    const created: Budget = await res.json()
+    setBudgets((prev) => [created, ...prev])
+    return created
   }
 
-  const updateBudget = async (id: string, data: Partial<Budget>) => {
+  const updateBudget = async (id: string, data: Partial<Budget>): Promise<Budget> => {
     const res = await fetch(`/api/budgets/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
-    if (!res.ok) throw new Error('Failed to update budget')
-    await fetchBudgets()
+    if (!res.ok) throw new Error(await extractApiError(res))
+    const updated: Budget = await res.json()
+    setBudgets((prev) => prev.map((b) => (b._id === id ? updated : b)))
+    return updated
   }
 
-  const deleteBudget = async (id: string) => {
+  const deleteBudget = async (id: string): Promise<void> => {
     const res = await fetch(`/api/budgets/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('Failed to delete budget')
-    await fetchBudgets()
+    if (!res.ok) throw new Error(await extractApiError(res))
+    setBudgets((prev) => prev.filter((b) => b._id !== id))
   }
 
   return { budgets, loading, error, createBudget, updateBudget, deleteBudget, refetch: fetchBudgets }

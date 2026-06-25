@@ -30,3 +30,7 @@ export const PREMIUM_HISTORY_DAYS = 2555
 // ── AI query cap ─────────────────────────────────────────────────────────────
 /** Default monthly AI query cap for premium users (overridable per user in DB). */
 export const DEFAULT_AI_QUERY_CAP = 30
+
+// ── AI model ─────────────────────────────────────────────────────────────────
+/** Anthropic model used for all AI features. Update here to change globally. */
+export const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514'

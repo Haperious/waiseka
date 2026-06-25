@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { IUser, IConversationMessage } from '@/lib/models/User'
+import { ANTHROPIC_MODEL } from '@/lib/constants'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -58,7 +59,7 @@ export async function callAnthropic({
   maxTokens?: number
 }): Promise<string> {
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: ANTHROPIC_MODEL,
     max_tokens: maxTokens,
     system: systemPrompt,
     messages,

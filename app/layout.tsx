@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Geist, Playfair_Display } from 'next/font/google'
-import Script from 'next/script'
 import './globals.css'
 import { auth } from '@/auth'
 import { CurrencyProvider } from '@/context/CurrencyContext'
@@ -33,13 +32,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" className={`${geist.variable} ${playfair.variable} h-full antialiased dark`} suppressHydrationWarning>
-      <head>
-        <Script
-          id="theme-init"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.classList.remove('light','dark');document.documentElement.classList.add(t);}})();` }}
-        />
-      </head>
       <body className="min-h-full" suppressHydrationWarning>
         <ToastProvider>
           <LanguageProvider>

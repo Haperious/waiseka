@@ -123,7 +123,7 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown panel — fixed so it never clips outside the viewport */}
+      {/* Dropdown panel- fixed so it never clips outside the viewport */}
       {isOpen && panelPos && (
         <div
           ref={panelRef}

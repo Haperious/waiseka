@@ -10,10 +10,6 @@ export async function GET() {
   const db = await getDb()
   const col = db.collection<INotification>('notifications')
 
-  // Ensure indexes exist (idempotent)
-  await col.createIndex({ userId: 1 })
-  await col.createIndex({ userId: 1, read: 1 })
-
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
   const notifications = await col

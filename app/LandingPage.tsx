@@ -11,7 +11,7 @@ import type { TranslationKey } from '@/lib/translations'
 import {
   Sun, Moon, Menu, X, TrendingUp, Target, MessageSquare,
   BarChart2, Tags, Zap, ArrowRight, Banknote, Users, PiggyBank,
-  CalendarDays, ChevronDown, Mic, FileText, Crown,
+  CalendarDays, ChevronDown, Mic, FileText, Crown, Activity, Shield,
 } from 'lucide-react'
 
 // ─── Preview amounts per currency ────────────────────────────────────────────
@@ -236,7 +236,6 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen]       = useState(false)
   const [scrolled, setScrolled]       = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -252,7 +251,7 @@ export default function LandingPage() {
 
   const isDark = theme === 'dark'
 
-  const features: { icon: React.ElementType; titleKey: TranslationKey; descKey: TranslationKey; color: string; badge?: 'premium' | 'new' }[] = [
+    const features: { icon: React.ElementType; titleKey: TranslationKey; descKey: TranslationKey; color: string; badge?: 'premium' | 'new' }[] = [
     { icon: Banknote,      titleKey: 'landing.f1.title', descKey: 'landing.f1.desc', color: '#166534' },
     { icon: BarChart2,     titleKey: 'landing.f2.title', descKey: 'landing.f2.desc', color: '#16A34A' },
     { icon: Target,        titleKey: 'landing.f3.title', descKey: 'landing.f3.desc', color: '#15803D' },
@@ -775,54 +774,44 @@ export default function LandingPage() {
                     ? '1px solid rgba(217,119,6,0.35)'
                     : '1px solid var(--color-border)',
                   borderLeft: `3px solid ${color}`,
-                  padding: 24, cursor: 'default',
-                  position: 'relative', overflow: 'hidden',
+                  padding: 24,
+                  position: 'relative',
                   transition: 'transform 0.22s, box-shadow 0.22s',
                 }}
                 onMouseEnter={cardHoverIn}
                 onMouseLeave={cardHoverOut}
               >
-                {/* Badge */}
                 {badge === 'premium' && (
-                  <div
-                    style={{
-                      position: 'absolute', top: 14, right: 14,
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '3px 9px', borderRadius: 100,
-                      background: 'rgba(217,119,6,0.15)',
-                      border: '1px solid rgba(217,119,6,0.4)',
-                      fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
-                      color: '#D97706', textTransform: 'uppercase',
-                    }}
-                  >
-                    <Crown size={9} />
-                    Premium
+                  <div style={{
+                    position: 'absolute', top: 14, right: 14,
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 9px', borderRadius: 100,
+                    background: 'rgba(217,119,6,0.15)', border: '1px solid rgba(217,119,6,0.4)',
+                    fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
+                    color: '#D97706', textTransform: 'uppercase',
+                  }}>
+                    <Crown size={9} /> Premium
                   </div>
                 )}
                 {badge === 'new' && (
-                  <div
-                    style={{
-                      position: 'absolute', top: 14, right: 14,
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '3px 9px', borderRadius: 100,
-                      background: isDark ? 'rgba(74,222,128,0.12)' : 'rgba(22,101,52,0.1)',
-                      border: '1px solid rgba(74,222,128,0.35)',
-                      fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
-                      color: 'var(--color-accent)', textTransform: 'uppercase',
-                    }}
-                  >
+                  <div style={{
+                    position: 'absolute', top: 14, right: 14,
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 9px', borderRadius: 100,
+                    background: isDark ? 'rgba(74,222,128,0.12)' : 'rgba(22,101,52,0.1)',
+                    border: '1px solid rgba(74,222,128,0.35)',
+                    fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
+                    color: 'var(--color-accent)', textTransform: 'uppercase',
+                  }}>
                     New
                   </div>
                 )}
-
-                <div
-                  style={{
-                    width: 42, height: 42, borderRadius: 11,
-                    background: isDark ? `${color}20` : `${color}16`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 16,
-                  }}
-                >
+                <div style={{
+                  width: 42, height: 42, borderRadius: 11,
+                  background: isDark ? `${color}20` : `${color}16`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
                   <Icon size={20} color={color} />
                 </div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 8 }}>
@@ -833,6 +822,145 @@ export default function LandingPage() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PERA HEALTH SCORE SECTION ────────────────────────────────────── */}
+      <section style={{ padding: 'clamp(60px, 8vw, 90px) clamp(16px, 5vw, 64px)' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: isDark ? 'rgba(74,222,128,0.12)' : 'rgba(22,101,52,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <Activity size={22} color="var(--color-accent)" />
+            </div>
+            <div>
+              <h2 style={{
+                fontFamily: 'var(--font-playfair), Georgia, serif',
+                fontSize: 'clamp(22px, 3.5vw, 32px)', fontWeight: 700,
+                color: 'var(--color-text-primary)', lineHeight: 1.2,
+              }}>
+                Pera Health Score
+              </h2>
+              <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                A 0–100 score that grades your budget every month- and tells you exactly what to fix.
+              </p>
+            </div>
+          </div>
+
+          {/* Score bar visual */}
+          <div style={{
+            background: 'var(--color-card)', border: '1px solid var(--color-border)',
+            borderRadius: 20, padding: 'clamp(20px, 4vw, 36px)',
+            marginBottom: 28, marginTop: 24,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)' }}>0</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)' }}>100</span>
+            </div>
+            <div style={{ position: 'relative', height: 12, borderRadius: 999, overflow: 'hidden',
+              background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+            }}>
+              <div style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, width: '74%',
+                background: 'linear-gradient(90deg, #16A34A, #4ADE80)',
+                borderRadius: 999,
+              }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+              {(['Critical', 'Poor', 'Fair', 'Good', 'Healthy'] as const).map((label, i) => (
+                <span key={label} style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
+                  color: i === 4 ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                  textTransform: 'uppercase',
+                }}>{label}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Three formula cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            {/* Savings rate */}
+            <div style={{
+              background: 'var(--color-card)', border: '1px solid var(--color-border)',
+              borderLeft: '3px solid var(--color-income)',
+              borderRadius: 14, padding: '20px 22px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-income)' }}>Savings Rate</span>
+                <span style={{
+                  fontSize: 20, fontWeight: 800, color: 'var(--color-income)',
+                  fontFamily: 'var(--font-playfair), Georgia, serif',
+                }}>60 pts</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 8 }}>
+                How much of your income you actually keep.
+              </p>
+              <code style={{
+                display: 'block', fontSize: 11,
+                color: 'var(--color-text-muted)',
+                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                borderRadius: 6, padding: '6px 10px',
+              }}>
+                (savings ÷ income) × 60
+              </code>
+            </div>
+
+            {/* Budget discipline */}
+            <div style={{
+              background: 'var(--color-card)', border: '1px solid var(--color-border)',
+              borderLeft: '3px solid var(--color-accent)',
+              borderRadius: 14, padding: '20px 22px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent)' }}>Budget Discipline</span>
+                <span style={{
+                  fontSize: 20, fontWeight: 800, color: 'var(--color-accent)',
+                  fontFamily: 'var(--font-playfair), Georgia, serif',
+                }}>40 pts</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 8 }}>
+                How many budget categories you stayed within.
+              </p>
+              <code style={{
+                display: 'block', fontSize: 11,
+                color: 'var(--color-text-muted)',
+                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                borderRadius: 6, padding: '6px 10px',
+              }}>
+                (1 − overspend rate) × 40
+              </code>
+            </div>
+
+            {/* Penalty */}
+            <div style={{
+              background: 'var(--color-card)', border: '1px solid var(--color-border)',
+              borderLeft: '3px solid var(--color-warning)',
+              borderRadius: 14, padding: '20px 22px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-warning)' }}>Penalty</span>
+                <span style={{
+                  fontSize: 20, fontWeight: 800, color: 'var(--color-warning)',
+                  fontFamily: 'var(--font-playfair), Georgia, serif',
+                }}>−20 pts</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 8 }}>
+                Applied when total expenses exceed total income.
+              </p>
+              <code style={{
+                display: 'block', fontSize: 11,
+                color: 'var(--color-text-muted)',
+                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                borderRadius: 6, padding: '6px 10px',
+              }}>
+                net savings &lt; 0 → −20
+              </code>
+            </div>
           </div>
         </div>
       </section>
@@ -1093,6 +1221,14 @@ export default function LandingPage() {
             {t('landing.cta.button')}
             <ArrowRight size={18} />
           </Link>
+          <p style={{
+            marginTop: 14, fontSize: 12,
+            color: isDark ? 'rgba(240,253,244,0.55)' : 'rgba(240,253,244,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            <Shield size={12} />
+            🔒 Your data is protected · Two-factor authentication (MFA) available
+          </p>
         </div>
       </section>
 
