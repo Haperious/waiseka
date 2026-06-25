@@ -8,7 +8,7 @@ import type { ITransaction } from '@/lib/models/Transaction'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
 import { sendSpendingAlertEmail } from '@/lib/email'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, parseTransactionDate } from '@/lib/utils'
 import type { IEmailLog } from '@/lib/models/EmailLog'
 
 export async function GET(req: NextRequest) {
@@ -38,8 +38,8 @@ export async function GET(req: NextRequest) {
 
   const historyDays = userIsPremium ? PREMIUM_HISTORY_DAYS : FREE_HISTORY_DAYS
   const retentionWindowStart = new Date()
-  retentionWindowStart.setDate(retentionWindowStart.getDate() - historyDays)
-  retentionWindowStart.setHours(0, 0, 0, 0)
+  retentionWindowStart.setUTCDate(retentionWindowStart.getUTCDate() - historyDays)
+  retentionWindowStart.setUTCHours(0, 0, 0, 0)
 
   // Always exclude archived transactions and enforce retention window
   query.isArchived = { $ne: true }
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     type,
     category,
     description,
-    date: new Date(date),
+    date: parseTransactionDate(date),
     tags: tags ?? [],
     isRecurring: isRecurring ?? false,
     isArchived: false,

@@ -14,6 +14,7 @@ declare module 'next-auth' {
       tier: string
       premiumOverride: boolean
       isVerified: boolean
+      createdAt: string
     }
   }
 }
@@ -28,5 +29,6 @@ declare module 'next-auth/jwt' {
     tier: string
     premiumOverride: boolean
     isVerified: boolean
+    createdAt: string
   }
 }

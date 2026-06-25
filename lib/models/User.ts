@@ -60,6 +60,12 @@ export interface IUser {
     }
     lastSeen: Date
   }
+  mfa?: {
+    enabled: boolean
+    secret: string        // TOTP secret (base32)
+    backupCodes: string[] // hashed backup codes
+    enabledAt: Date
+  }
   importUsage?: {
     count: number
     resetAt: Date

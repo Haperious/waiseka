@@ -18,6 +18,7 @@ export const authConfig: NextAuthConfig = {
           tier: string
           premiumOverride: boolean
           isVerified: boolean
+          createdAt: string
         }
         token.id = u.id
         token.role = u.role
@@ -27,6 +28,7 @@ export const authConfig: NextAuthConfig = {
         token.tier = u.tier
         token.premiumOverride = u.premiumOverride
         token.isVerified = u.isVerified
+        token.createdAt = u.createdAt
       }
       return token
     },
@@ -40,6 +42,7 @@ export const authConfig: NextAuthConfig = {
         session.user.tier = token.tier as string
         session.user.premiumOverride = token.premiumOverride as boolean
         session.user.isVerified = token.isVerified as boolean
+        session.user.createdAt = token.createdAt as string
       }
       return session
     },

@@ -78,6 +78,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           tier: user.tier,
           premiumOverride: user.premiumOverride,
           isVerified: user.isVerified,
+          createdAt: user.createdAt.toISOString(),
         }
       },
     }),

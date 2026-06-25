@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Lock, DollarSign, Bell, Sun, Moon, Mic, MailCheck, MailWarning } from 'lucide-react'
+import { User, Lock, DollarSign, Bell, Sun, Moon, Mic, MailCheck, MailWarning, ShieldCheck, ShieldOff, Copy, Eye, EyeOff } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import PasswordInput from '@/components/ui/PasswordInput'
@@ -150,6 +150,19 @@ export default function SettingsPage() {
   const [frequency, setFrequency] = useState<Frequency>('weekly')
   const [emailCount, setEmailCount] = useState(1)
 
+  // ── MFA state ───────────────────────────────────────────────────────────────
+  const [mfaEnabled, setMfaEnabled] = useState(false)
+  const [mfaLoading, setMfaLoading] = useState(true)
+  const [mfaStep, setMfaStep] = useState<'idle' | 'setup' | 'backup-codes' | 'disable'>('idle')
+  const [mfaQr, setMfaQr] = useState('')
+  const [mfaSecret, setMfaSecret] = useState('')
+  const [mfaToken, setMfaToken] = useState('')
+  const [mfaError, setMfaError] = useState('')
+  const [mfaWorking, setMfaWorking] = useState(false)
+  const [mfaBackupCodes, setMfaBackupCodes] = useState<string[]>([])
+  const [showSecret, setShowSecret] = useState(false)
+  const [copiedCodes, setCopiedCodes] = useState(false)
+
   useEffect(() => {
     fetch('/api/users/me')
       .then((r) => r.json())
@@ -169,6 +182,12 @@ export default function SettingsPage() {
         if (d?.email?.count) setEmailCount(d.email.count)
       })
       .catch(() => {})
+
+    fetch('/api/auth/mfa/status')
+      .then((r) => r.json())
+      .then((d) => { setMfaEnabled(d.enabled ?? false) })
+      .catch(() => {})
+      .finally(() => setMfaLoading(false))
   }, [])
 
   const handleProfileSave = async (e: React.FormEvent) => {
@@ -301,6 +320,82 @@ export default function SettingsPage() {
     } finally {
       setNotifLoading(false)
     }
+  }
+
+  // ── MFA handlers ──────────────────────────────────────────────────────────
+  const handleMfaSetupStart = async () => {
+    setMfaError('')
+    setMfaWorking(true)
+    try {
+      const res = await fetch('/api/auth/mfa/setup', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to start MFA setup')
+      setMfaQr(data.qrDataUrl)
+      setMfaSecret(data.manualEntryKey)
+      setMfaToken('')
+      setMfaStep('setup')
+    } catch (err: unknown) {
+      setMfaError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setMfaWorking(false)
+    }
+  }
+
+  const handleMfaVerify = async () => {
+    if (!mfaToken || mfaToken.length !== 6) {
+      setMfaError('Enter the 6-digit code from your authenticator app')
+      return
+    }
+    setMfaError('')
+    setMfaWorking(true)
+    try {
+      const res = await fetch('/api/auth/mfa/verify-setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: mfaToken }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Verification failed')
+      setMfaBackupCodes(data.backupCodes)
+      setMfaEnabled(true)
+      setMfaStep('backup-codes')
+    } catch (err: unknown) {
+      setMfaError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setMfaWorking(false)
+    }
+  }
+
+  const handleMfaDisable = async () => {
+    if (!mfaToken) {
+      setMfaError('Enter your current TOTP code to disable MFA')
+      return
+    }
+    setMfaError('')
+    setMfaWorking(true)
+    try {
+      const res = await fetch('/api/auth/mfa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: mfaToken }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to disable MFA')
+      setMfaEnabled(false)
+      setMfaStep('idle')
+      setMfaToken('')
+      toast('Two-factor authentication disabled', 'success')
+    } catch (err: unknown) {
+      setMfaError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setMfaWorking(false)
+    }
+  }
+
+  const handleCopyBackupCodes = () => {
+    navigator.clipboard.writeText(mfaBackupCodes.join('\n'))
+    setCopiedCodes(true)
+    setTimeout(() => setCopiedCodes(false), 2000)
   }
 
   const rowStyle: React.CSSProperties = {
@@ -594,62 +689,19 @@ export default function SettingsPage() {
                     </button>
                   ))}
                   <span style={{
-                    width: 32, textAlign: 'center',
-                    fontSize: '1rem', fontWeight: 800,
+                    fontSize: '0.9rem', fontWeight: 700,
                     color: 'var(--color-text-primary)',
+                    minWidth: 24, textAlign: 'center',
                   }}>
                     {emailCount}
                   </span>
                 </div>
-                <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-                  {t('settings.timePer')} {frequency} ({t('settings.max')} {maxEmailCount})
+                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
+                  {t('settings.timesPerFreq')}
                 </span>
               </div>
             </div>
           )}
-
-          {/* Push toggle */}
-          <div style={rowStyle}>
-            <div>
-              <p style={labelStyle}>{t('settings.pushNotifs')}</p>
-              <p style={subLabelStyle}>{t('settings.pushNotifsSub')}</p>
-            </div>
-            <Toggle checked={pushEnabled} onChange={handlePushToggle} />
-          </div>
-
-          {/* Frequency select */}
-          <div>
-            <label style={{
-              display: 'block', marginBottom: 8,
-              fontSize: '0.78rem', fontWeight: 600,
-              color: 'var(--color-text-primary)',
-              textTransform: 'uppercase', letterSpacing: '0.05em',
-            }}>
-              {t('settings.reminderFreq')}
-            </label>
-            <select
-              value={frequency}
-              onChange={(e) => handleFrequencyChange(e.target.value as Frequency)}
-              style={{
-                width: '100%', height: 40,
-                padding: '0 12px',
-                borderRadius: 10,
-                border: '1px solid var(--color-border)',
-                backgroundColor: 'var(--color-elevated)',
-                color: 'var(--color-text-primary)',
-                fontSize: '0.85rem',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="daily">{t('settings.daily')}</option>
-              <option value="weekly">{t('settings.weekly')}</option>
-              <option value="monthly">{t('settings.monthly')}</option>
-            </select>
-            <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
-              {t('settings.freqSub')}
-            </p>
-          </div>
 
           <Button onClick={() => saveNotifications()} loading={notifLoading}>
             {t('settings.saveNotifs')}
@@ -673,6 +725,168 @@ export default function SettingsPage() {
             {t('settings.manageVoice')}
           </Button>
         </div>
+      </SettingsSection>
+
+      {/* ── Two-Factor Authentication ─────────────────────────────────────────── */}
+      <SettingsSection
+        icon={ShieldCheck}
+        iconColor="#7c3aed"
+        iconBg="#ede9fe"
+        title="Two-Factor Authentication"
+        subtitle="Add an extra layer of security to your account"
+      >
+        {mfaLoading ? (
+          <div className="h-8 w-32 rounded animate-pulse" style={{ backgroundColor: 'var(--color-border)' }} />
+        ) : mfaStep === 'idle' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={rowStyle}>
+              <div>
+                <p style={labelStyle}>Authenticator App (TOTP)</p>
+                <p style={subLabelStyle}>
+                  {mfaEnabled
+                    ? 'Two-factor authentication is enabled on your account.'
+                    : 'Use Google Authenticator, Microsoft Authenticator, or any TOTP app.'}
+                </p>
+              </div>
+              {mfaEnabled ? (
+                <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full" style={{ backgroundColor: '#d1fae5', color: '#059669' }}>
+                  <ShieldCheck size={13} /> Enabled
+                </span>
+              ) : null}
+            </div>
+            {mfaError && (
+              <p className="text-sm" style={{ color: 'var(--color-expense)' }}>{mfaError}</p>
+            )}
+            {mfaEnabled ? (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => { setMfaStep('disable'); setMfaToken(''); setMfaError('') }}
+              >
+                <ShieldOff size={14} className="mr-1.5" />
+                Disable MFA
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleMfaSetupStart} loading={mfaWorking}>
+                <ShieldCheck size={14} className="mr-1.5" />
+                Enable MFA
+              </Button>
+            )}
+          </div>
+        ) : mfaStep === 'setup' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+              Scan the QR code with your authenticator app, then enter the 6-digit code to confirm.
+            </p>
+            {mfaQr && (
+              <div className="flex justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mfaQr} alt="MFA QR Code" width={180} height={180} style={{ borderRadius: 12, border: '1px solid var(--color-border)' }} />
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+                Can&apos;t scan? Enter this key manually:
+              </p>
+              <div className="flex items-center gap-2">
+                <code
+                  className="flex-1 rounded-lg px-3 py-2 text-xs font-mono tracking-widest"
+                  style={{ backgroundColor: 'var(--color-elevated)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                >
+                  {showSecret ? mfaSecret : '•'.repeat(mfaSecret.length)}
+                </code>
+                <button type="button" onClick={() => setShowSecret((v) => !v)} style={{ color: 'var(--color-text-muted)' }}>
+                  {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
+                6-digit code
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                value={mfaToken}
+                onChange={(e) => setMfaToken(e.target.value.replace(/\D/g, ''))}
+                className="w-full rounded-lg px-4 py-2.5 text-center font-mono tracking-widest focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--color-elevated)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '1.2rem',
+                }}
+              />
+            </div>
+            {mfaError && <p className="text-sm" style={{ color: 'var(--color-expense)' }}>{mfaError}</p>}
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleMfaVerify} loading={mfaWorking} disabled={mfaToken.length !== 6}>
+                Verify &amp; Enable
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setMfaStep('idle'); setMfaError('') }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : mfaStep === 'backup-codes' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={18} style={{ color: '#059669' }} />
+              <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                MFA enabled! Save your backup codes.
+              </p>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+              These codes can be used to access your account if you lose your authenticator. Each code can only be used once. Store them somewhere safe.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {mfaBackupCodes.map((code) => (
+                <code key={code} className="rounded-lg px-3 py-2 text-xs font-mono text-center" style={{ backgroundColor: 'var(--color-elevated)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}>
+                  {code}
+                </code>
+              ))}
+            </div>
+            <Button size="sm" variant="outline" onClick={handleCopyBackupCodes}>
+              <Copy size={13} className="mr-1.5" />
+              {copiedCodes ? 'Copied!' : 'Copy all codes'}
+            </Button>
+            <Button size="sm" onClick={() => { setMfaStep('idle'); setMfaBackupCodes([]) }}>
+              I&apos;ve saved these codes
+            </Button>
+          </div>
+        ) : mfaStep === 'disable' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+              Enter your current 6-digit TOTP code to confirm disabling MFA.
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="000000"
+              value={mfaToken}
+              onChange={(e) => setMfaToken(e.target.value.replace(/\D/g, ''))}
+              className="w-full rounded-lg px-4 py-2.5 text-center font-mono tracking-widest focus:outline-none"
+              style={{
+                backgroundColor: 'var(--color-elevated)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-primary)',
+                fontSize: '1.2rem',
+              }}
+            />
+            {mfaError && <p className="text-sm" style={{ color: 'var(--color-expense)' }}>{mfaError}</p>}
+            <div className="flex gap-2">
+              <Button size="sm" variant="danger" onClick={handleMfaDisable} loading={mfaWorking} disabled={mfaToken.length !== 6}>
+                Confirm Disable
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setMfaStep('idle'); setMfaError(''); setMfaToken('') }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </SettingsSection>
     </div>
   )

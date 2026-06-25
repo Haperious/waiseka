@@ -8,7 +8,7 @@ import type { ITransaction } from '@/lib/models/Transaction'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
 import { sendSpendingAlertEmail } from '@/lib/email'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, parseTransactionDate } from '@/lib/utils'
 import type { IEmailLog } from '@/lib/models/EmailLog'
 
 interface BulkTransactionItem {
@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
   const userIsPremium = user ? isPremium(user as IUser & { _id: unknown }) : false
   const historyDays = userIsPremium ? PREMIUM_HISTORY_DAYS : FREE_HISTORY_DAYS
   const retentionWindowStart = new Date()
-  retentionWindowStart.setDate(retentionWindowStart.getDate() - historyDays)
+  retentionWindowStart.setUTCDate(retentionWindowStart.getUTCDate() - historyDays)
+  retentionWindowStart.setUTCHours(0, 0, 0, 0)
   retentionWindowStart.setHours(0, 0, 0, 0)
 
   const ALLOWED_CURRENCIES: ITransaction['currency'][] = ['PHP', 'QAR', 'USD']
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
       type: t.type,
       category: t.category,
       description: t.description ?? '',
-      date: new Date(t.date),
+      date: parseTransactionDate(t.date),
       tags: [] as string[],
       isRecurring: t.isRecurring ?? false,
       isArchived: false as const,

@@ -21,6 +21,10 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: 'Waiseka | Personal Budgeting',
   description: 'Track your income, expenses, budgets and financial goals.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

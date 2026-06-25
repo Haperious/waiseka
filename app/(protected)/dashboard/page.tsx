@@ -8,6 +8,7 @@ import { tips } from '@/lib/tipsContent'
 import type { Tip } from '@/lib/tipsContent'
 import { format } from 'date-fns'
 import { Skeleton } from '@/components/ui/Skeleton'
+import SurveyBanner from '@/components/SurveyBanner'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
@@ -521,19 +522,15 @@ export default function DashboardPage() {
 
   const loadYearlyTrend = useCallback(async () => {
     setYearlyLoading(true)
-    const year = parseInt(selectedYear)
-    const results = []
-    for (let m = 1; m <= 12; m++) {
-      try {
-        const res = await fetch(`/api/summary?month=${m}&year=${year}`)
-        const d   = await res.json()
-        results.push({ month: MONTH_LABELS[m - 1], income: d.totalIncome, expenses: d.totalExpenses, savings: d.totalSavings ?? 0 })
-      } catch {
-        results.push({ month: MONTH_LABELS[m - 1], income: 0, expenses: 0, savings: 0 })
-      }
+    try {
+      const res     = await fetch(`/api/summary/yearly?year=${selectedYear}`)
+      const results = await res.json()
+      setAllMonths(results)
+    } catch {
+      setAllMonths(MONTH_LABELS.map((month) => ({ month, income: 0, expenses: 0, savings: 0 })))
+    } finally {
+      setYearlyLoading(false)
     }
-    setAllMonths(results)
-    setYearlyLoading(false)
   }, [selectedYear])
 
   const loadCategoryTrend = useCallback(async () => {
@@ -732,6 +729,11 @@ export default function DashboardPage() {
             {resendSent ? 'Email sent!' : resendLoading ? 'Sending…' : 'Resend email'}
           </button>
         </div>
+      )}
+
+      {/* ── Survey banner ───────────────────────────────────────────── */}
+      {session?.user?.id && session?.user?.createdAt && (
+        <SurveyBanner userId={session.user.id} accountCreatedAt={session.user.createdAt} />
       )}
 
       {/* ── Hero: health ring + 4 stat cards ──────────────────────────── */}

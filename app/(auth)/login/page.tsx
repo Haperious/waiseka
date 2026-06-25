@@ -35,6 +35,19 @@ export default function LoginPage() {
     if (result?.error) {
       setError('Invalid email or password')
     } else {
+      // Check if MFA is enabled for this user before proceeding to dashboard
+      try {
+        const mfaRes = await fetch('/api/auth/mfa/status')
+        if (mfaRes.ok) {
+          const mfaData = await mfaRes.json()
+          if (mfaData.enabled) {
+            router.push('/login/mfa')
+            return
+          }
+        }
+      } catch {
+        // If status check fails, fall through to dashboard
+      }
       router.push('/dashboard')
       router.refresh()
     }

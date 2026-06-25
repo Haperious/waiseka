@@ -19,6 +19,7 @@ import {
   Mail,
   Flag,
   BookOpen,
+  MessageSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/context/LanguageContext'
@@ -123,9 +124,10 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               Admin
             </p>
             {[
-              { href: '/admin/users',      label: 'Users',      icon: Users },
-              { href: '/admin/email-logs', label: 'Email Logs', icon: Mail  },
-              { href: '/admin/flags',      label: 'Flags',      icon: Flag  },
+              { href: '/admin/users',      label: 'Users',      icon: Users          },
+              { href: '/admin/surveys',    label: 'Surveys',    icon: MessageSquare  },
+              { href: '/admin/email-logs', label: 'Email Logs', icon: Mail           },
+              { href: '/admin/flags',      label: 'Flags',      icon: Flag           },
             ].map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(href + '/')
               return (
