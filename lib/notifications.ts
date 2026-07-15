@@ -1,4 +1,5 @@
-import admin from 'firebase-admin'
+import { cert, getApps, initializeApp } from 'firebase-admin/app'
+import { getMessaging } from 'firebase-admin/messaging'
 import { Db } from 'mongodb'
 import { getMailTransporter, sendSpendingAlertEmail } from '@/lib/email'
 import { isPremium } from '@/lib/tier'
@@ -36,12 +37,12 @@ export async function sendEmailNotification({
 }
 
 function initFirebase() {
-  if (admin.apps.length > 0) return
+  if (getApps().length > 0) return
 
   const privateKey = (process.env.FIREBASE_PRIVATE_KEY ?? '').replace(/\\n/g, '\n')
 
-  admin.initializeApp({
-    credential: admin.credential.cert({
+  initializeApp({
+    credential: cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey,
@@ -164,7 +165,7 @@ export async function sendPushNotification({
   initFirebase()
   const message = MESSAGES[type]
 
-  await admin.messaging().send({
+  await getMessaging().send({
     token: fcmToken,
     notification: {
       title: 'Waiseka',
