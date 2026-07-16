@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
+  Landmark,
   LayoutDashboard,
   ArrowLeftRight,
   FolderPlus,
@@ -30,6 +31,14 @@ interface OnboardingStep {
 }
 
 const STEPS: OnboardingStep[] = [
+  {
+    id: 'accounts',
+    label: 'Add your Accounts',
+    description: 'List your banks, cards, and cash so balances stay accurate.',
+    href: '/accounts',
+    matchPaths: ['/accounts'],
+    icon: Landmark,
+  },
   {
     id: 'dashboard',
     label: 'Explore your Dashboard',

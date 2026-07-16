@@ -25,7 +25,7 @@ export async function PUT(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { currency, theme } = body
+  const { currency, theme, defaultAccountId } = body
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
 
@@ -45,6 +45,23 @@ export async function PUT(req: NextRequest) {
   }
 
   const db = await getDb()
+
+  if (defaultAccountId !== undefined) {
+    if (defaultAccountId === null) {
+      update['preferences.defaultAccountId'] = null
+    } else {
+      if (!ObjectId.isValid(defaultAccountId)) {
+        return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
+      }
+      const account = await db.collection('accounts').findOne({
+        _id: new ObjectId(defaultAccountId),
+        userId: session.user.id,
+      })
+      if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+      update['preferences.defaultAccountId'] = defaultAccountId
+    }
+  }
+
   const user = await db.collection<IUser>('users').findOneAndUpdate(
     { _id: new ObjectId(session.user.id) },
     { $set: update },

@@ -14,6 +14,9 @@ export interface Tip {
     | 'shield'
     | 'calendar'
     | 'receipt'
+    | 'subscriptionAudit'
+    | 'lifestyleInflation'
+    | 'walletSave'
   body: string
   steps: string[]
   cta?: TipCta
@@ -97,5 +100,42 @@ export const tips: Tip[] = [
       'Pick one category and try to cut it down next month.',
     ],
     cta: { label: 'Track small transactions automatically', route: '/transactions' },
+  },
+  {
+    id: 'tip-subscription-audit',
+    title: 'Audit Your Subscriptions',
+    filipinoFraming: '"Nagbabayad Ka Pa Ba Doon?"',
+    iconKey: 'subscriptionAudit',
+    body: 'Netflix, Spotify, iCloud storage, that fitness app you downloaded during New Year\'s, the cloud backup you set up tapos nakalimutan na. Subscriptions are sneaky - bawat isa ay mukhang maliit lang monthly, but they stack quietly in the background. Most people are paying for at least one or two they haven\'t opened in months. A quick audit takes fifteen minutes and can free up a few hundred pesos a month without changing your lifestyle at all.',
+    steps: [
+      'Go through your GCash, Maya, or bank statement and highlight every recurring charge, kahit gaano kaliit.',
+      'For each one, ask: "Ginamit ko ba \'to this month?" If the answer is no twice in a row, cancel it.',
+      'Set a calendar reminder every 3 months to re-check - new subscriptions creep in without you noticing.',
+    ],
+  },
+  {
+    id: 'tip-lifestyle-inflation',
+    title: 'Don\'t Let Lifestyle Inflation Eat Your Raise',
+    filipinoFraming: '"Tumaas ang Sweldo, Huwag Hayaang Sumabay ang Gastos"',
+    iconKey: 'lifestyleInflation',
+    body: 'You work hard, you get a raise, and somehow by the next month you\'re still feeling just as tight. This is lifestyle inflation - spending automatically rises to meet whatever income you earn. Mas malaki na ang sahod, mas malaki na rin ang brunch, ang gadget upgrade, ang Grab rides instead of MRT. The raise feels good for about two weeks, then it disappears. The fix is to treat a portion of every raise as already committed to savings before your lifestyle has a chance to adjust.',
+    steps: [
+      'When your sweldo increases, commit at least half of that increase to savings or investments before spending anything extra.',
+      'Update your auto-transfer amount on the same day you learn about the raise - not next month.',
+      'Give yourself a small lifestyle reward too, para hindi masyadong strict. The goal is balance, not punishment.',
+    ],
+    cta: { label: 'Update your savings goal to match your new income', route: '/goals' },
+  },
+  {
+    id: 'tip-gcash-maya-save',
+    title: 'Use GCash Save or Maya Savings',
+    filipinoFraming: '"Nasa Wallet Mo Na Pala ang Tool"',
+    iconKey: 'walletSave',
+    body: 'Most Filipinos already have GCash or Maya on their phone - but a lot of people only use them for sending money and paying bills. Both apps have built-in savings features (GSave on GCash, Maya Savings on Maya) that earn interest higher than most traditional passbook accounts, and your money stays accessible. You don\'t need to open a separate bank account or fill out forms. The tool is literally already on your home screen.',
+    steps: [
+      'Open GCash or Maya and look for the Save or Savings feature if you haven\'t set it up yet.',
+      'Move even a small starter amount in - the habit of having a separate "hands-off" pocket matters more than the amount at first.',
+      'Check the current interest rate and compare it to your existing savings account - you might be leaving money on the table.',
+    ],
   },
 ]

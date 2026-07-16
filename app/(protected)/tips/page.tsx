@@ -63,6 +63,33 @@ function TipIcon({ iconKey }: { iconKey: Tip['iconKey'] }) {
           <path d="M9 8h6M9 11h6M9 14h3" />
         </svg>
       )
+    case 'subscriptionAudit':
+      return (
+        <svg {...shared}>
+          <rect x="3.5" y="5" width="13" height="10" rx="1.5" />
+          <path d="M9.5 8.2l3.2 1.8-3.2 1.8V8.2Z" />
+          <circle cx="16.5" cy="16" r="3" />
+          <path d="M18.7 18.2L20.5 20" />
+        </svg>
+      )
+    case 'lifestyleInflation':
+      return (
+        <svg {...shared}>
+          <path d="M4 20h16" />
+          <rect x="6" y="13.5" width="4" height="6.5" />
+          <rect x="14" y="8" width="4" height="12" />
+          <path d="M13 6l3-3 3 3" />
+          <path d="M16 3.2v4.3" />
+        </svg>
+      )
+    case 'walletSave':
+      return (
+        <svg {...shared}>
+          <rect x="6.5" y="3" width="11" height="18" rx="2" />
+          <path d="M9.5 13.5l2 2 3.5-4.5" />
+          <path d="M11 18.5h2" />
+        </svg>
+      )
   }
 }
 

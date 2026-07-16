@@ -5,10 +5,12 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 export interface Notification {
   _id: string
   userId: string
-  type: 'budget_alert'
+  type: 'budget_alert' | 'low_balance' | 'credit_utilization'
   category: string
   message: string
   color: string
+  accountId?: string
+  alertKey?: string
   createdAt: string
   read: boolean
 }

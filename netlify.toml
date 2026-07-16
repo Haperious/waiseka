@@ -1,0 +1,12 @@
+# Netlify configuration for WaiseKa.
+#
+# Scheduling: node-cron (lib/scheduler.ts) does not run on Netlify serverless, so
+# production scheduling is handled by the scheduled function below, which calls the
+# secret-guarded /api/cron endpoint. It runs hourly; /api/cron decides what is due.
+#
+# Required site environment variables (set in Netlify UI → Site settings → Environment):
+#   CRON_SECRET             shared secret between the scheduled function and /api/cron
+#   DISABLE_INPROCESS_CRON  set to "true" so lib/scheduler.ts node-cron never also fires
+
+[functions."scheduled-cron"]
+  schedule = "0 * * * *"

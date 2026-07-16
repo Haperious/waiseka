@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import {
   Plus, TrendingUp, TrendingDown, PiggyBank,
-  Pencil, Trash2, Download, Search, Filter, Upload, RefreshCw, X,
+  Pencil, Trash2, Download, Search, Filter, Upload, RefreshCw, X, ArrowLeftRight,
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import { SkeletonRow } from '@/components/ui/Skeleton'
 import { useTransactions, Transaction } from '@/hooks/useTransactions'
+import { useAccounts } from '@/hooks/useAccounts'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/components/ui/Toast'
@@ -41,9 +42,13 @@ export default function TransactionsPage() {
   const { toast } = useToast()
   const { data: session } = useSession()
 
+  const { accounts } = useAccounts()
+  const accountNameById = new Map(accounts.map((a) => [a._id, a.name]))
+
   const [page, setPage] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
   const [filterType, setFilterType] = useState('all')
+  const [filterAccount, setFilterAccount] = useState('all')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -60,14 +65,22 @@ export default function TransactionsPage() {
     : false
 
   const TYPE_OPTIONS = [
-    { value: 'all',     label: t('tx.allTypes') },
-    { value: 'income',  label: t('common.income') },
-    { value: 'expense', label: t('common.expense') },
-    { value: 'savings', label: t('common.savings') },
+    { value: 'all',      label: t('tx.allTypes') },
+    { value: 'income',   label: t('common.income') },
+    { value: 'expense',  label: t('common.expense') },
+    { value: 'savings',  label: t('common.savings') },
+    { value: 'transfer', label: 'Transfer' },
+  ]
+
+  const ACCOUNT_OPTIONS = [
+    { value: 'all', label: 'All Accounts' },
+    { value: 'unassigned', label: 'Unassigned' },
+    ...accounts.filter((a) => !a.isArchived).map((a) => ({ value: a._id, label: a.name })),
   ]
 
   const { transactions, total, totalPages, loading, deleteTransaction, refetch } = useTransactions({
     type: filterType === 'all' ? '' : filterType,
+    accountId: filterAccount === 'all' ? '' : filterAccount,
     search,
     startDate,
     endDate,
@@ -123,6 +136,8 @@ export default function TransactionsPage() {
         ? { color: 'var(--color-income)', bg: 'var(--color-income-bg)', Icon: TrendingUp, label: t('common.income') }
         : type === 'savings'
         ? { color: 'var(--color-savings)', bg: 'var(--color-savings-bg)', Icon: PiggyBank, label: t('common.savings') }
+        : type === 'transfer'
+        ? { color: 'var(--color-accent)', bg: 'var(--color-sage)', Icon: ArrowLeftRight, label: 'Transfer' }
         : { color: 'var(--color-expense)', bg: 'var(--color-expense-bg)', Icon: TrendingDown, label: t('common.expense') }
 
     return (
@@ -146,8 +161,9 @@ export default function TransactionsPage() {
     const color =
       tx.type === 'income' ? 'var(--color-income)' :
       tx.type === 'savings' ? 'var(--color-savings)' :
+      tx.type === 'transfer' ? 'var(--color-accent)' :
       'var(--color-expense)'
-    const prefix = tx.type === 'income' ? '+' : tx.type === 'savings' ? '=' : '−'
+    const prefix = tx.type === 'income' ? '+' : tx.type === 'savings' ? '=' : tx.type === 'transfer' ? '⇄' : '−'
 
     return (
       <span style={{
@@ -268,12 +284,13 @@ export default function TransactionsPage() {
               onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-accent)' }}
               onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)' }}
             />
-            {(searchInput || search || filterType !== 'all' || startDate || endDate) && (
+            {(searchInput || search || filterType !== 'all' || filterAccount !== 'all' || startDate || endDate) && (
               <button
                 onClick={() => {
                   setSearchInput('')
                   setSearch('')
                   setFilterType('all')
+                  setFilterAccount('all')
                   setStartDate('')
                   setEndDate('')
                   setPage(1)
@@ -302,6 +319,16 @@ export default function TransactionsPage() {
               onValueChange={(v) => { setFilterType(v); setPage(1) }}
               options={TYPE_OPTIONS}
               placeholder={t('common.type')}
+            />
+          </div>
+
+          {/* Account select */}
+          <div style={{ width: 160, flexShrink: 0 }}>
+            <Select
+              value={filterAccount}
+              onValueChange={(v) => { setFilterAccount(v); setPage(1) }}
+              options={ACCOUNT_OPTIONS}
+              placeholder="Account"
             />
           </div>
 
@@ -377,6 +404,7 @@ export default function TransactionsPage() {
                 setStartDate('')
                 setEndDate('')
                 setFilterType('all')
+                setFilterAccount('all')
                 setSearch('')
                 setSearchInput('')
                 setPage(1)
@@ -418,6 +446,7 @@ export default function TransactionsPage() {
                   { label: t('common.description'), className: '' },
                     { label: 'Recurring',             className: 'hidden sm:table-cell' },
                   { label: t('common.category'),    className: 'hidden sm:table-cell' },
+                  { label: 'Account',               className: 'hidden md:table-cell' },
                   { label: t('common.type'),        className: 'hidden md:table-cell' },
                   { label: t('common.amount'),      className: '', align: 'right' as const },
                   { label: '',                      className: '' },
@@ -446,14 +475,14 @@ export default function TransactionsPage() {
               {loading ? (
                 [...Array(8)].map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={7} style={{ padding: '0 20px' }}>
+                    <td colSpan={8} style={{ padding: '0 20px' }}>
                       <SkeletonRow />
                     </td>
                   </tr>
                 ))
               ) : transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div style={{
                       padding: '48px 24px',
                       textAlign: 'center',
@@ -530,6 +559,19 @@ export default function TransactionsPage() {
                       {tx.category}
                     </td>
 
+                    {/* Account */}
+                    <td className="hidden md:table-cell" style={{ padding: '12px 20px', color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
+                      {tx.type === 'transfer' ? (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          {(tx.fromAccountId ? accountNameById.get(tx.fromAccountId) : null) ?? '?'}
+                          {' → '}
+                          {(tx.toAccountId ? accountNameById.get(tx.toAccountId) : null) ?? '?'}
+                        </span>
+                      ) : tx.accountId ? (accountNameById.get(tx.accountId) ?? 'Unknown') : (
+                        <span style={{ color: 'var(--color-text-muted)' }}>Unassigned</span>
+                      )}
+                    </td>
+
                     {/* Type badge */}
                     <td className="hidden md:table-cell" style={{ padding: '12px 20px' }}>
                       <TypeBadge type={tx.type} />
@@ -543,28 +585,31 @@ export default function TransactionsPage() {
                     {/* Actions */}
                     <td style={{ padding: '12px 16px 12px 8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => setEditTx(tx)}
-                          aria-label={t('common.edit')}
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: 32, height: 32, borderRadius: 8,
-                            border: 'none', backgroundColor: 'transparent',
-                            color: 'var(--color-text-muted)',
-                            cursor: 'pointer',
-                            transition: 'all 0.12s',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--color-sage)'
-                            e.currentTarget.style.color = 'var(--color-accent)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent'
-                            e.currentTarget.style.color = 'var(--color-text-muted)'
-                          }}
-                        >
-                          <Pencil style={{ width: 14, height: 14 }} />
-                        </button>
+                        {/* Transfers are not editable via the standard form - delete and re-create instead */}
+                        {tx.type !== 'transfer' && (
+                          <button
+                            onClick={() => setEditTx(tx)}
+                            aria-label={t('common.edit')}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              width: 32, height: 32, borderRadius: 8,
+                              border: 'none', backgroundColor: 'transparent',
+                              color: 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                              transition: 'all 0.12s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--color-sage)'
+                              e.currentTarget.style.color = 'var(--color-accent)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent'
+                              e.currentTarget.style.color = 'var(--color-text-muted)'
+                            }}
+                          >
+                            <Pencil style={{ width: 14, height: 14 }} />
+                          </button>
+                        )}
                         <button
                           onClick={() => setDeleteTx(tx)}
                           aria-label={t('common.delete')}

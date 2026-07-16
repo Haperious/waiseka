@@ -20,7 +20,10 @@ import { TranslationKey } from '@/lib/translations'
 import Link from 'next/link'
 import type { Budget } from '@/hooks/useBudgets'
 import type { Goal } from '@/hooks/useGoals'
+import { useAccounts, Account } from '@/hooks/useAccounts'
 import { useTransactions } from '@/hooks/useTransactions'
+import { formatAmount as formatCurrencyAmount } from '@/lib/currency'
+import { Wallet, CreditCard, Landmark, PiggyBank as PiggyBankIcon, Banknote, Smartphone } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import TransactionForm from '../transactions/TransactionForm'
 import dynamic from 'next/dynamic'
@@ -444,6 +447,50 @@ function DashTipCard({ tip, onNext }: { tip: Tip; onNext: () => void }) {
   )
 }
 
+// ── Account type icon/row (Balance per Account panel) ───────────────────────
+const ACCOUNT_TYPE_ICON: Record<Account['type'], React.ElementType> = {
+  debit: Landmark,
+  credit: CreditCard,
+  savings: PiggyBankIcon,
+  time_deposit: PiggyBankIcon,
+  cash: Banknote,
+  e_wallet: Smartphone,
+}
+
+function AccountRow({ account }: { account: Account }) {
+  const Icon = ACCOUNT_TYPE_ICON[account.type] ?? Wallet
+  const isCredit = account.type === 'credit'
+  const amount = isCredit ? (account.outstandingBalance ?? 0) : (account.computedBalance ?? account.openingBalance)
+  const color = isCredit
+    ? (amount > 0 ? 'var(--color-expense)' : 'var(--color-text-primary)')
+    : (amount < 0 ? 'var(--color-expense)' : 'var(--color-text-primary)')
+  // Shown in the account's own currency (no cross-currency conversion).
+  const fmt = (v: number) => formatCurrencyAmount(v, account.currency)
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <div style={{
+          width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+          backgroundColor: 'var(--color-sage)', color: 'var(--color-accent)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon style={{ width: 13, height: 13 }} />
+        </div>
+        <span style={{
+          fontSize: '0.83rem', fontWeight: 600, color: 'var(--color-text-primary)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {account.name}
+        </span>
+      </div>
+      <span style={{ fontSize: '0.85rem', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        {isCredit && amount > 0 ? '-' : ''}{fmt(Math.abs(amount))}
+      </span>
+    </div>
+  )
+}
+
 // ── Anomaly item type ────────────────────────────────────────────────────────
 interface AnomalyItem {
   category: string
@@ -474,6 +521,7 @@ export default function DashboardPage() {
   const [budgetsLoading,   setBudgetsLoading]   = useState(true)
   const [goals,            setGoals]            = useState<Goal[]>([])
   const [goalsLoading,     setGoalsLoading]     = useState(true)
+  const { accounts, loading: accountsLoading } = useAccounts()
 
   const { data: session } = useSession()
   const userIsPremium = session?.user ? isPremium(session.user as { tier: string; premiumOverride: boolean }) : false
@@ -882,6 +930,73 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* ── Balance per Account ─────────────────────────────────────────── */}
+      {(accountsLoading || accounts.length > 0) && (
+        <div style={{
+          backgroundColor: 'var(--color-card)',
+          borderRadius: 16,
+          border: '1px solid var(--color-border)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '16px 24px',
+            borderBottom: '1px solid var(--color-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
+              Balance per Account
+            </h2>
+            <Link
+              href="/accounts"
+              style={{
+                fontSize: '0.78rem', fontWeight: 600,
+                color: 'var(--color-accent)', textDecoration: 'none',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              {t('dashboard.viewAll')} →
+            </Link>
+          </div>
+          <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {accountsLoading ? (
+              <>{[0, 1, 2].map(i => <Skeleton key={i} className="h-6 w-full" />)}</>
+            ) : (
+              (() => {
+                const activeAccounts = accounts.filter((a) => !a.isArchived)
+                // Group by currency - never sum across currencies (no FX conversion).
+                const moneyByCurrency = new Map<string, number>()
+                for (const a of activeAccounts) {
+                  if (a.type === 'credit' || !a.includeInTotal) continue
+                  moneyByCurrency.set(a.currency, (moneyByCurrency.get(a.currency) ?? 0) + (a.computedBalance ?? a.openingBalance))
+                }
+                return (
+                  <>
+                    <div style={{
+                      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8,
+                      paddingBottom: 10, borderBottom: '1px solid var(--color-border)',
+                    }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                        Total Money
+                      </span>
+                      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        {[...moneyByCurrency.entries()].map(([currency, total]) => (
+                          <span key={currency} style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-income)', fontVariantNumeric: 'tabular-nums' }}>
+                            {formatCurrencyAmount(total, currency)}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                    {activeAccounts.slice(0, 6).map((account) => (
+                      <AccountRow key={account._id} account={account} />
+                    ))}
+                  </>
+                )
+              })()
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Insight banner ─────────────────────────────────────────────── */}
       {!analyticsLoading && topCategory && (

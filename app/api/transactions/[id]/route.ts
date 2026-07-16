@@ -26,6 +26,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (body.isRecurring !== undefined) update.isRecurring = Boolean(body.isRecurring)
 
   const db = await getDb()
+
+  if (body.accountId !== undefined) {
+    if (body.accountId === null) {
+      update.accountId = null
+    } else {
+      if (!ObjectId.isValid(body.accountId)) {
+        return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
+      }
+      const account = await db.collection('accounts').findOne({
+        _id: new ObjectId(body.accountId),
+        userId: session.user.id,
+      })
+      if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+      update.accountId = new ObjectId(body.accountId)
+    }
+  }
   const transaction = await db.collection<ITransaction>('transactions').findOneAndUpdate(
     { _id: new ObjectId(id), userId: session.user.id },
     { $set: update },

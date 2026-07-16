@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { format } from 'date-fns'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
@@ -8,8 +8,11 @@ import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Transaction } from '@/hooks/useTransactions'
 import { useCategories } from '@/hooks/useCategories'
+import { useAccounts } from '@/hooks/useAccounts'
 import { useCurrency } from '@/context/CurrencyContext'
 import MicrophoneButton from '@/components/MicrophoneButton'
+
+const UNASSIGNED = ''
 
 interface TransactionFormProps {
   transaction?: Transaction
@@ -20,6 +23,7 @@ interface TransactionFormProps {
 export default function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast()
   const { categories } = useCategories()
+  const { accounts } = useAccounts()
   const { currency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -29,8 +33,32 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
     description: transaction?.description ?? '',
     date: transaction?.date ? format(new Date(transaction.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
     isRecurring: transaction?.isRecurring ?? false,
+    accountId: transaction?.accountId ?? UNASSIGNED,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [defaultAccountApplied, setDefaultAccountApplied] = useState(false)
+
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+
+  // Pre-fill the account dropdown with the user's default account, but only for
+  // brand-new transactions - never override an existing transaction's saved account.
+  useEffect(() => {
+    if (transaction || defaultAccountApplied || activeAccounts.length === 0) return
+
+    fetch('/api/preferences')
+      .then((r) => r.json())
+      .then((prefs) => {
+        const defaultId = prefs?.defaultAccountId as string | null | undefined
+        const stillActive = defaultId && activeAccounts.some((a) => a._id === defaultId)
+        const fallback = activeAccounts.find((a) => a.type === 'debit')
+        setForm((prev) => ({
+          ...prev,
+          accountId: prev.accountId || (stillActive ? defaultId! : fallback?._id ?? prev.accountId),
+        }))
+      })
+      .catch(() => {})
+      .finally(() => setDefaultAccountApplied(true))
+  }, [transaction, defaultAccountApplied, activeAccounts])
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -53,7 +81,12 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, amount: Number(form.amount), currency }),
+        body: JSON.stringify({
+          ...form,
+          amount: Number(form.amount),
+          currency,
+          accountId: form.accountId || null,
+        }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -80,6 +113,11 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
     { value: 'expense', label: 'Expense' },
     { value: 'income', label: 'Income' },
     { value: 'savings', label: 'Savings' },
+  ]
+
+  const accountOptions = [
+    { value: UNASSIGNED, label: 'Unassigned' },
+    ...activeAccounts.map((a) => ({ value: a._id, label: a.name })),
   ]
 
   return (
@@ -120,6 +158,13 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
         options={categoryOptions}
         placeholder="Select category"
         error={errors.category}
+      />
+      <Select
+        label="Account (optional)"
+        value={form.accountId}
+        onValueChange={(v) => setForm({ ...form, accountId: v })}
+        options={accountOptions}
+        placeholder="Unassigned"
       />
       <Input
         label="Description (optional)"

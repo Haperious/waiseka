@@ -24,7 +24,7 @@ const EMAIL_THRESHOLD: Record<string, number> = { daily: 1, weekly: 7, monthly: 
 
 // ─── AI Query Reset (daily midnight) ─────────────────────────────────────────
 
-async function resetAiQueries() {
+export async function resetAiQueries() {
   try {
     const db = await getDb()
     const users = db.collection<IUser>('users')
@@ -48,7 +48,7 @@ async function resetAiQueries() {
 
 // ─── Budget Reminder (15th of each month at 9 AM) ────────────────────────────
 
-async function sendBudgetReminders() {
+export async function sendBudgetReminders() {
   try {
     const db = await getDb()
     const now = new Date()
@@ -140,7 +140,7 @@ async function sendBudgetReminders() {
 
 // ─── Re-Engage (daily at 10 AM, targets users inactive 14+ days) ─────────────
 
-async function sendReEngageEmails() {
+export async function sendReEngageEmails() {
   try {
     const db = await getDb()
     const now = new Date()
@@ -212,7 +212,7 @@ async function sendReEngageEmails() {
 
 // ─── Monthly Report (1st of each month at 8 AM) ───────────────────────────────
 
-async function sendMonthlyReports() {
+export async function sendMonthlyReports() {
   try {
     const db = await getDb()
     const now = new Date()
@@ -336,7 +336,7 @@ async function sendMonthlyReports() {
 
 // ─── Push Notifications (daily at 9 AM) ──────────────────────────────────────
 
-async function sendPushNotifications() {
+export async function sendPushNotifications() {
   try {
     const settings = await getSettings()
     if (!settings.notificationsEnabled) return
@@ -367,12 +367,36 @@ async function sendPushNotifications() {
   }
 }
 
+// ─── Account alerts (daily 8 AM) - low balance & credit utilization ──────────
+
+export async function runAccountAlertsJob() {
+  try {
+    const db = await getDb()
+    const { runAccountAlerts } = await import('@/lib/services/accountAlerts')
+    await runAccountAlerts(db)
+  } catch (err) {
+    console.error('[scheduler] account alerts error:', err)
+  }
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
+/**
+ * In-process node-cron scheduling. This only works on a persistent Node host and
+ * does NOT fire on Netlify's serverless functions - in production, scheduling is
+ * handled by a Netlify Scheduled Function that calls /api/cron (see netlify/functions
+ * and app/api/cron). Kept for local dev, where node-cron works fine.
+ *
+ * Set DISABLE_INPROCESS_CRON=true (do this in the Netlify environment) to skip this
+ * entirely so the two mechanisms can never both fire.
+ */
 export function startSchedulers() {
+  if (process.env.DISABLE_INPROCESS_CRON === 'true') return
+
   cron.schedule('0 0 * * *', resetAiQueries)           // midnight daily
   cron.schedule('0 8 1 * *', sendMonthlyReports)        // 8 AM on 1st
   cron.schedule('0 9 15 * *', sendBudgetReminders)      // 9 AM on 15th
   cron.schedule('0 10 * * *', sendReEngageEmails)       // 10 AM daily
   cron.schedule('0 9 * * *', sendPushNotifications)     // 9 AM daily
+  cron.schedule('0 8 * * *', runAccountAlertsJob)       // 8 AM daily
 }

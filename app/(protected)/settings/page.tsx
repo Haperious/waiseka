@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Lock, DollarSign, Bell, Sun, Moon, Mic, MailCheck, MailWarning, ShieldCheck, ShieldOff, Copy, Eye, EyeOff } from 'lucide-react'
+import { User, Lock, DollarSign, Wallet, Bell, Sun, Moon, Mic, MailCheck, MailWarning, ShieldCheck, ShieldOff, Copy, Eye, EyeOff } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Select from '@/components/ui/Select'
 import PasswordInput from '@/components/ui/PasswordInput'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { getAllCurrencies, CurrencyCode } from '@/lib/currency'
 import { useToast } from '@/components/ui/Toast'
+import { useAccounts } from '@/hooks/useAccounts'
 import { useSession, signOut } from 'next-auth/react'
 
 type Frequency = 'daily' | 'weekly' | 'monthly'
@@ -144,6 +146,12 @@ export default function SettingsPage() {
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(currency)
   const [currencyLoading, setCurrencyLoading] = useState(false)
 
+  const { accounts } = useAccounts()
+  const activeAccounts = accounts.filter((a) => !a.isArchived)
+  const [defaultAccountId, setDefaultAccountId] = useState<string>('')
+  const [savedDefaultAccountId, setSavedDefaultAccountId] = useState<string>('')
+  const [defaultAccountLoading, setDefaultAccountLoading] = useState(false)
+
   const [notifLoading, setNotifLoading] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
@@ -169,6 +177,10 @@ export default function SettingsPage() {
       .then((d) => {
         if (d?.name) setProfile({ name: d.name, avatar: d.avatar ?? '' })
         if (d?.preferences?.currency) setSelectedCurrency(d.preferences.currency)
+        if (d?.preferences?.defaultAccountId) {
+          setDefaultAccountId(d.preferences.defaultAccountId)
+          setSavedDefaultAccountId(d.preferences.defaultAccountId)
+        }
       })
       .catch(() => {})
 
@@ -269,6 +281,29 @@ export default function SettingsPage() {
       toast('Something went wrong', 'error')
     } finally {
       setCurrencyLoading(false)
+    }
+  }
+
+  const handleDefaultAccountSave = async () => {
+    if (defaultAccountId === savedDefaultAccountId) return
+    setDefaultAccountLoading(true)
+    try {
+      const res = await fetch('/api/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ defaultAccountId: defaultAccountId || null }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSavedDefaultAccountId(defaultAccountId)
+        toast('Default account updated', 'success')
+      } else {
+        toast(data.error ?? 'Failed to update default account', 'error')
+      }
+    } catch {
+      toast('Something went wrong', 'error')
+    } finally {
+      setDefaultAccountLoading(false)
     }
   }
 
@@ -628,6 +663,39 @@ export default function SettingsPage() {
           >
             {t('settings.saveCurrency')}
           </Button>
+        </div>
+      </SettingsSection>
+
+      {/* ── Default Account ─────────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={Wallet}
+        iconColor="var(--color-accent)"
+        iconBg="var(--color-sage)"
+        title="Default Account"
+        subtitle="Pre-selected automatically when you add a new transaction"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {activeAccounts.length === 0 ? (
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+              Add an account first to set a default.
+            </p>
+          ) : (
+            <>
+              <Select
+                value={defaultAccountId}
+                onValueChange={setDefaultAccountId}
+                options={activeAccounts.map((a) => ({ value: a._id, label: a.name }))}
+                placeholder="Select an account"
+              />
+              <Button
+                onClick={handleDefaultAccountSave}
+                loading={defaultAccountLoading}
+                disabled={defaultAccountId === savedDefaultAccountId}
+              >
+                Save Default Account
+              </Button>
+            </>
+          )}
         </div>
       </SettingsSection>
 

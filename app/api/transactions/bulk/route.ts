@@ -45,10 +45,13 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { transactions } = body as { transactions: BulkTransactionItem[] }
+  const { transactions, accountId } = body as { transactions: BulkTransactionItem[]; accountId?: string | null }
 
   if (!Array.isArray(transactions) || transactions.length === 0) {
     return NextResponse.json({ error: 'transactions must be a non-empty array' }, { status: 400 })
+  }
+  if (accountId && !ObjectId.isValid(accountId)) {
+    return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
   }
 
   if (transactions.length > 100) {
@@ -67,6 +70,12 @@ export async function POST(req: NextRequest) {
   }
 
   const db = await getDb()
+
+  // Verify the shared account belongs to this user before linking it to every row
+  if (accountId) {
+    const account = await db.collection('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
+    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+  }
 
   const user = await db.collection<IUser>('users').findOne(
     { _id: new ObjectId(session.user.id) as never },
@@ -102,6 +111,7 @@ export async function POST(req: NextRequest) {
       date: parseTransactionDate(t.date),
       tags: [] as string[],
       isRecurring: t.isRecurring ?? false,
+      accountId: accountId ? new ObjectId(accountId) : null,
       isArchived: false as const,
       createdAt: now,
       updatedAt: now,

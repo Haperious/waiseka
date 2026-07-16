@@ -7,6 +7,7 @@ export interface IConversationMessage {
 }
 
 export type OnboardingStepId =
+  | 'accounts'
   | 'dashboard'
   | 'transactions'
   | 'categories'
@@ -33,6 +34,8 @@ export interface IUser {
     currency: 'PHP' | 'QAR' | 'USD'
     currencySymbol: string
     theme?: 'light' | 'dark'
+    /** Account pre-selected on the transaction form. Null/unset falls back to the oldest debit account, if any. */
+    defaultAccountId?: string | null
   }
   onboarding: IOnboarding
   ai: {

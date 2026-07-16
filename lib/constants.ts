@@ -20,6 +20,10 @@ export const FREE_BUDGET_LIMIT = 3
 /** Max active goals a free-tier user may have at one time. */
 export const FREE_GOAL_LIMIT = 3
 
+// ── Account limits ───────────────────────────────────────────────────────────
+/** Max non-archived accounts a free-tier user may have at one time. */
+export const FREE_ACCOUNT_LIMIT = 5
+
 // ── Transaction history ──────────────────────────────────────────────────────
 /** Rolling retention window (in days) for free-tier transactions. 3 years = 1095 days. */
 export const FREE_HISTORY_DAYS = 1095

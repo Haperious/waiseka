@@ -8,7 +8,10 @@ import Select from '@/components/ui/Select'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useCategories } from '@/hooks/useCategories'
+import { useAccounts } from '@/hooks/useAccounts'
 import { useCurrency } from '@/context/CurrencyContext'
+
+const UNASSIGNED = ''
 
 interface BulkTransactionFormProps {
   onSuccess: () => void
@@ -44,9 +47,17 @@ function createEmptyRow(): TransactionRow {
 export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransactionFormProps) {
   const { toast } = useToast()
   const { categories } = useCategories()
+  const { accounts } = useAccounts()
   const { currency } = useCurrency()
 
+  const activeAccounts = accounts.filter((a) => !a.isArchived)
+  const accountOptions = [
+    { value: UNASSIGNED, label: 'Unassigned' },
+    ...activeAccounts.map((a) => ({ value: a._id, label: a.name })),
+  ]
+
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [accountId, setAccountId] = useState(UNASSIGNED)
   const [rows, setRows] = useState<TransactionRow[]>([createEmptyRow(), createEmptyRow()])
   const [rowErrors, setRowErrors] = useState<Record<string, RowErrors>>({})
   const [loading, setLoading] = useState(false)
@@ -127,7 +138,7 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
       const res = await fetch('/api/transactions/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions }),
+        body: JSON.stringify({ transactions, accountId: accountId || null }),
       })
 
       const data = await res.json()
@@ -162,12 +173,19 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
 
   return (
     <div className="flex flex-col gap-4 h-full">
-      <div className="max-w-xs flex-shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md flex-shrink-0">
         <Input
-          label="Date (applies to all transactions)"
+          label="Date"
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
+        />
+        <Select
+          label="Account"
+          value={accountId}
+          onValueChange={setAccountId}
+          options={accountOptions}
+          placeholder="Unassigned"
         />
       </div>
 

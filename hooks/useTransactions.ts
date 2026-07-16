@@ -7,12 +7,15 @@ export interface Transaction {
   _id: string
   userId: string
   amount: number
-  type: 'income' | 'expense' | 'savings'
+  type: 'income' | 'expense' | 'savings' | 'transfer'
   category: string
   description?: string
   date: string
   tags: string[]
   isRecurring: boolean
+  accountId: string | null
+  fromAccountId?: string | null
+  toAccountId?: string | null
   createdAt: string
 }
 
@@ -22,6 +25,7 @@ interface Filters {
   startDate?: string
   endDate?: string
   search?: string
+  accountId?: string
   page?: number
   limit?: number
 }
@@ -38,13 +42,14 @@ export function useTransactions(filters: Filters = {}) {
     if (filters.startDate) params.set('startDate', filters.startDate)
     if (filters.endDate) params.set('endDate', filters.endDate)
     if (filters.search) params.set('search', filters.search)
+    if (filters.accountId) params.set('accountId', filters.accountId)
     params.set('page', String(filters.page ?? 1))
     params.set('limit', String(filters.limit ?? 20))
 
     const res = await fetch(`/api/transactions?${params}`)
     if (!res.ok) throw new Error(await extractApiError(res))
     return res.json() as Promise<{ transactions: Transaction[]; total: number; totalPages: number }>
-  }, [filters.type, filters.category, filters.startDate, filters.endDate, filters.search, filters.page, filters.limit])
+  }, [filters.type, filters.category, filters.startDate, filters.endDate, filters.search, filters.accountId, filters.page, filters.limit])
 
   const { execute, loading, error } = useFetch(fetcher)
 

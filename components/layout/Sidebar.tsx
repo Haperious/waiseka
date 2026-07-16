@@ -20,6 +20,7 @@ import {
   Flag,
   BookOpen,
   MessageSquare,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/context/LanguageContext'
@@ -28,6 +29,7 @@ import type { TranslationKey } from '@/lib/translations'
 const navItems: { href: string; labelKey: TranslationKey; icon: React.ElementType }[] = [
   { href: '/dashboard',    labelKey: 'nav.dashboard',    icon: LayoutDashboard },
   { href: '/transactions', labelKey: 'nav.transactions', icon: ArrowLeftRight  },
+  { href: '/accounts',     labelKey: 'nav.accounts',     icon: Wallet          },
   { href: '/budgets',      labelKey: 'nav.budgets',      icon: PieChart        },
   { href: '/goals',        labelKey: 'nav.goals',        icon: Target          },
   { href: '/categories',   labelKey: 'nav.categories',   icon: Tags            },

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
+import type { IAccount } from '@/lib/models/Account'
 import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import type { IEmailLog } from '@/lib/models/EmailLog'
@@ -104,6 +106,28 @@ export async function POST(req: NextRequest) {
         updatedAt: now,
       })) as ICategory[]
     )
+
+    // Give every new user a starting account so the transaction form's account
+    // dropdown is never empty on first visit. Mirrors scripts/backfill-default-accounts.ts,
+    // which does the same for pre-existing users.
+    await db.collection<IAccount>('accounts').insertOne({
+      _id: new ObjectId(),
+      userId,
+      name: 'Cash on Hand',
+      type: 'debit',
+      openingBalance: 0,
+      currency: 'PHP',
+      creditLimit: null,
+      dueDay: null,
+      lowBalanceThreshold: null,
+      color: null,
+      icon: null,
+      displayOrder: 0,
+      isArchived: false,
+      includeInTotal: true,
+      createdAt: now,
+      updatedAt: now,
+    })
 
     const firstName = name.split(' ')[0]
     const lowerEmail = email.toLowerCase()

@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
   const endDate = searchParams.get('endDate')
   const tags = searchParams.get('tags')
   const search = searchParams.get('search')
+  const accountId = searchParams.get('accountId')
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '20')
 
@@ -47,6 +48,20 @@ export async function GET(req: NextRequest) {
   if (endDate) query.date.$lte = new Date(endDate)
 
   if (tags) query.tags = { $in: tags.split(',') }
+  if (accountId === 'unassigned') {
+    query.accountId = null
+  } else if (accountId && ObjectId.isValid(accountId)) {
+    // Match direct transactions on this account OR either leg of a transfer touching it
+    const accountObjectId = new ObjectId(accountId)
+    query.$and = [
+      ...(query.$and ?? []),
+      { $or: [
+        { accountId: accountObjectId },
+        { fromAccountId: accountObjectId },
+        { toAccountId: accountObjectId },
+      ] },
+    ]
+  }
   if (search) {
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const searchRegex = { $regex: escapedSearch, $options: 'i' }
@@ -70,7 +85,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { amount, type, category, description, date, tags, isRecurring, currency } = body
+  const { amount, type, category, description, date, tags, isRecurring, currency, accountId } = body
 
   if (!type || !category || !date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -78,8 +93,17 @@ export async function POST(req: NextRequest) {
   if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
   }
+  if (accountId !== undefined && accountId !== null && !ObjectId.isValid(accountId)) {
+    return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
+  }
 
   const db = await getDb()
+
+  // Verify the account belongs to this user before linking it - never trust a client-supplied id blindly
+  if (accountId) {
+    const account = await db.collection('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
+    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+  }
 
   // Fetch user once - used both for currency resolution and spending alert below
   const postUser = await db.collection<IUser>('users').findOne(
@@ -100,6 +124,7 @@ export async function POST(req: NextRequest) {
     date: parseTransactionDate(date),
     tags: tags ?? [],
     isRecurring: isRecurring ?? false,
+    accountId: accountId ? new ObjectId(accountId) : null,
     isArchived: false,
     createdAt: now,
     updatedAt: now,

@@ -12,6 +12,7 @@ import {
   Sun, Moon, Menu, X, TrendingUp, Target, MessageSquare,
   BarChart2, Tags, Zap, ArrowRight, Banknote, Users, PiggyBank,
   CalendarDays, ChevronDown, Mic, FileText, Crown, Activity, Shield,
+  Landmark,
 } from 'lucide-react'
 
 // ─── Preview amounts per currency ────────────────────────────────────────────
@@ -260,6 +261,7 @@ export default function LandingPage() {
     { icon: FileText,      titleKey: 'landing.f8.title', descKey: 'landing.f8.desc', color: '#15803D', badge: 'new' },
     { icon: TrendingUp,    titleKey: 'landing.f5.title', descKey: 'landing.f5.desc', color: '#16A34A' },
     { icon: Tags,          titleKey: 'landing.f6.title', descKey: 'landing.f6.desc', color: '#15803D' },
+    { icon: Landmark,      titleKey: 'landing.f10.title', descKey: 'landing.f10.desc', color: '#166534', badge: 'new' },
   ]
 
   const currencyCardCopy: Record<CurrencyCode, { title: string; desc: string }> = {
