@@ -346,6 +346,13 @@ export const translations = {
     'landing.preview.income':  'Income',
     'landing.preview.expense': 'Expenses',
     'landing.preview.rate':    'Savings Rate',
+
+    // ── Announcements ────────────────────────────────────────────────
+    'announcements.back':      'Back',
+    'announcements.next':      'Next',
+    'announcements.gotIt':     'Got it',
+    'announcements.close':     'Close',
+    'announcements.goToCard':  'Go to card {n}',
   },
 
   tl: {
@@ -695,6 +702,13 @@ export const translations = {
     'landing.preview.income':  'Kita',
     'landing.preview.expense': 'Gastos',
     'landing.preview.rate':    'Porsyento ng Ipon',
+
+    // ── Announcements ────────────────────────────────────────────────
+    'announcements.back':      'Bumalik',
+    'announcements.next':      'Susunod',
+    'announcements.gotIt':     'Nakuha ko',
+    'announcements.close':     'Isara',
+    'announcements.goToCard':  'Pumunta sa card {n}',
   },
 } as const
 

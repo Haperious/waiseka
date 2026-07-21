@@ -47,3 +47,5 @@ TASKS.md
 
 waiseka_tests.py
 *.md
+seed-announcement.ts
+generate-announcement-image.py

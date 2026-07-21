@@ -38,3 +38,16 @@ export const DEFAULT_AI_QUERY_CAP = 30
 // ── AI model ─────────────────────────────────────────────────────────────────
 /** Anthropic model used for all AI features. Update here to change globally. */
 export const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514'
+
+// ── Announcements ────────────────────────────────────────────────────────────
+/** Max announcement cards shown in one carousel session. */
+export const MAX_PENDING_ANNOUNCEMENTS = 3
+
+/** Max characters in an announcement title. */
+export const ANNOUNCEMENT_TITLE_MAX_LENGTH = 45
+
+/** Max characters in an announcement description. */
+export const ANNOUNCEMENT_DESCRIPTION_MAX_LENGTH = 220
+
+/** Default lifetime of an announcement, in days, from publishedAt. */
+export const ANNOUNCEMENT_DEFAULT_TTL_DAYS = 30

@@ -9,6 +9,7 @@ import type { Tip } from '@/lib/tipsContent'
 import { format } from 'date-fns'
 import { Skeleton } from '@/components/ui/Skeleton'
 import SurveyBanner from '@/components/SurveyBanner'
+import AnnouncementModal, { PendingAnnouncement } from '@/components/AnnouncementModal'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
@@ -644,6 +645,30 @@ export default function DashboardPage() {
   useEffect(() => { loadBudgets() },          [loadBudgets])
   useEffect(() => { loadGoals() },            [loadGoals])
 
+  // Load pending feature announcements - at most once per browser session, guarded by a
+  // per-user sessionStorage flag. The flag is a presentation-layer guard only; the
+  // announcementViews collection is the source of truth for what's actually been seen,
+  // so clearing sessionStorage re-checks but never resurfaces an already-dismissed card.
+  const [pendingAnnouncements, setPendingAnnouncements] = useState<PendingAnnouncement[]>([])
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    const checkedKey = `waiseka_announcements_checked_${session.user.id}`
+    if (sessionStorage.getItem(checkedKey)) return
+    sessionStorage.setItem(checkedKey, '1')
+
+    fetch('/api/announcements/pending')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.announcements?.length) {
+          setPendingAnnouncements(data.announcements)
+          setAnnouncementModalOpen(true)
+        }
+      })
+      .catch(() => { /* non-critical */ })
+  }, [session?.user?.id])
+
   // Load anomalies on mount- always current month, no dependency on selected period
   useEffect(() => {
     const now = new Date()
@@ -811,6 +836,13 @@ export default function DashboardPage() {
           </button>
         </div>
       )}
+
+      {/* ── Feature announcement modal ───────────────────────────────── */}
+      <AnnouncementModal
+        open={announcementModalOpen}
+        announcements={pendingAnnouncements}
+        onClose={() => setAnnouncementModalOpen(false)}
+      />
 
       {/* ── Survey banner ───────────────────────────────────────────── */}
       {session?.user?.id && session?.user?.createdAt && (
