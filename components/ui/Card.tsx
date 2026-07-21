@@ -27,13 +27,3 @@ export function CardHeader({ className, ...props }: CardProps) {
 export function CardContent({ className, ...props }: CardProps) {
   return <div className={cn('px-6 py-4', className)} {...props} />
 }
-
-export function CardFooter({ className, ...props }: CardProps) {
-  return (
-    <div
-      className={cn('px-6 py-4 border-t', className)}
-      style={{ borderColor: 'var(--color-border)' }}
-      {...props}
-    />
-  )
-}

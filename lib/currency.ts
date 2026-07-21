@@ -47,7 +47,3 @@ export function formatAmountShort(amount: number, code: string): string {
 export function getAllCurrencies(): CurrencyInfo[] {
   return Object.values(CURRENCIES)
 }
-
-export function getCurrencyInfo(code: string): CurrencyInfo {
-  return CURRENCIES[code as CurrencyCode] ?? CURRENCIES.USD
-}

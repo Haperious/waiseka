@@ -32,8 +32,9 @@ export const FREE_HISTORY_DAYS = 1095
 export const PREMIUM_HISTORY_DAYS = 2555
 
 // ── AI query cap ─────────────────────────────────────────────────────────────
-/** Default monthly AI query cap for premium users (overridable per user in DB). */
-export const DEFAULT_AI_QUERY_CAP = 30
+// The monthly AI query cap is stored in the database, not here.
+// Source of truth: GlobalSettings.aiQueryCap, overridable per user via
+// User.ai.queriesCapOverride. See lib/models/GlobalSettings.ts and lib/ai-gate.ts.
 
 // ── AI model ─────────────────────────────────────────────────────────────────
 /** Anthropic model used for all AI features. Update here to change globally. */

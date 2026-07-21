@@ -1,7 +1,7 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getMessaging } from 'firebase-admin/messaging'
 import { Db } from 'mongodb'
-import { getMailTransporter, sendSpendingAlertEmail } from '@/lib/email'
+import { sendSpendingAlertEmail } from '@/lib/email'
 import { isPremium } from '@/lib/tier'
 import { formatCurrency } from '@/lib/utils'
 import type { IUser } from '@/lib/models/User'
@@ -14,26 +14,6 @@ type NotificationType = 'reminder' | 'inactivity'
 const MESSAGES: Record<NotificationType, string> = {
   reminder: "Time to log your expenses!",
   inactivity: "It's been a while - come back and update your budget!",
-}
-
-export async function sendEmailNotification({
-  to,
-  name,
-  type,
-}: {
-  to: string
-  name: string
-  type: NotificationType
-}) {
-  const message = MESSAGES[type]
-
-  await getMailTransporter().sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject: type === 'reminder' ? 'Budget Reminder - Waiseka' : 'We miss you - Waiseka',
-    text: `Hi ${name},\n\n${message}\n\nWaiseka`,
-    html: `<p>Hi ${name},</p><p>${message}</p><p>- Waiseka</p>`,
-  })
 }
 
 function initFirebase() {
