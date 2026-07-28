@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
+const CONTACT_EMAIL = 'waise.ka.official@gmail.com'
 
 // ─── Transport ────────────────────────────────────────────────────────────────
 
@@ -846,4 +847,37 @@ export async function sendSetupNudgeEmail(data: SetupNudgeEmailData) {
 </div></div></body></html>`
 
   await sendMail(data.email, subject, html)
+}
+
+// ─── 10. Scheduled Function Failure (Admin Alert) ────────────────────────────
+// Sent to the WaiseKa inbox (not a user) when the Netlify scheduled-cron
+// function fails to run /api/cron - there's no browser involved in that
+// failure, so an email is the only way anyone finds out.
+
+export interface CronFailureEmailData {
+  reason: string
+  detail: string
+  occurredAt: string
+}
+
+export async function sendCronFailureEmail(data: CronFailureEmailData) {
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>WaiseKa - Scheduled Cron Failure</title><style>${BASE_CSS}
+  .errbox{margin:0 44px 20px;background:#FDE8E8;border:1px solid #F0A0A0;border-radius:12px;padding:16px 18px;font-family:'DM Mono',monospace;font-size:11px;color:#8A2A2A;white-space:pre-wrap;word-break:break-word}
+</style></head><body>
+<div class="wrap"><div class="shell">
+  ${emailHeader()}
+  <div class="hero">
+    <div class="hico" style="background:#FDE8E8;border-color:#F0A0A0">🚨</div>
+    <h1 class="h1">Scheduled cron function failed</h1>
+    <p class="hsub">The hourly Netlify scheduled function could not complete /api/cron.</p>
+  </div>
+  <div class="body">
+    <p class="gr">${data.reason}</p>
+    <p class="p">Occurred at ${data.occurredAt}. Check the Netlify function logs for scheduled-cron for full context.</p>
+  </div>
+  <div class="errbox">${data.detail}</div>
+  ${emailFooter([], 'Automated alert from scheduled-cron.mts.<br>WaiseKa · waiseKa.app', 'WaiseKa Ops')}
+</div></div></body></html>`
+  await sendMail(CONTACT_EMAIL, `[WaiseKa] Scheduled cron failure - ${data.reason}`, html)
 }

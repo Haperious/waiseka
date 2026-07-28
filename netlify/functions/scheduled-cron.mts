@@ -15,14 +15,30 @@
  *
  * Note: scheduled functions only run on published production deploys, not on
  * deploy previews or branch deploys, and have a 30s execution limit.
+ *
+ * There is no browser involved in a scheduled-function run - Netlify invokes
+ * it directly - so a failure here can't be shown as a page. Instead, on any
+ * failure we email the WaiseKa inbox via lib/email.ts so someone finds out.
  */
+
+import { sendCronFailureEmail } from '../../lib/email'
+
+async function alertFailure(reason: string, detail: string) {
+  try {
+    await sendCronFailureEmail({ reason, detail, occurredAt: new Date().toISOString() })
+  } catch (err) {
+    console.error('[scheduled-cron] failed to send failure alert email:', err)
+  }
+}
 
 export default async () => {
   const base = process.env.URL // Netlify sets this to the production site URL
   const secret = process.env.CRON_SECRET
 
   if (!base || !secret) {
-    console.error('[scheduled-cron] missing URL or CRON_SECRET env var; skipping')
+    const detail = 'missing URL or CRON_SECRET env var; skipping'
+    console.error(`[scheduled-cron] ${detail}`)
+    await alertFailure('Missing configuration', detail)
     return new Response('missing config', { status: 500 })
   }
 
@@ -34,9 +50,14 @@ export default async () => {
     })
     const text = await res.text()
     console.log(`[scheduled-cron] /api/cron responded ${res.status}: ${text}`)
+    if (!res.ok) {
+      await alertFailure(`/api/cron responded ${res.status}`, text)
+    }
     return new Response(text, { status: res.ok ? 200 : 502 })
   } catch (err) {
+    const detail = err instanceof Error ? (err.stack ?? err.message) : String(err)
     console.error('[scheduled-cron] failed to reach /api/cron:', err)
+    await alertFailure('Failed to reach /api/cron', detail)
     return new Response('error', { status: 502 })
   }
 }
