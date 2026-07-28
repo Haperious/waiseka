@@ -2,13 +2,17 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export default function proxy(req: NextRequest) {
-  const { nextUrl } = req
+  try {
+    const { nextUrl } = req
 
-  if (nextUrl.pathname === '/maintenance') {
-    return NextResponse.next()
+    if (nextUrl.pathname === '/maintenance') {
+      return NextResponse.next()
+    }
+
+    return NextResponse.rewrite(new URL('/maintenance', nextUrl))
+  } catch {
+    return NextResponse.rewrite(new URL('/maintenance', req.nextUrl))
   }
-
-  return NextResponse.rewrite(new URL('/maintenance', nextUrl))
 }
 
 export const config = {
