@@ -10,3 +10,53 @@
 
 [functions."scheduled-cron"]
   schedule = "0 * * * *"
+
+# Maintenance-mode gate, implemented as native redirects instead of Next.js
+# middleware. Next 16's middleware (proxy.ts) gets deployed by
+# @netlify/plugin-nextjs as an edge function, which is currently hitting a
+# Netlify platform bug ("This edge function has crashed" / AbortError in
+# fetchPassthrough). Redirects are resolved by Netlify before any function
+# or edge function runs, so this path avoids that bug entirely.
+#
+# Order matters: the first matching rule wins. Exclusions must come before
+# the catch-all so they short-circuit it.
+[[redirects]]
+  from = "/api/*"
+  to = "/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/_next/static/*"
+  to = "/_next/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/_next/image*"
+  to = "/_next/image:splat"
+  status = 200
+
+[[redirects]]
+  from = "/favicon.ico"
+  to = "/favicon.ico"
+  status = 200
+
+[[redirects]]
+  from = "/logo.png"
+  to = "/logo.png"
+  status = 200
+
+[[redirects]]
+  from = "/logo-dark.png"
+  to = "/logo-dark.png"
+  status = 200
+
+[[redirects]]
+  from = "/maintenance"
+  to = "/maintenance"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/maintenance"
+  status = 200
+  force = true
