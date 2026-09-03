@@ -36,6 +36,10 @@ export interface IUser {
     theme?: 'light' | 'dark'
     /** Account pre-selected on the transaction form. Null/unset falls back to the oldest debit account, if any. */
     defaultAccountId?: string | null
+    /** Accounts excluded from the transactions-page balance strip. Exclusion list - empty/unset shows all non-archived accounts. */
+    transactionsHiddenAccountIds?: string[]
+    /** Whether the transactions-page balance strip is collapsed. */
+    transactionsAccountStripCollapsed?: boolean
   }
   onboarding: IOnboarding
   ai: {

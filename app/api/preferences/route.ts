@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import type { IUser } from '@/lib/models/User'
+import { MAX_HIDDEN_ACCOUNTS } from '@/lib/constants'
 
 const VALID_CURRENCIES = ['PHP', 'QAR', 'USD']
 
@@ -25,7 +26,7 @@ export async function PUT(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { currency, theme, defaultAccountId } = body
+  const { currency, theme, defaultAccountId, transactionsHiddenAccountIds, transactionsAccountStripCollapsed } = body
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
 
@@ -42,6 +43,29 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid theme' }, { status: 400 })
     }
     update['preferences.theme'] = theme
+  }
+
+  if (transactionsHiddenAccountIds !== undefined) {
+    if (
+      !Array.isArray(transactionsHiddenAccountIds) ||
+      transactionsHiddenAccountIds.some((id) => typeof id !== 'string' || !ObjectId.isValid(id))
+    ) {
+      return NextResponse.json({ error: 'Invalid transactionsHiddenAccountIds' }, { status: 400 })
+    }
+    if (transactionsHiddenAccountIds.length > MAX_HIDDEN_ACCOUNTS) {
+      return NextResponse.json(
+        { error: `Cannot hide more than ${MAX_HIDDEN_ACCOUNTS} accounts` },
+        { status: 400 }
+      )
+    }
+    update['preferences.transactionsHiddenAccountIds'] = transactionsHiddenAccountIds
+  }
+
+  if (transactionsAccountStripCollapsed !== undefined) {
+    if (typeof transactionsAccountStripCollapsed !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid transactionsAccountStripCollapsed' }, { status: 400 })
+    }
+    update['preferences.transactionsAccountStripCollapsed'] = transactionsAccountStripCollapsed
   }
 
   const db = await getDb()

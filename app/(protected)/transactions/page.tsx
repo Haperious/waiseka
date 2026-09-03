@@ -11,15 +11,22 @@ import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import { SkeletonRow } from '@/components/ui/Skeleton'
 import { useTransactions, Transaction } from '@/hooks/useTransactions'
-import { useAccounts } from '@/hooks/useAccounts'
+import { useAccounts, Account } from '@/hooks/useAccounts'
+import { usePreferences } from '@/hooks/usePreferences'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/components/ui/Toast'
 import { useSession } from 'next-auth/react'
 import { isPremium } from '@/lib/tier'
 import ImportModal from '@/components/import/ImportModal'
+import AccountStrip from '@/components/accounts/AccountStrip'
 import TransactionForm from './TransactionForm'
 import BulkTransactionForm from './BulkTransactionForm'
+
+/** Non-archived accounts minus the user's hidden-ids exclusion list, preserving API sort order. */
+export function getVisibleStripAccounts(accounts: Account[], hiddenIds: string[]): Account[] {
+  return accounts.filter((a) => !a.isArchived && !hiddenIds.includes(a._id))
+}
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: 'var(--color-card)',
@@ -42,8 +49,12 @@ export default function TransactionsPage() {
   const { toast } = useToast()
   const { data: session } = useSession()
 
-  const { accounts } = useAccounts()
+  const { accounts, loading: accountsLoading, error: accountsError, refetch: refetchAccounts } = useAccounts()
   const accountNameById = new Map(accounts.map((a) => [a._id, a.name]))
+
+  const { preferences, update: updatePreferences } = usePreferences()
+  const hiddenAccountIds = preferences?.transactionsHiddenAccountIds ?? []
+  const stripCollapsed = preferences?.transactionsAccountStripCollapsed ?? false
 
   const [page, setPage] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
@@ -100,6 +111,7 @@ export default function TransactionsPage() {
     if (!deleteTx) return
     try {
       await deleteTransaction(deleteTx._id)
+      refetchAccounts()
       toast('Transaction deleted', 'success')
       setDeleteTx(null)
     } catch {
@@ -252,6 +264,23 @@ export default function TransactionsPage() {
           </Button>
         </div>
       </div>
+
+      {/* ── Account balance strip ────────────────────────────────────────────── */}
+      <AccountStrip
+        accounts={accounts.filter((a) => !a.isArchived)}
+        accountsLoading={accountsLoading}
+        accountsError={accountsError}
+        onRetry={refetchAccounts}
+        activeAccountId={filterAccount === 'all' || filterAccount === 'unassigned' ? '' : filterAccount}
+        onSelectAccount={(id) => {
+          setFilterAccount((prev) => (prev === id ? 'all' : id))
+          setPage(1)
+        }}
+        hiddenAccountIds={hiddenAccountIds}
+        onChangeHiddenAccountIds={(ids) => updatePreferences({ transactionsHiddenAccountIds: ids })}
+        collapsed={stripCollapsed}
+        onToggleCollapsed={() => updatePreferences({ transactionsAccountStripCollapsed: !stripCollapsed })}
+      />
 
       {/* ── Filters ──────────────────────────────────────────────────────────── */}
       <div style={cardStyle}>
@@ -749,14 +778,14 @@ export default function TransactionsPage() {
       <ImportModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onImported={refetch}
+        onImported={() => { refetch(); refetchAccounts() }}
         isPremium={userIsPremium}
       />
 
       {/* ── Add modal ────────────────────────────────────────────────────────── */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('tx.add')}>
         <TransactionForm
-          onSuccess={() => { setAddOpen(false); refetch() }}
+          onSuccess={() => { setAddOpen(false); refetch(); refetchAccounts() }}
           onCancel={() => setAddOpen(false)}
         />
       </Modal>
@@ -764,7 +793,7 @@ export default function TransactionsPage() {
       {/* ── Bulk add modal ───────────────────────────────────────────────────── */}
       <Modal open={bulkOpen} onClose={() => setBulkOpen(false)} title="Add Multiple Transactions">
         <BulkTransactionForm
-          onSuccess={() => { setBulkOpen(false); refetch() }}
+          onSuccess={() => { setBulkOpen(false); refetch(); refetchAccounts() }}
           onCancel={() => setBulkOpen(false)}
         />
       </Modal>
@@ -774,7 +803,7 @@ export default function TransactionsPage() {
         {editTx && (
           <TransactionForm
             transaction={editTx}
-            onSuccess={() => { setEditTx(null); refetch() }}
+            onSuccess={() => { setEditTx(null); refetch(); refetchAccounts() }}
             onCancel={() => setEditTx(null)}
           />
         )}

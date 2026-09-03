@@ -19,6 +19,13 @@ export async function register() {
         { unique: true }
       ),
       db.collection('announcementViews').createIndex({ announcementKey: 1, seenAt: -1 }),
+      // Transactions: serves the table's existing paged query (find({userId}).sort({date:-1})),
+      // which today falls back to a full scan of the date_-1 index filtered by userId in FETCH.
+      // Also serves every additional read the account balance strip adds.
+      db.collection('transactions').createIndex({ userId: 1, date: -1 }),
+      // Serves getAccountActivityMap's $match({userId, isArchived, type}) aggregation, used by
+      // both /api/accounts and the balance strip's per-mutation refetches.
+      db.collection('transactions').createIndex({ userId: 1, isArchived: 1, type: 1 }),
     ])
   }
 }
