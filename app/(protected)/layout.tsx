@@ -5,10 +5,12 @@ import { SessionProvider } from 'next-auth/react'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import BottomNav from '@/components/layout/BottomNav'
+import QuickAddSheet from '@/components/quick-add/QuickAddSheet'
 import OnboardingProvider from '@/components/onboarding/OnboardingProvider'
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
 
   return (
     <SessionProvider>
@@ -20,7 +22,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             {children}
           </main>
         </div>
-        <BottomNav onMoreClick={() => setSidebarOpen(true)} />
+        <BottomNav onMoreClick={() => setSidebarOpen(true)} onAddClick={() => setQuickAddOpen(true)} />
+        <QuickAddSheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       </div>
       {/* Onboarding checklist - renders for new users only, self-dismisses */}
       <OnboardingProvider />

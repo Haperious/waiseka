@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { TranslationKey } from '@/lib/translations'
 import { useToast } from '@/components/ui/Toast'
 import BudgetForm from './BudgetForm'
+import { onTransactionSaved } from '@/lib/transactionEvents'
 
 // ── Animated progress bar ────────────────────────────────────────────────────
 function BudgetProgressBar({ spent, limit }: { spent: number; limit: number }) {
@@ -211,12 +212,92 @@ function BudgetCard({
   )
 }
 
+// ── Compact budget row (mobile "N categories" card) ──────────────────────────
+function CompactBudgetRow({
+  budget,
+  formatAmount,
+  onEdit,
+  onDelete,
+}: {
+  budget: Budget
+  formatAmount: (v: number) => string
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const pct = Math.min((budget.spent / budget.limit) * 100, 100)
+  const barColor =
+    pct >= 90 ? 'var(--color-expense)' :
+    pct >= 70 ? 'var(--color-warning)' :
+    'var(--color-income)'
+
+  const [animated, setAnimated] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setAnimated(true), 80)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div
+        onClick={onEdit}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+            backgroundColor: budget.color ?? 'var(--color-accent)',
+          }} />
+          <span style={{
+            fontSize: '0.83rem', fontWeight: 600, color: 'var(--color-text-primary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {budget.category}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+            {formatAmount(budget.spent)} / {formatAmount(budget.limit)}
+          </span>
+          <span style={{
+            fontSize: '0.65rem', fontWeight: 700, padding: '1px 7px', borderRadius: 999,
+            backgroundColor: pct >= 90 ? 'var(--color-expense-bg)' : pct >= 70 ? 'var(--color-warning-bg)' : 'var(--color-income-bg)',
+            color: barColor,
+          }}>
+            {Math.round(pct)}%
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
+            aria-label="Delete"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 26, height: 26, borderRadius: 7, marginLeft: 2,
+              border: 'none', backgroundColor: 'transparent', color: 'var(--color-text-muted)',
+            }}
+          >
+            <Trash2 style={{ width: 12, height: 12 }} />
+          </button>
+        </div>
+      </div>
+      <div style={{ height: 5, borderRadius: 999, backgroundColor: 'var(--color-elevated)', overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', borderRadius: 999, backgroundColor: barColor,
+          width: animated ? `${pct}%` : '0%',
+          transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)',
+        }} />
+      </div>
+    </div>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function BudgetsPage() {
   const { formatAmount } = useCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
   const { budgets, loading, deleteBudget, refetch } = useBudgets()
+
+  // Refresh spent totals when the mobile quick-add sheet saves a transaction
+  useEffect(() => onTransactionSaved(refetch), [refetch])
 
   const [addOpen, setAddOpen] = useState(false)
   const [editBudget, setEditBudget] = useState<Budget | null>(null)
@@ -286,9 +367,86 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      {/* ── Content ──────────────────────────────────────────────────────────── */}
+      {/* ── Mobile summary: Left to spend + N categories ────────────────────── */}
+      {loading && (
+        <div className="lg:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      )}
+      {!loading && budgets.length > 0 && (
+        <div className="lg:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {(() => {
+            const totalBudgeted = budgets.reduce((s, b) => s + b.limit, 0)
+            const totalSpent = budgets.reduce((s, b) => s + b.spent, 0)
+            const leftToSpend = totalBudgeted - totalSpent
+            const pct = totalBudgeted > 0 ? Math.min((totalSpent / totalBudgeted) * 100, 100) : 0
+            const barColor = pct >= 90 ? 'var(--color-expense)' : pct >= 70 ? 'var(--color-warning)' : 'var(--color-income)'
+            return (
+              <div style={{
+                backgroundColor: 'var(--color-card)',
+                borderRadius: 16,
+                border: '1px solid var(--color-border)',
+                padding: '20px 20px 18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}>
+                <div>
+                  <p style={{
+                    fontSize: '0.68rem', textTransform: 'uppercase',
+                    letterSpacing: '0.07em', color: 'var(--color-text-muted)',
+                    fontWeight: 600, marginBottom: 6,
+                  }}>
+                    Left to spend
+                  </p>
+                  <span style={{
+                    fontSize: '1.55rem', fontWeight: '800', lineHeight: 1,
+                    color: leftToSpend >= 0 ? 'var(--color-income)' : 'var(--color-expense)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {formatAmount(leftToSpend)}
+                  </span>
+                </div>
+                <div style={{ height: 6, borderRadius: 999, backgroundColor: 'var(--color-elevated)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 999, backgroundColor: barColor, width: `${pct}%`, transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)' }} />
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  of {formatAmount(totalBudgeted)} budgeted
+                </p>
+              </div>
+            )
+          })()}
+
+          <div style={{
+            backgroundColor: 'var(--color-card)',
+            borderRadius: 16,
+            border: '1px solid var(--color-border)',
+            overflow: 'hidden',
+          }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
+              <h2 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                {budgets.length} categories
+              </h2>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {budgets.map((b) => (
+                <CompactBudgetRow
+                  key={b._id}
+                  budget={b}
+                  formatAmount={formatAmount}
+                  onEdit={() => setEditBudget(b)}
+                  onDelete={() => setDeleteBudgetItem(b)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Content (desktop) ───────────────────────────────────────────────── */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        <div className="hidden lg:grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : budgets.length === 0 ? (
@@ -312,7 +470,7 @@ export default function BudgetsPage() {
           </Button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        <div className="hidden lg:grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {budgets.map((b) => (
             <BudgetCard
               key={b._id}

@@ -27,6 +27,7 @@ import { formatAmount as formatCurrencyAmount } from '@/lib/currency'
 import { Wallet, CreditCard, Landmark, PiggyBank as PiggyBankIcon, Banknote, Smartphone } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import TransactionForm from '../transactions/TransactionForm'
+import { onTransactionSaved } from '@/lib/transactionEvents'
 import dynamic from 'next/dynamic'
 import type { CategoryTrendData } from '@/components/charts/CategoryTrendChart'
 
@@ -122,6 +123,51 @@ function HealthRing({
       }}>
         {statusKey}
       </span>
+    </div>
+  )
+}
+
+// ── Demoted 44px health ring (mobile "Left to spend" card) ──────────────────
+function MiniHealthRing({ score }: { score: number }) {
+  const r = 18
+  const circ = 2 * Math.PI * r
+  const offset = circ - (Math.min(score, 100) / 100) * circ
+
+  const [animated, setAnimated] = useState(false)
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setAnimated(true))
+    return () => cancelAnimationFrame(t)
+  }, [score])
+
+  const ringColor =
+    score >= 70 ? 'var(--color-income)' :
+    score >= 45 ? 'var(--color-warning)' :
+    'var(--color-expense)'
+
+  return (
+    <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+      <svg viewBox="0 0 44 44" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+        <circle cx="22" cy="22" r={r} fill="none" stroke="var(--color-elevated)" strokeWidth="4" />
+        <circle
+          cx="22" cy="22" r={r} fill="none"
+          stroke={ringColor} strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={`${circ}`}
+          strokeDashoffset={animated ? `${offset}` : `${circ}`}
+          style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)' }}
+        />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{
+          fontSize: '0.72rem', fontWeight: '800',
+          color: ringColor, fontVariantNumeric: 'tabular-nums',
+        }}>
+          {score}
+        </span>
+      </div>
     </div>
   )
 }
@@ -730,12 +776,38 @@ export default function DashboardPage() {
   const selectedMonthLabel = MONTHS.find(m => m.value === selectedMonth)?.label ?? ''
   const topCategory        = analyticsSummary?.categoryBreakdown?.[0]
 
+  // Shared by the desktop "Balance per Account" panel and the mobile "Total Money" strip
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+  const moneyByCurrency = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const a of activeAccounts) {
+      if (a.type === 'credit' || !a.includeInTotal) continue
+      map.set(a.currency, (map.get(a.currency) ?? 0) + (a.computedBalance ?? a.openingBalance))
+    }
+    return map
+  }, [activeAccounts])
+
+  // Shared by the mobile "Left to spend" card
+  const totalBudgeted = useMemo(() => budgets.reduce((s, b) => s + b.limit, 0), [budgets])
+  const totalSpentOnBudgets = useMemo(() => budgets.reduce((s, b) => s + b.spent, 0), [budgets])
+  const leftToSpend = totalBudgeted - totalSpentOnBudgets
+  const spentPct = totalBudgeted > 0 ? Math.min((totalSpentOnBudgets / totalBudgeted) * 100, 100) : 0
+  const isCurrentPeriod = parseInt(selectedMonth) === currentMonth && parseInt(selectedYear) === currentYear
+  const daysInSelectedMonth = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate()
+
   const onTransactionSuccess = useCallback(() => {
     setAddTxOpen(false)
     refetch()
     loadAnalyticsSummary()
     loadBudgets()
   }, [refetch, loadAnalyticsSummary, loadBudgets])
+
+  // Refresh dashboard data when the mobile quick-add sheet saves a transaction
+  useEffect(() => onTransactionSaved(() => {
+    refetch()
+    loadAnalyticsSummary()
+    loadBudgets()
+  }), [refetch, loadAnalyticsSummary, loadBudgets])
 
   // For free-tier users: show only current month + last 2 months (3 total).
   // For premium users: show the full year.
@@ -903,8 +975,199 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Hero: health ring + 4 stat cards ──────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row" style={{ gap: 16, alignItems: 'stretch' }}>
+      {/* ── Mobile "balance-led" hero: Total Money strip + Left to spend + This month ── */}
+      <div className="lg:hidden flex flex-col" style={{ gap: 16 }}>
+        {/* Total Money card */}
+        {(accountsLoading || activeAccounts.length > 0) && (
+          <div style={{
+            backgroundColor: 'var(--color-card)',
+            borderRadius: 16,
+            border: '1px solid var(--color-border)',
+            padding: '20px 20px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}>
+            <div>
+              <p style={{
+                fontSize: '0.68rem', textTransform: 'uppercase',
+                letterSpacing: '0.07em', color: 'var(--color-text-muted)',
+                fontWeight: 600, marginBottom: 6,
+              }}>
+                Total Money
+              </p>
+              {accountsLoading ? (
+                <Skeleton className="h-9 w-40" />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {[...moneyByCurrency.entries()].map(([currency, total]) => (
+                    <span key={currency} style={{
+                      fontSize: '2.4rem', fontWeight: '800', lineHeight: 1,
+                      color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums',
+                    }}>
+                      {formatCurrencyAmount(total, currency)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {!accountsLoading && activeAccounts.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                {activeAccounts.slice(0, 8).map((account) => {
+                  const Icon = ACCOUNT_TYPE_ICON[account.type] ?? Wallet
+                  const isCredit = account.type === 'credit'
+                  const amount = isCredit ? (account.outstandingBalance ?? 0) : (account.computedBalance ?? account.openingBalance)
+                  const stripeColor = isCredit ? 'var(--color-warning)' : 'var(--color-accent)'
+                  return (
+                    <div key={account._id} className="shrink-0" style={{
+                      minWidth: 130,
+                      borderRadius: 12,
+                      backgroundColor: 'var(--color-elevated)',
+                      borderLeft: `3px solid ${stripeColor}`,
+                      padding: '10px 12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Icon style={{ width: 13, height: 13, color: stripeColor, flexShrink: 0 }} />
+                        <span style={{
+                          fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-secondary)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {account.name}
+                        </span>
+                      </div>
+                      <span style={{
+                        fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-primary)',
+                        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                      }}>
+                        {formatCurrencyAmount(Math.abs(amount), account.currency)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Left to spend card - demoted health ring lives here */}
+        <div style={{
+          backgroundColor: 'var(--color-card)',
+          borderRadius: 16,
+          border: '1px solid var(--color-border)',
+          padding: '20px 20px 18px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div>
+              <p style={{
+                fontSize: '0.68rem', textTransform: 'uppercase',
+                letterSpacing: '0.07em', color: 'var(--color-text-muted)',
+                fontWeight: 600, marginBottom: 6,
+              }}>
+                Left to spend
+              </p>
+              {analyticsLoading || budgetsLoading ? (
+                <Skeleton className="h-8 w-28" />
+              ) : (
+                <span style={{
+                  fontSize: '1.55rem', fontWeight: '800', lineHeight: 1,
+                  color: leftToSpend >= 0 ? 'var(--color-income)' : 'var(--color-expense)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {formatAmount(leftToSpend)}
+                </span>
+              )}
+            </div>
+            {!analyticsLoading && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <MiniHealthRing score={score} />
+                <span style={{
+                  fontSize: '0.6rem', fontWeight: 700, padding: '1px 8px', borderRadius: 999,
+                  backgroundColor: 'var(--color-income-bg)', color: 'var(--color-income)',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {statusLabel}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {!budgetsLoading && totalBudgeted > 0 && (
+            <>
+              <div style={{ height: 6, borderRadius: 999, backgroundColor: 'var(--color-elevated)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 999,
+                  backgroundColor: spentPct >= 90 ? 'var(--color-expense)' : spentPct >= 70 ? 'var(--color-warning)' : 'var(--color-income)',
+                  width: `${spentPct}%`,
+                  transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)',
+                }} />
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                of {formatAmount(totalBudgeted)} budgeted
+                {isCurrentPeriod && ` · Day ${now.getDate()} of ${daysInSelectedMonth}`}
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* This month card */}
+        <div style={{
+          backgroundColor: 'var(--color-card)',
+          borderRadius: 16,
+          border: '1px solid var(--color-border)',
+          padding: '18px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+        }}>
+          <p style={{
+            fontSize: '0.68rem', textTransform: 'uppercase',
+            letterSpacing: '0.07em', color: 'var(--color-text-muted)', fontWeight: 600,
+          }}>
+            This month
+          </p>
+          {analyticsLoading ? (
+            <>{[0, 1, 2].map(i => <Skeleton key={i} className="h-6 w-full" />)}</>
+          ) : (
+            (() => {
+              const income = analyticsSummary?.totalIncome ?? 0
+              const expenses = analyticsSummary?.totalExpenses ?? 0
+              const savings = analyticsSummary?.totalSavings ?? 0
+              const denom = Math.max(income, expenses, savings, 1)
+              const rows: { label: string; value: number; color: string }[] = [
+                { label: t('common.income'), value: income, color: 'var(--color-income)' },
+                { label: t('common.expense'), value: expenses, color: 'var(--color-expense)' },
+                { label: t('common.savings'), value: savings, color: 'var(--color-savings)' },
+              ]
+              return rows.map((row) => (
+                <div key={row.label} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>{row.label}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: row.color, fontVariantNumeric: 'tabular-nums' }}>
+                      {formatAmount(row.value)}
+                    </span>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 999, backgroundColor: 'var(--color-elevated)', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 999, backgroundColor: row.color,
+                      width: `${(row.value / denom) * 100}%`,
+                      transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)',
+                    }} />
+                  </div>
+                </div>
+              ))
+            })()
+          )}
+        </div>
+      </div>
+
+      {/* ── Hero: health ring + 4 stat cards (desktop) ──────────────────── */}
+      <div className="hidden lg:flex" style={{ gap: 16, alignItems: 'stretch' }}>
         {/* Health ring card */}
         <div style={{
           backgroundColor: 'var(--color-card)',
@@ -963,9 +1226,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Balance per Account ─────────────────────────────────────────── */}
+      {/* ── Balance per Account (desktop) ────────────────────────────────── */}
       {(accountsLoading || accounts.length > 0) && (
-        <div style={{
+        <div className="hidden lg:block" style={{
           backgroundColor: 'var(--color-card)',
           borderRadius: 16,
           border: '1px solid var(--color-border)',
@@ -995,13 +1258,6 @@ export default function DashboardPage() {
               <>{[0, 1, 2].map(i => <Skeleton key={i} className="h-6 w-full" />)}</>
             ) : (
               (() => {
-                const activeAccounts = accounts.filter((a) => !a.isArchived)
-                // Group by currency - never sum across currencies (no FX conversion).
-                const moneyByCurrency = new Map<string, number>()
-                for (const a of activeAccounts) {
-                  if (a.type === 'credit' || !a.includeInTotal) continue
-                  moneyByCurrency.set(a.currency, (moneyByCurrency.get(a.currency) ?? 0) + (a.computedBalance ?? a.openingBalance))
-                }
                 return (
                   <>
                     <div style={{

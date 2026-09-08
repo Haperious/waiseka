@@ -22,6 +22,7 @@ import ImportModal from '@/components/import/ImportModal'
 import AccountStrip from '@/components/accounts/AccountStrip'
 import TransactionForm from './TransactionForm'
 import BulkTransactionForm from './BulkTransactionForm'
+import { onTransactionSaved } from '@/lib/transactionEvents'
 
 /** Non-archived accounts minus the user's hidden-ids exclusion list, preserving API sort order. */
 export function getVisibleStripAccounts(accounts: Account[], hiddenIds: string[]): Account[] {
@@ -99,6 +100,12 @@ export default function TransactionsPage() {
     limit: 15,
   })
 
+  // Refresh the list when the mobile quick-add sheet saves a transaction
+  useEffect(() => onTransactionSaved(() => {
+    refetch()
+    refetchAccounts()
+  }), [refetch, refetchAccounts])
+
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)')
     setIsMobile(mq.matches)
@@ -141,16 +148,20 @@ export default function TransactionsPage() {
     URL.revokeObjectURL(url)
   }
 
+  // ── Shared type -> icon/color config (type badge + mobile row tiles) ───────
+  function typeVisual(type: string) {
+    return type === 'income'
+      ? { color: 'var(--color-income)', bg: 'var(--color-income-bg)', Icon: TrendingUp, label: t('common.income') }
+      : type === 'savings'
+      ? { color: 'var(--color-savings)', bg: 'var(--color-savings-bg)', Icon: PiggyBank, label: t('common.savings') }
+      : type === 'transfer'
+      ? { color: 'var(--color-accent)', bg: 'var(--color-sage)', Icon: ArrowLeftRight, label: 'Transfer' }
+      : { color: 'var(--color-expense)', bg: 'var(--color-expense-bg)', Icon: TrendingDown, label: t('common.expense') }
+  }
+
   // ── Type badge ────────────────────────────────────────────────────────────
   function TypeBadge({ type }: { type: string }) {
-    const config =
-      type === 'income'
-        ? { color: 'var(--color-income)', bg: 'var(--color-income-bg)', Icon: TrendingUp, label: t('common.income') }
-        : type === 'savings'
-        ? { color: 'var(--color-savings)', bg: 'var(--color-savings-bg)', Icon: PiggyBank, label: t('common.savings') }
-        : type === 'transfer'
-        ? { color: 'var(--color-accent)', bg: 'var(--color-sage)', Icon: ArrowLeftRight, label: 'Transfer' }
-        : { color: 'var(--color-expense)', bg: 'var(--color-expense-bg)', Icon: TrendingDown, label: t('common.expense') }
+    const config = typeVisual(type)
 
     return (
       <span style={{
@@ -220,6 +231,86 @@ export default function TransactionsPage() {
     )
   }
 
+  // ── Day-grouped rows (mobile) ────────────────────────────────────────────
+  // Net total per day counts income/expense only - savings and transfers move
+  // money sideways rather than in or out, so they're shown but excluded from the total.
+  function groupByDay(txs: Transaction[]) {
+    const groups: { dateKey: string; date: Date; items: Transaction[]; net: number }[] = []
+    for (const tx of txs) {
+      const dateKey = format(new Date(tx.date), 'yyyy-MM-dd')
+      let group = groups[groups.length - 1]?.dateKey === dateKey ? groups[groups.length - 1] : undefined
+      if (!group) {
+        group = { dateKey, date: new Date(tx.date), items: [], net: 0 }
+        groups.push(group)
+      }
+      group.items.push(tx)
+      if (tx.type === 'income') group.net += tx.amount
+      else if (tx.type === 'expense') group.net -= tx.amount
+    }
+    return groups
+  }
+
+  function MobileTransactionRow({ tx }: { tx: Transaction }) {
+    const { Icon, color, bg } = typeVisual(tx.type)
+    const accountLabel = tx.type === 'transfer'
+      ? `${(tx.fromAccountId ? accountNameById.get(tx.fromAccountId) : null) ?? '?'} → ${(tx.toAccountId ? accountNameById.get(tx.toAccountId) : null) ?? '?'}`
+      : tx.accountId ? (accountNameById.get(tx.accountId) ?? 'Unknown') : t('quickAdd.unassigned')
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px' }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          backgroundColor: bg, color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon style={{ width: 16, height: 16 }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {tx.description || tx.category}
+          </p>
+          <p style={{
+            fontSize: '0.72rem', color: 'var(--color-text-muted)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {tx.category} · {accountLabel}
+            {tx.isRecurring && ' · ↻'}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          <AmountCell tx={tx} />
+          {tx.type !== 'transfer' && (
+            <button
+              onClick={() => setEditTx(tx)}
+              aria-label={t('common.edit')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 30, height: 30, borderRadius: 8, marginLeft: 4,
+                border: 'none', backgroundColor: 'transparent', color: 'var(--color-text-muted)',
+              }}
+            >
+              <Pencil style={{ width: 13, height: 13 }} />
+            </button>
+          )}
+          <button
+            onClick={() => setDeleteTx(tx)}
+            aria-label={t('common.delete')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 30, height: 30, borderRadius: 8,
+              border: 'none', backgroundColor: 'transparent', color: 'var(--color-text-muted)',
+            }}
+          >
+            <Trash2 style={{ width: 13, height: 13 }} />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -284,10 +375,13 @@ export default function TransactionsPage() {
 
       {/* ── Filters ──────────────────────────────────────────────────────────── */}
       <div style={cardStyle}>
-        <div style={{ padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+        <div
+          className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-end"
+          style={{ padding: '14px 16px' }}
+        >
 
           {/* Search */}
-          <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+          <div className="w-full sm:flex-1 sm:min-w-0" style={{ position: 'relative' }}>
             <Search style={{
               position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
               width: 15, height: 15, color: 'var(--color-text-muted)', pointerEvents: 'none',
@@ -341,31 +435,34 @@ export default function TransactionsPage() {
             )}
           </div>
 
-          {/* Type select */}
-          <div style={{ width: 148, flexShrink: 0 }}>
-            <Select
-              value={filterType}
-              onValueChange={(v) => { setFilterType(v); setPage(1) }}
-              options={TYPE_OPTIONS}
-              placeholder={t('common.type')}
-            />
-          </div>
+          {/* Type + Account selects - paired on mobile so they share a row */}
+          <div className="grid grid-cols-2 gap-2.5 w-full sm:contents">
+            <div className="sm:w-[148px] sm:flex-shrink-0">
+              <Select
+                value={filterType}
+                onValueChange={(v) => { setFilterType(v); setPage(1) }}
+                options={TYPE_OPTIONS}
+                placeholder={t('common.type')}
+              />
+            </div>
 
-          {/* Account select */}
-          <div style={{ width: 160, flexShrink: 0 }}>
-            <Select
-              value={filterAccount}
-              onValueChange={(v) => { setFilterAccount(v); setPage(1) }}
-              options={ACCOUNT_OPTIONS}
-              placeholder="Account"
-            />
+            {/* Account select */}
+            <div className="sm:w-[160px] sm:flex-shrink-0">
+              <Select
+                value={filterAccount}
+                onValueChange={(v) => { setFilterAccount(v); setPage(1) }}
+                options={ACCOUNT_OPTIONS}
+                placeholder="Account"
+              />
+            </div>
           </div>
 
           {/* Date filter toggle */}
           <button
             onClick={() => setShowFilters((v) => !v)}
+            className="w-full sm:w-auto"
             style={{
-              display: 'flex', alignItems: 'center', gap: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               height: 40, padding: '0 14px',
               borderRadius: 10,
               border: showFilters ? '1px solid var(--color-accent)' : '1px solid var(--color-border)',
@@ -377,7 +474,7 @@ export default function TransactionsPage() {
             }}
           >
             <Filter style={{ width: 14, height: 14 }} />
-            <span className="hidden sm:inline">
+            <span>
               {showFilters ? t('tx.hideFilter') : t('tx.dateFilter')}
             </span>
           </button>
@@ -385,12 +482,14 @@ export default function TransactionsPage() {
 
         {/* Date range row */}
         {showFilters && (
-          <div style={{
-            padding: '12px 20px 16px',
-            borderTop: '1px solid var(--color-border)',
-            display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end',
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div
+            className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-end"
+            style={{
+              padding: '12px 16px 16px',
+              borderTop: '1px solid var(--color-border)',
+            }}
+          >
+            <div className="w-full sm:w-auto" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t('tx.dateFrom')}
               </label>
@@ -398,8 +497,9 @@ export default function TransactionsPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); setPage(1) }}
+                className="w-full sm:w-auto"
                 style={{
-                  height: 38, padding: '0 12px',
+                  height: 40, padding: '0 12px',
                   borderRadius: 10,
                   border: '1px solid var(--color-border)',
                   backgroundColor: 'var(--color-elevated)',
@@ -409,7 +509,7 @@ export default function TransactionsPage() {
                 }}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div className="w-full sm:w-auto" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t('tx.dateTo')}
               </label>
@@ -417,8 +517,9 @@ export default function TransactionsPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); setPage(1) }}
+                className="w-full sm:w-auto"
                 style={{
-                  height: 38, padding: '0 12px',
+                  height: 40, padding: '0 12px',
                   borderRadius: 10,
                   border: '1px solid var(--color-border)',
                   backgroundColor: 'var(--color-elevated)',
@@ -438,8 +539,9 @@ export default function TransactionsPage() {
                 setSearchInput('')
                 setPage(1)
               }}
+              className="w-full sm:w-auto"
               style={{
-                height: 38, padding: '0 14px',
+                height: 40, padding: '0 14px',
                 borderRadius: 10,
                 border: '1px solid var(--color-border)',
                 backgroundColor: 'transparent',
@@ -466,7 +568,42 @@ export default function TransactionsPage() {
           )}
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        {/* Day-grouped rows - mobile (no table/columns at phone widths) */}
+        <div className="lg:hidden" style={{ padding: '4px 20px' }}>
+          {loading ? (
+            [...Array(6)].map((_, i) => <SkeletonRow key={i} />)
+          ) : transactions.length === 0 ? (
+            <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>
+              {t('tx.noResults')}
+            </div>
+          ) : (
+            groupByDay(transactions).map((group, gi) => (
+              <div key={group.dateKey} style={{ paddingTop: gi === 0 ? 8 : 16 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+                  padding: '4px 4px 6px', borderBottom: '1px solid var(--color-border)',
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                    {format(group.date, 'EEE, MMM d')}
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                    color: group.net >= 0 ? 'var(--color-income)' : 'var(--color-expense)',
+                  }}>
+                    {group.net >= 0 ? '+' : '−'}{formatAmount(Math.abs(group.net))}
+                  </span>
+                </div>
+                {group.items.map((tx, i) => (
+                  <div key={tx._id} style={{ borderBottom: i < group.items.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
+                    <MobileTransactionRow tx={tx} />
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="hidden lg:block" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>

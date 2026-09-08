@@ -14,6 +14,7 @@ export const translations = {
     'nav.home':         'Home',
     'nav.ai':           'AI',
     'nav.more':         'More',
+    'nav.quickAdd':     'Add',
     'nav.appName':      'WaiseKa',
 
     // ── Common ───────────────────────────────────────────────────────
@@ -353,6 +354,32 @@ export const translations = {
     'announcements.gotIt':     'Got it',
     'announcements.close':     'Close',
     'announcements.goToCard':  'Go to card {n}',
+
+    // ── Quick add sheet ─────────────────────────────────────────────
+    'quickAdd.title':            'Add transaction',
+    'quickAdd.mode.keypad':      'Keypad',
+    'quickAdd.mode.voice':       'Voice',
+    'quickAdd.mode.receipt':     'Receipt',
+    'quickAdd.account':          'Account',
+    'quickAdd.unassigned':       'Unassigned',
+    'quickAdd.save':             'Save transaction',
+    'quickAdd.saving':           'Saving...',
+    'quickAdd.selectCategory':   'Select a category',
+    'quickAdd.enterAmount':      'Enter an amount',
+    'quickAdd.voice.prompt':     'Tap the mic and say what you spent, e.g. "Paid 250 for groceries"',
+    'quickAdd.voice.listening':  'Listening...',
+    'quickAdd.voice.processing': 'Processing...',
+    'quickAdd.voice.heard':      'Heard',
+    'quickAdd.voice.notHeard':   "Couldn't understand that - please try again.",
+    'quickAdd.voice.unsupported':'Voice input is not supported in this browser.',
+    'quickAdd.voice.retry':      'Retry',
+    'quickAdd.voice.confirm':    'Looks right, save it',
+    'quickAdd.receipt.title':    'Scan a receipt',
+    'quickAdd.receipt.subtitle': 'Coming soon - receipt scanning will fill this in automatically.',
+    'quickAdd.receipt.retake':   'Retake',
+    'quickAdd.receipt.add':      'Add transaction',
+    'quickAdd.receipt.merchant': 'Merchant',
+    'quickAdd.receipt.total':    'Total',
   },
 
   tl: {
@@ -370,6 +397,7 @@ export const translations = {
     'nav.home':         'Tahanan',
     'nav.ai':           'AI',
     'nav.more':         'Iba Pa',
+    'nav.quickAdd':     'Magdagdag',
     'nav.appName':      'WaiseKa',
 
     // ── Common ───────────────────────────────────────────────────────
@@ -709,6 +737,32 @@ export const translations = {
     'announcements.gotIt':     'Nakuha ko',
     'announcements.close':     'Isara',
     'announcements.goToCard':  'Pumunta sa card {n}',
+
+    // ── Quick add sheet ─────────────────────────────────────────────
+    'quickAdd.title':            'Magdagdag ng transaksyon',
+    'quickAdd.mode.keypad':      'Keypad',
+    'quickAdd.mode.voice':       'Boses',
+    'quickAdd.mode.receipt':     'Resibo',
+    'quickAdd.account':          'Account',
+    'quickAdd.unassigned':       'Walang account',
+    'quickAdd.save':             'I-save ang transaksyon',
+    'quickAdd.saving':           'Sine-save...',
+    'quickAdd.selectCategory':   'Pumili ng kategorya',
+    'quickAdd.enterAmount':      'Maglagay ng halaga',
+    'quickAdd.voice.prompt':     'Pindutin ang mic at sabihin ang ginastos, hal. "Nagbayad ng 250 para sa grocery"',
+    'quickAdd.voice.listening':  'Nakikinig...',
+    'quickAdd.voice.processing': 'Pinoproseso...',
+    'quickAdd.voice.heard':      'Narinig',
+    'quickAdd.voice.notHeard':   'Hindi naintindihan - subukan ulit.',
+    'quickAdd.voice.unsupported':'Hindi suportado ang voice input sa browser na ito.',
+    'quickAdd.voice.retry':      'Ulitin',
+    'quickAdd.voice.confirm':    'Tama, i-save',
+    'quickAdd.receipt.title':    'I-scan ang resibo',
+    'quickAdd.receipt.subtitle': 'Malapit na - awtomatikong mapupunan ito ng receipt scanning.',
+    'quickAdd.receipt.retake':   'Ulitin ang kuha',
+    'quickAdd.receipt.add':      'Magdagdag ng transaksyon',
+    'quickAdd.receipt.merchant': 'Tindahan',
+    'quickAdd.receipt.total':    'Kabuuan',
   },
 } as const
 

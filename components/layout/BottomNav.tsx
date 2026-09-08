@@ -6,9 +6,8 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   PieChart,
-  Target,
-  Bot,
   MoreHorizontal,
+  Plus,
 } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
@@ -16,22 +15,39 @@ import type { TranslationKey } from '@/lib/translations'
 const bottomNavItems: { href: string; labelKey: TranslationKey; icon: React.ElementType }[] = [
   { href: '/dashboard',    labelKey: 'nav.home',         icon: LayoutDashboard },
   { href: '/transactions', labelKey: 'nav.transactions', icon: ArrowLeftRight  },
-  { href: '/budgets',      labelKey: 'nav.budgets',      icon: PieChart        },
-  { href: '/goals',        labelKey: 'nav.goals',        icon: Target          },
-  { href: '/ai/chat',      labelKey: 'nav.ai',           icon: Bot             },
+]
+
+const bottomNavItemsAfterFab: { href: string; labelKey: TranslationKey; icon: React.ElementType }[] = [
+  { href: '/budgets', labelKey: 'nav.budgets', icon: PieChart },
 ]
 
 interface BottomNavProps {
   onMoreClick: () => void
+  onAddClick: () => void
 }
 
-export default function BottomNav({ onMoreClick }: BottomNavProps) {
+export default function BottomNav({ onMoreClick, onAddClick }: BottomNavProps) {
   const pathname = usePathname()
   const { t } = useLanguage()
 
-  const isMoreActive = ['/settings', '/admin', '/categories'].some((p) =>
+  const isMoreActive = ['/settings', '/admin', '/categories', '/goals', '/ai', '/accounts', '/tips'].some((p) =>
     pathname.startsWith(p)
   )
+
+  const renderLink = ({ href, labelKey, icon: Icon }: (typeof bottomNavItems)[number]) => {
+    const isActive = pathname === href || pathname.startsWith(href + '/')
+    return (
+      <Link
+        key={href}
+        href={href}
+        className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-opacity"
+        style={{ color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}
+      >
+        <Icon className="h-5 w-5 shrink-0" />
+        <span className="text-[10px] font-medium leading-none">{t(labelKey)}</span>
+      </Link>
+    )
+  }
 
   return (
     <nav
@@ -42,20 +58,29 @@ export default function BottomNav({ onMoreClick }: BottomNavProps) {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {bottomNavItems.map(({ href, labelKey, icon: Icon }) => {
-        const isActive = pathname === href || pathname.startsWith(href + '/')
-        return (
-          <Link
-            key={href}
-            href={href}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-opacity"
-            style={{ color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}
-          >
-            <Icon className="h-5 w-5 shrink-0" />
-            <span className="text-[10px] font-medium leading-none">{t(labelKey)}</span>
-          </Link>
-        )
-      })}
+      {bottomNavItems.map(renderLink)}
+
+      {/* Center raised + FAB - opens quick-add sheet */}
+      <div className="flex-1 flex items-center justify-center relative">
+        <button
+          onClick={onAddClick}
+          aria-label={t('nav.quickAdd')}
+          className="absolute flex items-center justify-center rounded-full shadow-lg transition-transform active:scale-95"
+          style={{
+            width: 56,
+            height: 56,
+            marginTop: -20,
+            background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+            border: '3px solid var(--color-surface)',
+            boxShadow: '0 4px 20px rgba(22,163,74,.35)',
+            color: '#fff',
+          }}
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </div>
+
+      {bottomNavItemsAfterFab.map(renderLink)}
 
       {/* More - opens sidebar drawer */}
       <button

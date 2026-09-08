@@ -21,6 +21,7 @@ import {
   BookOpen,
   MessageSquare,
   Wallet,
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/context/LanguageContext'
@@ -42,6 +43,10 @@ interface SidebarProps {
   open: boolean
   onClose: () => void
 }
+
+// The mobile "More" drawer only lists items not already on the bottom nav
+// (Home / Transactions / Budgets have their own tap targets there).
+const MOBILE_MORE_HREFS = new Set(['/accounts', '/goals', '/categories', '/ai/chat', '/tips', '/settings'])
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname()
@@ -89,7 +94,40 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        {/* Mobile "More" drawer: flat card rows, secondary items only ─────── */}
+        <nav className="lg:hidden flex-1 overflow-y-auto px-3 py-4 space-y-2">
+          {navItems.filter(({ href }) => MOBILE_MORE_HREFS.has(href)).map(({ href, labelKey, icon: Icon }) => {
+            const isActive = pathname === href || pathname.startsWith(href + '/')
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                className="flex items-center gap-3 px-3 transition-colors"
+                style={{
+                  minHeight: 52,
+                  borderRadius: 12,
+                  backgroundColor: 'var(--color-elevated)',
+                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-primary)',
+                }}
+              >
+                <span style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                  backgroundColor: isActive ? 'var(--color-sage)' : 'var(--color-card)',
+                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                }}>
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="flex-1 text-sm font-medium">{t(labelKey)}</span>
+                <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Desktop rail nav - unchanged ────────────────────────────────────── */}
+        <nav className="hidden lg:block flex-1 overflow-y-auto px-3 py-4 space-y-1">
           {navItems.map(({ href, labelKey, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + '/')
             return (
