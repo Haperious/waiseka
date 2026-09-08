@@ -71,7 +71,18 @@ export async function GET(req: NextRequest) {
           $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] },
         },
         totalSavings: {
-          $sum: { $cond: [{ $eq: ['$type', 'savings'] }, '$amount', 0] },
+          $sum: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ['$type', 'savings'] },
+                  { $and: [{ $eq: ['$type', 'transfer'] }, { $eq: ['$countsAsSavings', true] }] },
+                ],
+              },
+              '$amount',
+              0,
+            ],
+          },
         },
       },
     },
@@ -81,13 +92,23 @@ export async function GET(req: NextRequest) {
         totalIncome: 1,
         totalExpenses: 1,
         totalSavings: 1,
-        netSavings: { $subtract: ['$totalIncome', '$totalExpenses'] },
+        // Money actively set aside (explicit 'savings' transactions plus transfers
+        // into a savings/time_deposit account) counts as savings on top of leftover
+        // cash flow, so it's recognized even when it never shows up as an 'expense'.
+        netSavings: {
+          $add: [{ $subtract: ['$totalIncome', '$totalExpenses'] }, '$totalSavings'],
+        },
         savingsRate: {
           $cond: [
             { $gt: ['$totalIncome', 0] },
             {
               $multiply: [
-                { $divide: [{ $subtract: ['$totalIncome', '$totalExpenses'] }, '$totalIncome'] },
+                {
+                  $divide: [
+                    { $add: [{ $subtract: ['$totalIncome', '$totalExpenses'] }, '$totalSavings'] },
+                    '$totalIncome',
+                  ],
+                },
                 100,
               ],
             },

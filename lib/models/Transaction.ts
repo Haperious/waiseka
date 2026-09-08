@@ -17,6 +17,8 @@ export interface ITransaction {
   fromAccountId?: ObjectId | null
   /** Transfer only: the account money arrived in. Null for non-transfer transactions. */
   toAccountId?: ObjectId | null
+  /** Transfer only: true when the destination account is a savings/time_deposit account, so this transfer counts toward totalSavings/health score alongside type: 'savings' transactions. */
+  countsAsSavings?: boolean
   /** Set when this transaction is beyond the user's tier retention window. Archived transactions are retained but excluded from queries. */
   isArchived: boolean
   /** Date this transaction was archived. Null if not archived. */

@@ -15,7 +15,9 @@ import { getAccountActivityMap, computeOutstanding } from '@/lib/services/accoun
  * via fromAccountId/toAccountId; balance aggregation reads it as -amount on the
  * source and +amount on the destination. Because the type is neither 'income'
  * nor 'expense', transfers are automatically excluded from every budget, summary,
- * balance, and spending-alert query that filters on those types.
+ * balance, and spending-alert query that filters on those types. The exception is
+ * totalSavings/health score: a transfer into a savings/time_deposit account is
+ * flagged countsAsSavings and picked up by /api/summary alongside type: 'savings'.
  *
  * A credit card payment is just a transfer whose destination is a credit account.
  * Overpayment (paying more than the current outstanding) is allowed - it produces
@@ -76,6 +78,10 @@ export async function POST(req: NextRequest) {
     if (amount > currentOutstanding) overpayment = true
   }
 
+  // Money moved into a savings/time_deposit account is savings behavior -
+  // count it toward totalSavings/health score alongside type: 'savings' transactions.
+  const countsAsSavings = toAccount.type === 'savings' || toAccount.type === 'time_deposit'
+
   const now = new Date()
   const result = await db.collection<Omit<ITransaction, '_id'>>('transactions').insertOne({
     userId: session.user.id,
@@ -90,6 +96,7 @@ export async function POST(req: NextRequest) {
     accountId: null,
     fromAccountId: new ObjectId(fromAccountId),
     toAccountId: new ObjectId(toAccountId),
+    countsAsSavings,
     isArchived: false,
     createdAt: now,
     updatedAt: now,

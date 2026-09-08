@@ -49,6 +49,7 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
 
   const currencyMismatch = fromAccount && toAccount && fromAccount.currency !== toAccount.currency
   const isCardPayment = toAccount?.type === 'credit'
+  const countsAsSavings = toAccount?.type === 'savings' || toAccount?.type === 'time_deposit'
   const outstanding = toAccount?.outstandingBalance ?? 0
   const willOverpay = isCardPayment && form.amount !== '' && Number(form.amount) > outstanding
 
@@ -141,6 +142,11 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
           backgroundColor: 'var(--color-warning-bg)',
         }}>
           This is more than the outstanding balance. The card will show a credit balance after this payment.
+        </p>
+      )}
+      {countsAsSavings && (
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0 }}>
+          This transfer will count toward your total savings and health score.
         </p>
       )}
 

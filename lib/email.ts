@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer'
+import nodemailer, { type Transporter } from 'nodemailer'
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
 const CONTACT_EMAIL = 'waise.ka.official@gmail.com'
@@ -8,9 +8,9 @@ const CONTACT_EMAIL = 'waise.ka.official@gmail.com'
 // Singleton transporter - reused across all sends in the same process lifetime.
 // Nodemailer transporters maintain an SMTP connection pool, so creating one per
 // send wastes connections and TCP handshakes.
-let _transporter: nodemailer.Transporter | null = null
+let _transporter: Transporter | null = null
 
-export function getMailTransporter(): nodemailer.Transporter {
+export function getMailTransporter(): Transporter {
   if (_transporter) return _transporter
   const port = parseInt(process.env.SMTP_PORT ?? '587')
   _transporter = nodemailer.createTransport({
