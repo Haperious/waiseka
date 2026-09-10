@@ -23,6 +23,7 @@ import ImportModal from '@/components/import/ImportModal'
 import AccountStrip from '@/components/accounts/AccountStrip'
 import TransactionForm from './TransactionForm'
 import BulkTransactionForm from './BulkTransactionForm'
+import BulkAddSheet from './BulkAddSheet'
 import { onTransactionSaved } from '@/lib/transactionEvents'
 
 /** Non-archived accounts minus the user's hidden-ids exclusion list, preserving API sort order. */
@@ -63,6 +64,9 @@ export default function TransactionsPage() {
 
   const [page, setPage] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
+  // Below `lg` - matches the breakpoint the mobile day-grouped list already switches on -
+  // so the bulk sheet only replaces the modal where the row layout is mobile-shaped.
+  const [isBelowLg, setIsBelowLg] = useState(false)
   const [filterType, setFilterType] = useState('all')
   const [filterAccount, setFilterAccount] = useState('all')
   const [search, setSearch] = useState(initialSearch)
@@ -85,12 +89,12 @@ export default function TransactionsPage() {
     { value: 'income',   label: t('common.income') },
     { value: 'expense',  label: t('common.expense') },
     { value: 'savings',  label: t('common.savings') },
-    { value: 'transfer', label: 'Transfer' },
+    { value: 'transfer', label: t('common.transfer') },
   ]
 
   const ACCOUNT_OPTIONS = [
-    { value: 'all', label: 'All Accounts' },
-    { value: 'unassigned', label: 'Unassigned' },
+    { value: 'all', label: t('tx.allAccounts') },
+    { value: 'unassigned', label: t('common.unassigned') },
     ...accounts.filter((a) => !a.isArchived).map((a) => ({ value: a._id, label: a.name })),
   ]
 
@@ -118,15 +122,23 @@ export default function TransactionsPage() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)')
+    setIsBelowLg(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsBelowLg(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
   const handleDelete = async () => {
     if (!deleteTx) return
     try {
       await deleteTransaction(deleteTx._id)
       refetchAccounts()
-      toast('Transaction deleted', 'success')
+      toast(t('tx.deletedToast'), 'success')
       setDeleteTx(null)
     } catch {
-      toast('Failed to delete transaction', 'error')
+      toast(t('tx.deleteFailedToast'), 'error')
     }
   }
 
@@ -159,7 +171,7 @@ export default function TransactionsPage() {
       : type === 'savings'
       ? { color: 'var(--color-savings)', bg: 'var(--color-savings-bg)', Icon: PiggyBank, label: t('common.savings') }
       : type === 'transfer'
-      ? { color: 'var(--color-accent)', bg: 'var(--color-sage)', Icon: ArrowLeftRight, label: 'Transfer' }
+      ? { color: 'var(--color-accent)', bg: 'var(--color-sage)', Icon: ArrowLeftRight, label: t('common.transfer') }
       : { color: 'var(--color-expense)', bg: 'var(--color-expense-bg)', Icon: TrendingDown, label: t('common.expense') }
   }
 
@@ -258,7 +270,7 @@ export default function TransactionsPage() {
     const { Icon, color, bg } = typeVisual(tx.type)
     const accountLabel = tx.type === 'transfer'
       ? `${(tx.fromAccountId ? accountNameById.get(tx.fromAccountId) : null) ?? '?'} → ${(tx.toAccountId ? accountNameById.get(tx.toAccountId) : null) ?? '?'}`
-      : tx.accountId ? (accountNameById.get(tx.accountId) ?? 'Unknown') : t('quickAdd.unassigned')
+      : tx.accountId ? (accountNameById.get(tx.accountId) ?? t('tx.unknownAccount')) : t('quickAdd.unassigned')
 
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px' }}>
@@ -336,24 +348,24 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Button row- full width on mobile so all 4 buttons are always visible */}
+        {/* Button row - Add is hidden on mobile since the FAB covers it; full width so remaining buttons are always visible */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button variant="outline" size="sm" onClick={exportCSV} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
             <Download className="w-3.5 h-3.5 mr-1" />
             <span className="hidden sm:inline">{t('tx.exportLabel')}</span>
-            <span className="sm:hidden">Export</span>
+            <span className="sm:hidden">{t('tx.exportLabel')}</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
             <Upload className="w-3.5 h-3.5 mr-1" />
             <span className="hidden sm:inline">{t('tx.import')}</span>
-            <span className="sm:hidden">Import</span>
+            <span className="sm:hidden">{t('tx.import')}</span>
           </Button>
           <Button size="sm" onClick={() => setBulkOpen(true)} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
             <Plus className="w-3.5 h-3.5 mr-1" />
-            <span className="hidden sm:inline">Add Multiple</span>
-            <span className="sm:hidden">Bulk</span>
+            <span className="hidden sm:inline">{t('bulk.title')}</span>
+            <span className="sm:hidden">{t('tx.bulkShort')}</span>
           </Button>
-          <Button size="sm" onClick={() => setAddOpen(true)} className="h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs flex-1 sm:flex-none">
+          <Button size="sm" onClick={() => setAddOpen(true)} className="hidden sm:inline-flex h-9 px-3 text-xs sm:h-8 sm:px-3 sm:text-xs sm:flex-none">
             <Plus className="w-3.5 h-3.5 mr-1" />
             <span>{t('common.add')}</span>
           </Button>
@@ -430,7 +442,7 @@ export default function TransactionsPage() {
                   cursor: 'pointer', padding: 0,
                   opacity: 0.7,
                 }}
-                title="Clear all filters"
+                title={t('tx.clearAllFiltersTooltip')}
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
               >
@@ -456,7 +468,7 @@ export default function TransactionsPage() {
                 value={filterAccount}
                 onValueChange={(v) => { setFilterAccount(v); setPage(1) }}
                 options={ACCOUNT_OPTIONS}
-                placeholder="Account"
+                placeholder={t('quickAdd.account')}
               />
             </div>
           </div>
@@ -614,9 +626,9 @@ export default function TransactionsPage() {
                 {[
                   { label: t('common.date'),        className: '' },
                   { label: t('common.description'), className: '' },
-                    { label: 'Recurring',             className: 'hidden sm:table-cell' },
+                    { label: t('tx.recurring'),       className: 'hidden sm:table-cell' },
                   { label: t('common.category'),    className: 'hidden sm:table-cell' },
-                  { label: 'Account',               className: 'hidden md:table-cell' },
+                  { label: t('quickAdd.account'),   className: 'hidden md:table-cell' },
                   { label: t('common.type'),        className: 'hidden md:table-cell' },
                   { label: t('common.amount'),      className: '', align: 'right' as const },
                   { label: '',                      className: '' },
@@ -705,7 +717,7 @@ export default function TransactionsPage() {
                     <td className="hidden sm:table-cell" style={{ padding: '12px 20px' }}>
                       {tx.isRecurring && (
                         <span
-                          title="Recurring"
+                          title={t('tx.recurring')}
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: 3,
                             fontSize: '0.65rem', fontWeight: 700,
@@ -719,7 +731,7 @@ export default function TransactionsPage() {
                           }}
                         >
                           <RefreshCw style={{ width: 9, height: 9 }} />
-                          Recurring
+                          {t('tx.recurring')}
                         </span>
                       )}
                     </td>
@@ -737,8 +749,8 @@ export default function TransactionsPage() {
                           {' → '}
                           {(tx.toAccountId ? accountNameById.get(tx.toAccountId) : null) ?? '?'}
                         </span>
-                      ) : tx.accountId ? (accountNameById.get(tx.accountId) ?? 'Unknown') : (
-                        <span style={{ color: 'var(--color-text-muted)' }}>Unassigned</span>
+                      ) : tx.accountId ? (accountNameById.get(tx.accountId) ?? t('tx.unknownAccount')) : (
+                        <span style={{ color: 'var(--color-text-muted)' }}>{t('common.unassigned')}</span>
                       )}
                     </td>
 
@@ -931,13 +943,21 @@ export default function TransactionsPage() {
         />
       </Modal>
 
-      {/* ── Bulk add modal ───────────────────────────────────────────────────── */}
-      <Modal open={bulkOpen} onClose={() => setBulkOpen(false)} title="Add Multiple Transactions">
-        <BulkTransactionForm
+      {/* ── Bulk add ─────────────────────────────────────────────────────────── */}
+      {isBelowLg ? (
+        <BulkAddSheet
+          open={bulkOpen}
           onSuccess={() => { setBulkOpen(false); refetch(); refetchAccounts() }}
           onCancel={() => setBulkOpen(false)}
         />
-      </Modal>
+      ) : (
+        <Modal open={bulkOpen} onClose={() => setBulkOpen(false)} title={t('bulk.titleFull')}>
+          <BulkTransactionForm
+            onSuccess={() => { setBulkOpen(false); refetch(); refetchAccounts() }}
+            onCancel={() => setBulkOpen(false)}
+          />
+        </Modal>
+      )}
 
       {/* ── Edit modal ───────────────────────────────────────────────────────── */}
       <Modal open={!!editTx} onClose={() => setEditTx(null)} title={t('tx.editTitle')}>

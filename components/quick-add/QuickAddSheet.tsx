@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
-import { Camera, Delete, Mic, Square } from 'lucide-react'
+import { Camera, Mic, Square } from 'lucide-react'
 import { useCategories } from '@/hooks/useCategories'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useCurrency } from '@/context/CurrencyContext'
@@ -14,6 +14,7 @@ import { parseSpeechToTransaction, ParsedTransaction } from '@/lib/parseSpeechTo
 import { emitTransactionSaved } from '@/lib/transactionEvents'
 import Badge from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
+import Keypad from '@/components/quick-add/Keypad'
 
 type Mode = 'keypad' | 'voice' | 'receipt'
 type TxType = 'expense' | 'income' | 'savings'
@@ -23,8 +24,6 @@ const TYPE_COLOR_VAR: Record<TxType, string> = {
   income: 'var(--color-income)',
   savings: 'var(--color-savings)',
 }
-
-const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del']
 
 interface QuickAddSheetProps {
   open: boolean
@@ -188,15 +187,6 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
     setCategory('')
   }
 
-  const pressKey = (key: string) => {
-    if (key === 'del') {
-      setAmountStr((prev) => prev.slice(0, -1))
-      return
-    }
-    if (key === '.' && amountStr.includes('.')) return
-    setAmountStr((prev) => (prev === '0' ? key : prev + key))
-  }
-
   const amountValue = Number(amountStr)
   const canSave = amountStr !== '' && amountValue > 0 && !!category
 
@@ -220,14 +210,14 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast(data.error ?? 'Failed to save transaction', 'error')
+        toast(data.error ?? t('quickAdd.saveFailedToast'), 'error')
         return
       }
-      toast('Transaction added', 'success')
+      toast(t('quickAdd.addedToast'), 'success')
       emitTransactionSaved()
       onDone()
     } catch {
-      toast('Something went wrong', 'error')
+      toast(t('common.genericError'), 'error')
     } finally {
       setSaving(false)
     }
@@ -290,24 +280,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
         }}
       />
 
-      <div className="grid grid-cols-3 gap-2">
-        {KEYPAD_KEYS.map((key) => (
-          <button
-            key={key}
-            onClick={() => pressKey(key)}
-            className="flex items-center justify-center font-semibold text-lg transition-colors active:opacity-70"
-            style={{
-              height: 52,
-              borderRadius: 12,
-              backgroundColor: 'var(--color-elevated)',
-              color: 'var(--color-text-primary)',
-            }}
-            aria-label={key === 'del' ? 'Delete' : key}
-          >
-            {key === 'del' ? <Delete className="h-5 w-5" /> : key}
-          </button>
-        ))}
-      </div>
+      <Keypad value={amountStr} onChange={setAmountStr} />
 
       <button
         onClick={handleSave}
@@ -324,7 +297,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
   )
 }
 
-function ChipScroller({
+export function ChipScroller({
   items,
   selected,
   onSelect,
@@ -435,14 +408,14 @@ function VoiceMode({ onDone }: { onDone: () => void }) {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast(data.error ?? 'Failed to save transaction', 'error')
+        toast(data.error ?? t('quickAdd.saveFailedToast'), 'error')
         return
       }
-      toast('Transaction added', 'success')
+      toast(t('quickAdd.addedToast'), 'success')
       emitTransactionSaved()
       onDone()
     } catch {
-      toast('Something went wrong', 'error')
+      toast(t('common.genericError'), 'error')
     } finally {
       setSaving(false)
     }
@@ -475,7 +448,7 @@ function VoiceMode({ onDone }: { onDone: () => void }) {
             backgroundColor: isListening ? 'var(--color-expense-bg)' : 'var(--color-sage)',
             color: isListening ? 'var(--color-expense)' : 'var(--color-accent)',
           }}
-          aria-label="Toggle voice input"
+          aria-label={t('quickAdd.voice.toggleAria')}
         >
           {isListening ? <Square className="h-8 w-8" /> : <Mic className="h-9 w-9" />}
         </button>
