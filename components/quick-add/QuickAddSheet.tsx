@@ -134,6 +134,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
   const [amountStr, setAmountStr] = useState('')
   const [category, setCategory] = useState('')
   const [accountId, setAccountId] = useState('')
+  const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
@@ -170,7 +171,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
           type,
           amount: amountValue,
           category,
-          description: '',
+          description: description.trim(),
           date: format(new Date(), 'yyyy-MM-dd'),
           isRecurring: false,
           accountId: accountId || null,
@@ -235,6 +236,18 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
         ]}
         selected={accountId}
         onSelect={setAccountId}
+      />
+
+      <input
+        type="text"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder={t('quickAdd.description')}
+        className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
+        style={{
+          backgroundColor: 'var(--color-elevated)',
+          color: 'var(--color-text-primary)',
+        }}
       />
 
       <div className="grid grid-cols-3 gap-2">

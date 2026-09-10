@@ -1,16 +1,12 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, Plus } from 'lucide-react'
+import { TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useAccounts } from '@/hooks/useAccounts'
-import { useVoiceKeywords } from '@/hooks/useVoiceKeywords'
-import { parseSpeechToTransaction } from '@/lib/parseSpeechToTransaction'
-import { emitTransactionSaved } from '@/lib/transactionEvents'
-import { useToast } from '@/components/ui/Toast'
 
 const TYPE_ICON: Record<string, LucideIcon> = {
   income: TrendingUp,
@@ -36,55 +32,13 @@ export default function RecentActivityCard({
 }: {
   formatAmount: (v: number) => string
 }) {
-  const { transactions, total, loading, refetch } = useTransactions({ limit: 4 })
+  const { transactions, total, loading } = useTransactions({ limit: 4 })
   const { accounts } = useAccounts()
-  const { keywords } = useVoiceKeywords()
-  const { toast } = useToast()
 
   const accountName = useMemo(() => {
     const map = new Map(accounts.map((a) => [a._id, a.name]))
     return (id: string | null | undefined) => (id ? map.get(id) : undefined)
   }, [accounts])
-
-  const [query, setQuery] = useState('')
-  const [saving, setSaving] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const parsed = useMemo(() => (query.trim() ? parseSpeechToTransaction(query, keywords) : null), [query, keywords])
-  const matchedAccount = useMemo(() => {
-    if (!query.trim()) return null
-    const lower = query.toLowerCase()
-    return accounts.find((a) => lower.includes(a.name.toLowerCase())) ?? null
-  }, [query, accounts])
-
-  const handleSubmit = async () => {
-    if (!parsed?.amount || !parsed?.type || saving) return
-    setSaving(true)
-    try {
-      const res = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parsed.amount,
-          type: parsed.type,
-          category: parsed.category ?? 'Other',
-          description: parsed.description,
-          date: new Date().toISOString(),
-          accountId: matchedAccount?._id ?? null,
-        }),
-      })
-      if (!res.ok) throw new Error('Failed to add transaction')
-      emitTransactionSaved()
-      setQuery('')
-      refetch()
-      toast('Transaction added')
-    } catch {
-      toast('Could not add transaction', 'error')
-    } finally {
-      setSaving(false)
-      inputRef.current?.focus()
-    }
-  }
 
   return (
     <div style={{
@@ -106,7 +60,7 @@ export default function RecentActivityCard({
         </Link>
       </div>
 
-      <div style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div style={{ padding: '10px 20px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {loading ? (
           <>{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full my-1" />)}</>
         ) : transactions.length === 0 ? (
@@ -114,7 +68,7 @@ export default function RecentActivityCard({
             No transactions yet.
           </p>
         ) : (
-          transactions.map((tx) => {
+          transactions.map((tx, i) => {
             const Icon = TYPE_ICON[tx.type] ?? ArrowLeftRight
             const color = TYPE_COLOR[tx.type] ?? 'var(--color-text-primary)'
             const acct = accountName(tx.accountId)
@@ -124,7 +78,7 @@ export default function RecentActivityCard({
               <div key={tx._id} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '10px 0',
-                borderBottom: '1px solid var(--color-border)',
+                borderBottom: i === transactions.length - 1 ? 'none' : '1px solid var(--color-border)',
               }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: 9, flexShrink: 0,
@@ -157,28 +111,6 @@ export default function RecentActivityCard({
             )
           })
         )}
-      </div>
-
-      <div style={{ padding: '10px 20px 16px' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          borderRadius: 10, border: '1px dashed var(--color-border)',
-          padding: '8px 12px',
-        }}>
-          <Plus style={{ width: 14, height: 14, color: 'var(--color-text-muted)', flexShrink: 0 }} />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-            placeholder="Type here to log something — amount, category, account"
-            disabled={saving}
-            style={{
-              flex: 1, border: 'none', outline: 'none', background: 'transparent',
-              fontSize: '0.82rem', color: 'var(--color-text-primary)', minWidth: 0,
-            }}
-          />
-        </div>
       </div>
     </div>
   )
