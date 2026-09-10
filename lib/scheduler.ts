@@ -131,7 +131,7 @@ export async function sendBudgetReminders() {
             sentAt: new Date(),
           } as unknown as Omit<IEmailLog, '_id'>)
         )
-        .catch((err) => console.error(`[scheduler] budget reminder error for ${user.email}:`, err))
+        .catch((err) => console.error(`[scheduler] budget reminder error for user ${userId}:`, err))
     }
   } catch (err) {
     console.error('[scheduler] budget reminder job error:', err)
@@ -203,7 +203,7 @@ export async function sendReEngageEmails() {
             sentAt: new Date(),
           } as unknown as Omit<IEmailLog, '_id'>)
         )
-        .catch((err) => console.error(`[scheduler] re-engage error for ${user.email}:`, err))
+        .catch((err) => console.error(`[scheduler] re-engage error for user ${userId}:`, err))
     }
   } catch (err) {
     console.error('[scheduler] re-engage job error:', err)
@@ -327,7 +327,7 @@ export async function sendMonthlyReports() {
             sentAt: new Date(),
           } as unknown as Omit<IEmailLog, '_id'>)
         )
-        .catch((err) => console.error(`[scheduler] monthly report error for ${user.email}:`, err))
+        .catch((err) => console.error(`[scheduler] monthly report error for user ${userId}:`, err))
     }
   } catch (err) {
     console.error('[scheduler] monthly report job error:', err)
@@ -358,7 +358,7 @@ export async function sendPushNotifications() {
       const type = daysSince >= threshold * 2 ? 'inactivity' : 'reminder'
       if (user.notifications?.push?.fcmToken) {
         sendPushNotification({ fcmToken: user.notifications.push.fcmToken, type, user }).catch((err) =>
-          console.error(`[scheduler] push error for ${user.email}:`, err)
+          console.error(`[scheduler] push error for user ${user._id.toString()}:`, err)
         )
       }
     }

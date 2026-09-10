@@ -6,7 +6,7 @@ import { ObjectId } from 'mongodb'
 import type { IUser } from '@/lib/models/User'
 import { authConfig } from './auth.config'
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
@@ -79,6 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           premiumOverride: user.premiumOverride,
           isVerified: user.isVerified,
           createdAt: user.createdAt.toISOString(),
+          mfaEnabled: !!user.mfa?.enabled,
         }
       },
     }),

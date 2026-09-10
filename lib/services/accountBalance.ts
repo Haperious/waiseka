@@ -129,3 +129,33 @@ export function computeOutstanding(activity: AccountActivity | undefined): numbe
     - activity.transferIn
     + activity.transferOut
 }
+
+export function computeAvailableCredit(creditLimit: number | null | undefined, outstanding: number): number | null {
+  return creditLimit != null ? creditLimit - outstanding : null
+}
+
+function daysInMonth(year: number, monthIndex0: number): number {
+  return new Date(Date.UTC(year, monthIndex0 + 1, 0)).getUTCDate()
+}
+
+/**
+ * Next occurrence of a credit account's `dueDay` on or after `today` (UTC calendar
+ * day). `dueDay` is clamped to the actual month length, same convention as the
+ * cutoff-period resolver. Returns null when the account has no `dueDay` set.
+ */
+export function nextDueDate(account: { dueDay?: number | null }, today: Date): Date | null {
+  if (account.dueDay == null) return null
+
+  const year = today.getUTCFullYear()
+  const monthIndex0 = today.getUTCMonth()
+  const day = today.getUTCDate()
+
+  const thisMonthDue = Math.min(account.dueDay, daysInMonth(year, monthIndex0))
+  if (thisMonthDue >= day) {
+    return new Date(Date.UTC(year, monthIndex0, thisMonthDue))
+  }
+
+  const nextMonthIndex0 = monthIndex0 + 1
+  const nextMonthDue = Math.min(account.dueDay, daysInMonth(year, nextMonthIndex0))
+  return new Date(Date.UTC(year, nextMonthIndex0, nextMonthDue))
+}

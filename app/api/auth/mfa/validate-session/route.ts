@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { auth, unstable_update } from '@/auth'
 import { getDb } from '@/lib/mongodb'
 import { verify, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib'
 import { ObjectId } from 'mongodb'
@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
   if (/^\d{6}$/.test(normalised)) {
     const totpValid = await verifyTotp(normalised, user.mfa.secret)
     if (totpValid) {
+      await unstable_update({ user: { mfaVerified: true } })
       return NextResponse.json({ success: true })
     }
   }
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
         { _id: user._id },
         { $set: { 'mfa.backupCodes': updatedCodes } }
       )
+      await unstable_update({ user: { mfaVerified: true } })
       return NextResponse.json({ success: true, usedBackupCode: true })
     }
   }

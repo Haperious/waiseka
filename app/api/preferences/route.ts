@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import type { IUser } from '@/lib/models/User'
@@ -9,7 +9,7 @@ import { MAX_HIDDEN_ACCOUNTS } from '@/lib/constants'
 const VALID_CURRENCIES = ['PHP', 'QAR', 'USD']
 
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -22,11 +22,21 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { currency, theme, defaultAccountId, transactionsHiddenAccountIds, transactionsAccountStripCollapsed } = body
+  const {
+    currency,
+    theme,
+    defaultAccountId,
+    transactionsHiddenAccountIds,
+    transactionsAccountStripCollapsed,
+    cutoffMode,
+    cutoffDays,
+    cutoffAnchorDate,
+    reportsDefaultView,
+  } = body
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
 
@@ -66,6 +76,39 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid transactionsAccountStripCollapsed' }, { status: 400 })
     }
     update['preferences.transactionsAccountStripCollapsed'] = transactionsAccountStripCollapsed
+  }
+
+  if (cutoffMode !== undefined) {
+    if (!['semi-monthly', 'monthly', 'custom'].includes(cutoffMode)) {
+      return NextResponse.json({ error: 'Invalid cutoffMode' }, { status: 400 })
+    }
+    update['preferences.cutoffMode'] = cutoffMode
+  }
+
+  if (cutoffDays !== undefined) {
+    if (
+      !Array.isArray(cutoffDays) ||
+      cutoffDays.length === 0 ||
+      cutoffDays.length > 4 ||
+      cutoffDays.some((d) => typeof d !== 'number' || !Number.isInteger(d) || d < 1 || d > 31)
+    ) {
+      return NextResponse.json({ error: 'Invalid cutoffDays' }, { status: 400 })
+    }
+    update['preferences.cutoffDays'] = cutoffDays
+  }
+
+  if (cutoffAnchorDate !== undefined) {
+    if (cutoffAnchorDate !== null && (typeof cutoffAnchorDate !== 'string' || Number.isNaN(Date.parse(cutoffAnchorDate)))) {
+      return NextResponse.json({ error: 'Invalid cutoffAnchorDate' }, { status: 400 })
+    }
+    update['preferences.cutoffAnchorDate'] = cutoffAnchorDate
+  }
+
+  if (reportsDefaultView !== undefined) {
+    if (reportsDefaultView !== 'chart' && reportsDefaultView !== 'table') {
+      return NextResponse.json({ error: 'Invalid reportsDefaultView' }, { status: 400 })
+    }
+    update['preferences.reportsDefaultView'] = reportsDefaultView
   }
 
   const db = await getDb()

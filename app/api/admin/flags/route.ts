@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { getSettings } from '@/lib/models/GlobalSettings'
 import { adminGate } from '@/lib/admin-gate'
 import type { IGlobalSettings } from '@/lib/models/GlobalSettings'
 
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   try { adminGate(session) } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
 
   const settings = await getSettings()
@@ -14,7 +14,7 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   try { adminGate(session) } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
 
   const body = await req.json()

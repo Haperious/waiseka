@@ -14,9 +14,9 @@
  */
 
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import type { ITransaction } from '@/lib/models/Transaction'
+import { aggregateExpensesByCategoryAndMonth, averageAndDelta, monthMeta, monthsBack } from '@/lib/services/monthlyStats'
 
 const ANOMALY_THRESHOLD = 1.5   // flag when current > avg * 1.5
 const MIN_PRIOR_MONTHS  = 2     // minimum prior months needed to establish a baseline
@@ -36,81 +36,32 @@ export interface AnomalyResponse {
 }
 
 export async function GET(): Promise<NextResponse<AnomalyResponse>> {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) {
     return NextResponse.json({ anomalies: [], insufficientData: false }, { status: 401 })
   }
 
   const db = await getDb()
-  const col = db.collection<ITransaction>('transactions')
   const now = new Date()
 
   // ── Build month boundaries ────────────────────────────────────────────────
-  // Current month: [currentStart, currentEnd]
-  const currentStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-  const currentEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
-
-  // Prior months: go back LOOKBACK_MONTHS months before the current month
-  const priorStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - LOOKBACK_MONTHS, 1))
-  const priorEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999))
+  const current = monthMeta(now.getUTCFullYear(), now.getUTCMonth() + 1)
+  const priorMonths = monthsBack(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)), LOOKBACK_MONTHS)
+  const priorStart = priorMonths[0].start
+  const priorEnd = priorMonths[priorMonths.length - 1].end
 
   // ── Aggregate current month by category ──────────────────────────────────
-  const currentRaw = await col.aggregate<{ category: string; total: number }>([
-    {
-      $match: {
-        userId: session.user.id,
-        type: 'expense',
-        isArchived: { $ne: true },
-        date: { $gte: currentStart, $lte: currentEnd },
-      },
-    },
-    { $group: { _id: '$category', total: { $sum: '$amount' } } },
-    { $project: { _id: 0, category: '$_id', total: 1 } },
-  ]).toArray()
+  const currentRaw = await aggregateExpensesByCategoryAndMonth(db, session.user.id, current.start, current.end)
 
   if (currentRaw.length === 0) {
     return NextResponse.json({ anomalies: [], insufficientData: false })
   }
 
   // ── Aggregate prior months by category + month ────────────────────────────
-  // We need per-month totals so we can count distinct months per category.
-  const priorRaw = await col.aggregate<{ category: string; yearMonth: string; total: number }>([
-    {
-      $match: {
-        userId: session.user.id,
-        type: 'expense',
-        isArchived: { $ne: true },
-        date: { $gte: priorStart, $lte: priorEnd },
-      },
-    },
-    {
-      $group: {
-        _id: {
-          category: '$category',
-          year:  { $year:  '$date' },
-          month: { $month: '$date' },
-        },
-        total: { $sum: '$amount' },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        category: '$_id.category',
-        yearMonth: {
-          $concat: [
-            { $toString: '$_id.year' }, '-',
-            { $toString: '$_id.month' },
-          ],
-        },
-        total: 1,
-      },
-    },
-  ]).toArray()
+  const priorRaw = await aggregateExpensesByCategoryAndMonth(db, session.user.id, priorStart, priorEnd)
 
   // ── Check overall data sufficiency ────────────────────────────────────────
-  // Count distinct prior months across ALL categories
-  const allPriorMonths = new Set(priorRaw.map((r) => r.yearMonth))
+  const allPriorMonths = new Set(priorRaw.map((r) => `${r.year}-${r.month}`))
   if (allPriorMonths.size < MIN_PRIOR_MONTHS) {
     return NextResponse.json({ anomalies: [], insufficientData: true })
   }
@@ -126,12 +77,12 @@ export async function GET(): Promise<NextResponse<AnomalyResponse>> {
   const anomalies: AnomalyItem[] = []
 
   for (const { category, total: currentAmount } of currentRaw) {
-    const priorMonths = priorByCategory[category]
+    const categoryPriorMonths = priorByCategory[category]
 
     // Skip categories without enough prior history
-    if (!priorMonths || priorMonths.length < MIN_PRIOR_MONTHS) continue
+    if (!categoryPriorMonths || categoryPriorMonths.length < MIN_PRIOR_MONTHS) continue
 
-    const averageAmount = priorMonths.reduce((sum, v) => sum + v, 0) / priorMonths.length
+    const { average: averageAmount, percentageAbove } = averageAndDelta(categoryPriorMonths, currentAmount)
 
     // Can't compare against a zero baseline
     if (averageAmount <= 0) continue
@@ -141,8 +92,8 @@ export async function GET(): Promise<NextResponse<AnomalyResponse>> {
         category,
         currentAmount: Math.round(currentAmount * 100) / 100,
         averageAmount: Math.round(averageAmount * 100) / 100,
-        percentageAbove: Math.round((currentAmount / averageAmount - 1) * 100),
-        monthsOfData: priorMonths.length,
+        percentageAbove,
+        monthsOfData: categoryPriorMonths.length,
       })
     }
   }

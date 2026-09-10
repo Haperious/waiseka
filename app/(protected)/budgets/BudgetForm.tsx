@@ -111,7 +111,7 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
       />
       <div>
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Color</label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3 px-1 py-1">
           {COLORS.map((c) => (
             <button
               key={c}

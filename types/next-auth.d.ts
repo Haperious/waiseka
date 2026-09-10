@@ -15,6 +15,8 @@ declare module 'next-auth' {
       premiumOverride: boolean
       isVerified: boolean
       createdAt: string
+      /** False while an MFA-enabled account has signed in but not yet completed the TOTP step. */
+      mfaVerified: boolean
     }
   }
 }
@@ -30,5 +32,6 @@ declare module 'next-auth/jwt' {
     premiumOverride: boolean
     isVerified: boolean
     createdAt: string
+    mfaVerified: boolean
   }
 }

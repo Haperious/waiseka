@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { IUser, OnboardingStepId } from '@/lib/models/User'
 
@@ -11,10 +11,17 @@ const ONBOARDING_STEPS: OnboardingStepId[] = [
   'goals',
 ]
 
-const EXCLUDE = { password: 0, __v: 0, 'ai.conversations': 0 }
+const EXCLUDE = {
+  password: 0,
+  __v: 0,
+  'ai.conversations': 0,
+  'mfa.secret': 0,
+  'mfa.backupCodes': 0,
+  'notifications.push.fcmToken': 0,
+}
 
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -27,7 +34,7 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
@@ -50,7 +57,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()

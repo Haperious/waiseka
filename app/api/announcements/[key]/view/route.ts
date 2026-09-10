@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { IAnnouncement } from '@/lib/models/Announcement'
 import type { IAnnouncementView, AnnouncementViewSource } from '@/lib/models/AnnouncementView'
@@ -9,7 +9,7 @@ const KEY_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const VALID_SOURCES: AnnouncementViewSource[] = ['carousel']
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { key } = await params

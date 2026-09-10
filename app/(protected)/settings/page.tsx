@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Lock, DollarSign, Wallet, Bell, Sun, Moon, Mic, MailCheck, MailWarning, ShieldCheck, ShieldOff, Copy, Eye, EyeOff } from 'lucide-react'
+import { User, Lock, DollarSign, Wallet, Bell, Sun, Moon, Mic, MailCheck, MailWarning, ShieldCheck, ShieldOff, Copy, Eye, EyeOff, Calendar, Plus, X, PieChart, Tags } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
@@ -146,11 +146,23 @@ export default function SettingsPage() {
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(currency)
   const [currencyLoading, setCurrencyLoading] = useState(false)
 
+  const [reportsDefaultView, setReportsDefaultView] = useState<'chart' | 'table'>('chart')
+  const [reportsViewLoading, setReportsViewLoading] = useState(false)
+
   const { accounts } = useAccounts()
   const activeAccounts = accounts.filter((a) => !a.isArchived)
   const [defaultAccountId, setDefaultAccountId] = useState<string>('')
   const [savedDefaultAccountId, setSavedDefaultAccountId] = useState<string>('')
   const [defaultAccountLoading, setDefaultAccountLoading] = useState(false)
+
+  type CutoffMode = 'semi-monthly' | 'monthly' | 'custom'
+  const [cutoffMode, setCutoffMode] = useState<CutoffMode>('semi-monthly')
+  const [cutoffMidDay, setCutoffMidDay] = useState(15)
+  const [customCutoffDays, setCustomCutoffDays] = useState<number[]>([10, 20])
+  const [savedCutoff, setSavedCutoff] = useState<{ mode: CutoffMode; midDay: number; customDays: number[] }>({
+    mode: 'semi-monthly', midDay: 15, customDays: [10, 20],
+  })
+  const [cutoffLoading, setCutoffLoading] = useState(false)
 
   const [notifLoading, setNotifLoading] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(false)
@@ -177,10 +189,19 @@ export default function SettingsPage() {
       .then((d) => {
         if (d?.name) setProfile({ name: d.name, avatar: d.avatar ?? '' })
         if (d?.preferences?.currency) setSelectedCurrency(d.preferences.currency)
+        if (d?.preferences?.reportsDefaultView) setReportsDefaultView(d.preferences.reportsDefaultView)
         if (d?.preferences?.defaultAccountId) {
           setDefaultAccountId(d.preferences.defaultAccountId)
           setSavedDefaultAccountId(d.preferences.defaultAccountId)
         }
+        const mode: CutoffMode = d?.preferences?.cutoffMode ?? 'semi-monthly'
+        const days: number[] = d?.preferences?.cutoffDays ?? [15, 30]
+        const midDay = days.find((day: number) => day < 30) ?? 15
+        const customDays = mode === 'custom' ? days : [10, 20]
+        setCutoffMode(mode)
+        setCutoffMidDay(midDay)
+        setCustomCutoffDays(customDays)
+        setSavedCutoff({ mode, midDay, customDays })
       })
       .catch(() => {})
 
@@ -284,6 +305,30 @@ export default function SettingsPage() {
     }
   }
 
+  const handleReportsDefaultViewChange = async (next: 'chart' | 'table') => {
+    if (next === reportsDefaultView) return
+    const prev = reportsDefaultView
+    setReportsDefaultView(next)
+    setReportsViewLoading(true)
+    try {
+      const res = await fetch('/api/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportsDefaultView: next }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setReportsDefaultView(prev)
+        toast(data.error ?? 'Failed to update default report view', 'error')
+      }
+    } catch {
+      setReportsDefaultView(prev)
+      toast('Something went wrong', 'error')
+    } finally {
+      setReportsViewLoading(false)
+    }
+  }
+
   const handleDefaultAccountSave = async () => {
     if (defaultAccountId === savedDefaultAccountId) return
     setDefaultAccountLoading(true)
@@ -304,6 +349,43 @@ export default function SettingsPage() {
       toast('Something went wrong', 'error')
     } finally {
       setDefaultAccountLoading(false)
+    }
+  }
+
+  const resolvedCutoffDays = (mode: CutoffMode) =>
+    mode === 'monthly' ? [30] : mode === 'semi-monthly' ? [cutoffMidDay, 30] : customCutoffDays
+
+  const isCutoffDirty =
+    cutoffMode !== savedCutoff.mode ||
+    (cutoffMode === 'semi-monthly' && cutoffMidDay !== savedCutoff.midDay) ||
+    (cutoffMode === 'custom' &&
+      (customCutoffDays.length !== savedCutoff.customDays.length ||
+        customCutoffDays.some((d, i) => d !== savedCutoff.customDays[i])))
+
+  const handleCutoffSave = async () => {
+    const days = resolvedCutoffDays(cutoffMode)
+    if (cutoffMode === 'custom' && days.length === 0) {
+      toast('Add at least one cutoff day', 'error')
+      return
+    }
+    setCutoffLoading(true)
+    try {
+      const res = await fetch('/api/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cutoffMode, cutoffDays: days }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSavedCutoff({ mode: cutoffMode, midDay: cutoffMidDay, customDays: cutoffMode === 'custom' ? days : customCutoffDays })
+        toast('Cutoff schedule updated', 'success')
+      } else {
+        toast(data.error ?? 'Failed to update cutoff schedule', 'error')
+      }
+    } catch {
+      toast('Something went wrong', 'error')
+    } finally {
+      setCutoffLoading(false)
     }
   }
 
@@ -445,6 +527,12 @@ export default function SettingsPage() {
     fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2,
   }
 
+  const numberInputStyle: React.CSSProperties = {
+    width: 48, textAlign: 'center', fontSize: '0.85rem', fontWeight: 700,
+    color: 'var(--color-text-primary)', backgroundColor: 'var(--color-card)',
+    border: '1px solid var(--color-border)', borderRadius: 8, padding: '6px 4px',
+  }
+
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -496,6 +584,48 @@ export default function SettingsPage() {
                   color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                 }}>
                   {mode === 'light' ? t('settings.light') : t('settings.dark')}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </SettingsSection>
+
+      {/* ── Reports default view ────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={PieChart}
+        iconColor="var(--color-accent)"
+        iconBg="var(--color-sage)"
+        title="Reports View"
+        subtitle="Choose what the Monthly Report opens to by default"
+      >
+        <div style={{ display: 'flex', gap: 12 }}>
+          {(['chart', 'table'] as const).map((mode) => {
+            const isActive = reportsDefaultView === mode
+            const Icon = mode === 'chart' ? PieChart : Tags
+            return (
+              <button
+                key={mode}
+                onClick={() => handleReportsDefaultViewChange(mode)}
+                disabled={reportsViewLoading}
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  padding: '16px 12px', borderRadius: 14,
+                  border: isActive ? '2px solid var(--color-accent)' : '2px solid var(--color-border)',
+                  backgroundColor: isActive ? 'var(--color-sage)' : 'transparent',
+                  cursor: reportsViewLoading ? 'default' : 'pointer', transition: 'all 0.15s',
+                  opacity: reportsViewLoading ? 0.7 : 1,
+                }}
+              >
+                <Icon style={{
+                  width: 22, height: 22,
+                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                }} />
+                <span style={{
+                  fontSize: '0.82rem', fontWeight: 600,
+                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                }}>
+                  {mode === 'chart' ? 'Chart' : 'Table'}
                 </span>
               </button>
             )
@@ -696,6 +826,136 @@ export default function SettingsPage() {
               </Button>
             </>
           )}
+        </div>
+      </SettingsSection>
+
+      {/* ── Payment Cutoff ───────────────────────────────────────────────────── */}
+      <SettingsSection
+        icon={Calendar}
+        iconColor="var(--color-savings)"
+        iconBg="var(--color-savings-bg)"
+        title="Payment Cutoff"
+        subtitle="When your pay periods reset for the safe-to-spend calculation"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {([
+              { mode: 'semi-monthly', label: 'Semi-monthly', hint: 'Twice a month' },
+              { mode: 'monthly', label: 'Monthly', hint: 'Once a month' },
+              { mode: 'custom', label: 'Custom', hint: 'Up to 4 cutoffs' },
+            ] as const).map(({ mode, label, hint }) => {
+              const isActive = cutoffMode === mode
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setCutoffMode(mode)}
+                  style={{
+                    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                    padding: '14px 8px', borderRadius: 14,
+                    border: isActive ? '2px solid var(--color-accent)' : '2px solid var(--color-border)',
+                    backgroundColor: isActive ? 'var(--color-sage)' : 'transparent',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: isActive ? 'var(--color-accent)' : 'var(--color-text-primary)' }}>
+                    {label}
+                  </span>
+                  <span style={{ fontSize: '0.66rem', color: 'var(--color-text-muted)' }}>{hint}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {cutoffMode === 'semi-monthly' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>Mid-month cutoff on day</span>
+              <input
+                type="number"
+                min={1}
+                max={29}
+                value={cutoffMidDay}
+                onChange={(e) => setCutoffMidDay(Math.min(29, Math.max(1, Number(e.target.value) || 1)))}
+                style={numberInputStyle}
+              />
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>then again at month end</span>
+            </div>
+          )}
+
+          {cutoffMode === 'monthly' && (
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
+              One period per month, resetting on the last day.
+            </p>
+          )}
+
+          {cutoffMode === 'custom' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                Periods always stay within a calendar month, but you can add up to 4 cutoff days for a
+                closer-to-weekly rhythm - e.g. 7 / 14 / 21 / 28.
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {customCutoffDays.map((day, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      backgroundColor: 'var(--color-elevated)', border: '1px solid var(--color-border)',
+                      borderRadius: 10, padding: '4px 6px',
+                    }}
+                  >
+                    <input
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={day}
+                      onChange={(e) => {
+                        const v = Math.min(31, Math.max(1, Number(e.target.value) || 1))
+                        setCustomCutoffDays((days) => days.map((d, idx) => (idx === i ? v : d)))
+                      }}
+                      style={numberInputStyle}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCustomCutoffDays((days) => days.filter((_, idx) => idx !== i))}
+                      style={{ color: 'var(--color-text-muted)', display: 'flex', background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
+                      aria-label="Remove cutoff day"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                {customCutoffDays.length < 4 && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomCutoffDays((days) => [...days, 30])}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', fontWeight: 600,
+                      color: 'var(--color-accent)', border: '1px dashed var(--color-border)', borderRadius: 10,
+                      padding: '6px 10px', backgroundColor: 'transparent', cursor: 'pointer',
+                    }}
+                  >
+                    <Plus size={14} /> Add day
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomCutoffDays([7, 14, 21, 28])}
+                style={{
+                  alignSelf: 'flex-start', fontSize: '0.74rem', fontWeight: 600,
+                  color: 'var(--color-text-secondary)', textDecoration: 'underline',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                }}
+              >
+                Use weekly preset (7 / 14 / 21 / 28)
+              </button>
+            </div>
+          )}
+
+          <Button onClick={handleCutoffSave} loading={cutoffLoading} disabled={!isCutoffDirty}>
+            Save Cutoff Schedule
+          </Button>
         </div>
       </SettingsSection>
 

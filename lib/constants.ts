@@ -14,7 +14,10 @@ export const PREMIUM_IMPORT_LIMIT = 20
 
 // ── Budget limits ────────────────────────────────────────────────────────────
 /** Max active budgets a free-tier user may create. */
-export const FREE_BUDGET_LIMIT = 3
+export const FREE_BUDGET_LIMIT = 10
+
+/** Max active budgets a premium user may create. */
+export const PREMIUM_BUDGET_LIMIT = 20
 
 // ── Goal limits ──────────────────────────────────────────────────────────────
 /** Max active goals a free-tier user may have at one time. */

@@ -40,6 +40,13 @@ export interface IUser {
     transactionsHiddenAccountIds?: string[]
     /** Whether the transactions-page balance strip is collapsed. */
     transactionsAccountStripCollapsed?: boolean
+    /** Pay-cutoff schedule used to compute the dashboard's "safe to spend per day" period. */
+    cutoffMode?: 'semi-monthly' | 'monthly' | 'custom'
+    /** Day-of-month cutoffs, e.g. [15, 30] for semi-monthly. A value >=30 stands for "end of month". */
+    cutoffDays?: number[]
+    cutoffAnchorDate?: string
+    /** Default view shown on the monthly reports page. */
+    reportsDefaultView?: 'chart' | 'table'
   }
   onboarding: IOnboarding
   ai: {

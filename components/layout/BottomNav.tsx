@@ -30,7 +30,7 @@ export default function BottomNav({ onMoreClick, onAddClick }: BottomNavProps) {
   const pathname = usePathname()
   const { t } = useLanguage()
 
-  const isMoreActive = ['/settings', '/admin', '/categories', '/goals', '/ai', '/accounts', '/tips'].some((p) =>
+  const isMoreActive = ['/settings', '/admin', '/categories', '/goals', '/ai', '/accounts', '/tips', '/reports'].some((p) =>
     pathname.startsWith(p)
   )
 

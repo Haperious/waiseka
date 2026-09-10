@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
-import { FREE_BUDGET_LIMIT } from '@/lib/constants'
+import { FREE_BUDGET_LIMIT, PREMIUM_BUDGET_LIMIT } from '@/lib/constants'
 import { ObjectId } from 'mongodb'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
@@ -82,18 +82,22 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const db = await getDb()
 
-  // -- Tier gate: free users capped at FREE_BUDGET_LIMIT active budgets
+  // -- Tier gate: free users capped at FREE_BUDGET_LIMIT, premium at PREMIUM_BUDGET_LIMIT
   const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  if (!isPremium(user)) {
-    const existingCount = await db.collection<IBudget>('budgets').countDocuments({ userId: session.user.id })
-    if (existingCount >= FREE_BUDGET_LIMIT) {
-      return NextResponse.json(
-        { error: `Free plan is limited to ${FREE_BUDGET_LIMIT} budgets. Upgrade to Premium to add more.` },
-        { status: 403 }
-      )
-    }
+  const userIsPremium = isPremium(user)
+  const budgetLimit = userIsPremium ? PREMIUM_BUDGET_LIMIT : FREE_BUDGET_LIMIT
+  const existingCount = await db.collection<IBudget>('budgets').countDocuments({ userId: session.user.id })
+  if (existingCount >= budgetLimit) {
+    return NextResponse.json(
+      {
+        error: userIsPremium
+          ? `Premium plan is limited to ${budgetLimit} budgets.`
+          : `Free plan is limited to ${budgetLimit} budgets. Upgrade to Premium to add more.`,
+      },
+      { status: 403 }
+    )
   }
 
   const result = await db.collection<IBudget>('budgets').insertOne({

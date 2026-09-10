@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { adminGate } from '@/lib/admin-gate'
 import { ObjectId } from 'mongodb'
@@ -7,7 +7,7 @@ import type { ISurvey } from '@/lib/models/Survey'
 import type { IUser } from '@/lib/models/User'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   try { adminGate(session) } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
 
   const { searchParams } = new URL(req.url)

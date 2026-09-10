@@ -10,6 +10,10 @@ export interface Preferences {
   defaultAccountId?: string | null
   transactionsHiddenAccountIds?: string[]
   transactionsAccountStripCollapsed?: boolean
+  cutoffMode?: 'semi-monthly' | 'monthly' | 'custom'
+  cutoffDays?: number[]
+  cutoffAnchorDate?: string
+  reportsDefaultView?: 'chart' | 'table'
 }
 
 export function usePreferences() {

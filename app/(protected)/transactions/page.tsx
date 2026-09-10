@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
 import {
   Plus, TrendingUp, TrendingDown, PiggyBank,
@@ -57,12 +58,15 @@ export default function TransactionsPage() {
   const hiddenAccountIds = preferences?.transactionsHiddenAccountIds ?? []
   const stripCollapsed = preferences?.transactionsAccountStripCollapsed ?? false
 
+  const searchParams = useSearchParams()
+  const initialSearch = searchParams.get('search') ?? ''
+
   const [page, setPage] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
   const [filterType, setFilterType] = useState('all')
   const [filterAccount, setFilterAccount] = useState('all')
-  const [search, setSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState(initialSearch)
+  const [searchInput, setSearchInput] = useState(initialSearch)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [addOpen, setAddOpen] = useState(false)

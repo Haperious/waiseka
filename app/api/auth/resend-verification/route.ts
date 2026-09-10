@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { sendVerificationEmail } from '@/lib/email'
@@ -10,7 +10,7 @@ import type { IEmailLog } from '@/lib/models/EmailLog'
 const EXPIRY_HOURS = 24
 
 export async function POST() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
