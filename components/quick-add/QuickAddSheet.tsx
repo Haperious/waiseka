@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { Camera, Delete, Mic, Square } from 'lucide-react'
 import { useCategories } from '@/hooks/useCategories'
@@ -31,14 +31,20 @@ interface QuickAddSheetProps {
   onClose: () => void
 }
 
+const SWIPE_CLOSE_THRESHOLD = 100
+
 export default function QuickAddSheet({ open, onClose }: QuickAddSheetProps) {
   const { t } = useLanguage()
   const [mode, setMode] = useState<Mode>('keypad')
   const [visible, setVisible] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartY = useRef(0)
 
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
+      setDragOffset(0)
       const raf = requestAnimationFrame(() => setVisible(true))
       return () => {
         cancelAnimationFrame(raf)
@@ -61,6 +67,24 @@ export default function QuickAddSheet({ open, onClose }: QuickAddSheetProps) {
     setMode('keypad')
   }
 
+  const handleDragStart = (clientY: number) => {
+    dragStartY.current = clientY
+    setIsDragging(true)
+  }
+
+  const handleDragMove = (clientY: number) => {
+    const delta = clientY - dragStartY.current
+    setDragOffset(delta > 0 ? delta : 0)
+  }
+
+  const handleDragEnd = () => {
+    setIsDragging(false)
+    if (dragOffset > SWIPE_CLOSE_THRESHOLD) {
+      handleClosed()
+    }
+    setDragOffset(0)
+  }
+
   if (!open) return null
 
   return (
@@ -75,21 +99,37 @@ export default function QuickAddSheet({ open, onClose }: QuickAddSheetProps) {
         }}
       />
       <div
-        className="absolute bottom-0 inset-x-0 flex flex-col max-h-[88vh] transition-transform duration-300 ease-out"
+        className={cn(
+          'absolute bottom-0 inset-x-0 flex flex-col max-h-[88vh] ease-out',
+          isDragging ? 'transition-none' : 'transition-transform duration-300'
+        )}
         style={{
           backgroundColor: 'var(--color-surface)',
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           paddingBottom: 'env(safe-area-inset-bottom)',
-          transform: visible ? 'translateY(0)' : 'translateY(100%)',
+          transform: visible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
           boxShadow: '0 -8px 30px rgba(0,0,0,0.25)',
         }}
       >
-        <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+        <div
+          className="flex justify-center pt-2.5 pb-1 shrink-0 touch-none"
+          onPointerDown={(e) => handleDragStart(e.clientY)}
+          onPointerMove={(e) => isDragging && handleDragMove(e.clientY)}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+        >
           <div style={{ width: 36, height: 4, borderRadius: 999, backgroundColor: 'var(--color-border)' }} />
         </div>
 
-        <div className="px-4 pt-1 pb-3 shrink-0">
+        <div
+          className="px-4 pt-1 pb-3 shrink-0"
+          onPointerDown={(e) => handleDragStart(e.clientY)}
+          onPointerMove={(e) => isDragging && handleDragMove(e.clientY)}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+        >
+
           <div
             className="grid grid-cols-3 gap-1 p-1 rounded-full"
             style={{ backgroundColor: 'var(--color-elevated)' }}
