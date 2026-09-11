@@ -31,7 +31,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const initialCurrency = (session?.user?.currency ?? 'PHP') as CurrencyCode
 
   return (
-    <html lang="en" className={`${geist.variable} ${playfair.variable} h-full antialiased dark`} suppressHydrationWarning>
+    <html lang="en" className={`${geist.variable} ${playfair.variable} h-full antialiased light`} suppressHydrationWarning>
       <body className="min-h-full" suppressHydrationWarning>
         <ToastProvider>
           <LanguageProvider>
