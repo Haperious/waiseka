@@ -1,13 +1,13 @@
-'use client'
+"use client"
 
-import { useState, useMemo } from 'react'
-import { format } from 'date-fns'
-import Input from '@/components/ui/Input'
-import Select from '@/components/ui/Select'
-import Button from '@/components/ui/Button'
-import { useToast } from '@/components/ui/Toast'
-import { useCurrency } from '@/context/CurrencyContext'
-import { Account } from '@/hooks/useAccounts'
+import { useState, useMemo } from "react"
+import { format } from "date-fns"
+import Input from "@/components/ui/Input"
+import Select from "@/components/ui/Select"
+import Button from "@/components/ui/Button"
+import { useToast } from "@/components/ui/Toast"
+import { useCurrency } from "@/context/CurrencyContext"
+import { Account } from "@/hooks/useAccounts"
 
 interface TransferFormProps {
   accounts: Account[]
@@ -25,11 +25,11 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
 
   const [form, setForm] = useState({
-    fromAccountId: '',
-    toAccountId: lockedToAccountId ?? '',
-    amount: '',
-    description: '',
-    date: format(new Date(), 'yyyy-MM-dd'),
+    fromAccountId: "",
+    toAccountId: lockedToAccountId ?? "",
+    amount: "",
+    description: "",
+    date: format(new Date(), "yyyy-MM-dd"),
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -48,20 +48,20 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
     .map((a) => ({ value: a._id, label: `${a.name} (${a.currency})` }))
 
   const currencyMismatch = fromAccount && toAccount && fromAccount.currency !== toAccount.currency
-  const isCardPayment = toAccount?.type === 'credit'
-  const countsAsSavings = toAccount?.type === 'savings' || toAccount?.type === 'time_deposit'
+  const isCardPayment = toAccount?.type === "credit"
+  const countsAsSavings = toAccount?.type === "savings" || toAccount?.type === "time_deposit"
   const outstanding = toAccount?.outstandingBalance ?? 0
-  const willOverpay = isCardPayment && form.amount !== '' && Number(form.amount) > outstanding
+  const willOverpay = isCardPayment && form.amount !== "" && Number(form.amount) > outstanding
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.fromAccountId) e.fromAccountId = 'Select a source account'
-    if (!form.toAccountId) e.toAccountId = 'Select a destination account'
+    if (!form.fromAccountId) e.fromAccountId = "Select a source account"
+    if (!form.toAccountId) e.toAccountId = "Select a destination account"
     if (form.fromAccountId && form.toAccountId && form.fromAccountId === form.toAccountId)
-      e.toAccountId = 'Source and destination must differ'
+      e.toAccountId = "Source and destination must differ"
     if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0)
-      e.amount = 'Enter a valid positive amount'
-    if (currencyMismatch) e.toAccountId = 'Both accounts must use the same currency'
+      e.amount = "Enter a valid positive amount"
+    if (currencyMismatch) e.toAccountId = "Both accounts must use the same currency"
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -71,9 +71,9 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
     if (!validate()) return
     setLoading(true)
     try {
-      const res = await fetch('/api/transfers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/transfers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fromAccountId: form.fromAccountId,
           toAccountId: form.toAccountId,
@@ -84,17 +84,20 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
       })
       const data = await res.json()
       if (!res.ok) {
-        toast(data.error ?? 'Failed to record transfer', 'error')
+        toast(data.error ?? "Failed to record transfer", "error")
         return
       }
       if (data.overpayment) {
-        toast('Transfer saved. Payment exceeds the outstanding balance — the card now shows a credit balance.', 'success')
+        toast(
+          "Transfer saved. Payment exceeds the outstanding balance - the card now shows a credit balance.",
+          "success",
+        )
       } else {
-        toast('Transfer recorded', 'success')
+        toast("Transfer recorded", "success")
       }
       onSuccess()
     } catch {
-      toast('Something went wrong', 'error')
+      toast("Something went wrong", "error")
     } finally {
       setLoading(false)
     }
@@ -105,7 +108,9 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
       <Select
         label="From"
         value={form.fromAccountId}
-        onValueChange={(v) => setForm({ ...form, fromAccountId: v, toAccountId: v === form.toAccountId ? '' : form.toAccountId })}
+        onValueChange={(v) =>
+          setForm({ ...form, fromAccountId: v, toAccountId: v === form.toAccountId ? "" : form.toAccountId })
+        }
         options={fromOptions}
         placeholder="Source account"
         error={errors.fromAccountId}
@@ -131,21 +136,27 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
       />
 
       {isCardPayment && (
-        <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0 }}>
-          Outstanding on {toAccount?.name}: <strong style={{ color: 'var(--color-text-primary)' }}>{formatAmount(outstanding)}</strong>
+        <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", margin: 0 }}>
+          Outstanding on {toAccount?.name}:{" "}
+          <strong style={{ color: "var(--color-text-primary)" }}>{formatAmount(outstanding)}</strong>
         </p>
       )}
       {willOverpay && (
-        <p style={{
-          fontSize: '0.78rem', color: 'var(--color-warning)',
-          padding: '8px 12px', borderRadius: 8, margin: 0,
-          backgroundColor: 'var(--color-warning-bg)',
-        }}>
+        <p
+          style={{
+            fontSize: "0.78rem",
+            color: "var(--color-warning)",
+            padding: "8px 12px",
+            borderRadius: 8,
+            margin: 0,
+            backgroundColor: "var(--color-warning-bg)",
+          }}
+        >
           This is more than the outstanding balance. The card will show a credit balance after this payment.
         </p>
       )}
       {countsAsSavings && (
-        <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0 }}>
+        <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", margin: 0 }}>
           This transfer will count toward your total savings and health score.
         </p>
       )}
@@ -156,17 +167,14 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
         value={form.description}
         onChange={(e) => setForm({ ...form, description: e.target.value })}
       />
-      <Input
-        label="Date"
-        type="date"
-        value={form.date}
-        onChange={(e) => setForm({ ...form, date: e.target.value })}
-      />
+      <Input label="Date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
 
       <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
+          Cancel
+        </Button>
         <Button type="submit" className="flex-1" loading={loading}>
-          {isCardPayment ? 'Pay Card' : 'Transfer'}
+          {isCardPayment ? "Pay Card" : "Transfer"}
         </Button>
       </div>
     </form>

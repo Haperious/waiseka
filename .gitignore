@@ -47,7 +47,7 @@ TASKS.md
 CLAUDE.md
 AGENTS.md
 
-# internal planning docs (PRDs, prompts, notes) — see note in README
+# internal planning docs (PRDs, prompts, notes) - see note in README
 *.md
 !README.md
 

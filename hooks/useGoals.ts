@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import { useState, useEffect, useCallback } from 'react'
-import { useFetch, extractApiError } from '@/hooks/useFetch'
+import { useState, useEffect, useCallback } from "react"
+import { useFetch, extractApiError } from "@/hooks/useFetch"
 
 export interface Goal {
   _id: string
@@ -10,8 +10,8 @@ export interface Goal {
   targetAmount: number
   savedAmount: number
   deadline: string
-  priority: 'low' | 'medium' | 'high'
-  status: 'active' | 'completed' | 'paused'
+  priority: "low" | "medium" | "high"
+  status: "active" | "completed" | "paused"
   createdAt: string
 }
 
@@ -19,7 +19,7 @@ export function useGoals() {
   const [goals, setGoals] = useState<Goal[]>([])
 
   const fetcher = useCallback(async () => {
-    const res = await fetch('/api/goals')
+    const res = await fetch("/api/goals")
     if (!res.ok) throw new Error(await extractApiError(res))
     return res.json() as Promise<Goal[]>
   }, [])
@@ -31,12 +31,16 @@ export function useGoals() {
     if (data) setGoals(Array.isArray(data) ? data : [])
   }, [execute])
 
-  useEffect(() => { fetchGoals() }, [fetchGoals])
+  useEffect(() => {
+    fetchGoals()
+  }, [fetchGoals])
 
-  const createGoal = async (data: Omit<Goal, '_id' | 'userId' | 'savedAmount' | 'status' | 'createdAt'>): Promise<Goal> => {
-    const res = await fetch('/api/goals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+  const createGoal = async (
+    data: Omit<Goal, "_id" | "userId" | "savedAmount" | "status" | "createdAt">,
+  ): Promise<Goal> => {
+    const res = await fetch("/api/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
     if (!res.ok) throw new Error(await extractApiError(res))
@@ -47,8 +51,8 @@ export function useGoals() {
 
   const updateGoal = async (id: string, data: Partial<Goal>): Promise<Goal> => {
     const res = await fetch(`/api/goals/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
     if (!res.ok) throw new Error(await extractApiError(res))
@@ -58,19 +62,19 @@ export function useGoals() {
   }
 
   const deleteGoal = async (id: string): Promise<void> => {
-    const res = await fetch(`/api/goals/${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/goals/${id}`, { method: "DELETE" })
     if (!res.ok) throw new Error(await extractApiError(res))
     setGoals((prev) => prev.filter((g) => g._id !== id))
   }
 
   /**
-   * Add funds via server-side atomic $inc — avoids client-side race conditions
+   * Add funds via server-side atomic $inc - avoids client-side race conditions
    * where two concurrent calls could both read the same savedAmount.
    */
   const addFunds = async (id: string, amount: number): Promise<Goal> => {
     const res = await fetch(`/api/goals/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ addAmount: amount }),
     })
     if (!res.ok) throw new Error(await extractApiError(res))

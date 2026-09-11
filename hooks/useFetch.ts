@@ -1,6 +1,6 @@
-'use client'
+"use client"
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback } from "react"
 
 /**
  * Thin wrapper that standardises the loading/error lifecycle around an async
@@ -28,7 +28,7 @@ export function useFetch<T>(fetcher: () => Promise<T>) {
       const result = await fetcher()
       return result
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+      const message = err instanceof Error ? err.message : "An unexpected error occurred"
       setError(message)
       return null
     } finally {
@@ -46,9 +46,9 @@ export function useFetch<T>(fetcher: () => Promise<T>) {
 export async function extractApiError(res: Response): Promise<string> {
   try {
     const body = await res.clone().json()
-    if (typeof body?.error === 'string') return body.error
+    if (typeof body?.error === "string") return body.error
   } catch {
-    // body wasn't JSON — fall through
+    // body wasn't JSON - fall through
   }
   return `Request failed: ${res.status} ${res.statusText}`
 }
