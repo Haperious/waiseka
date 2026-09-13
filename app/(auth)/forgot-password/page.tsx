@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import { WKIcon } from '@/components/ui/WKIcon'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
     <div className="w-full max-w-md">
       <div className="flex flex-col items-center mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <Image src="/logo.png" alt="Waiseka" width={48} height={48} priority className="rounded-xl" />
+          <WKIcon size={48} scope="light" className="rounded-xl" />
           <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>WaiseKa</span>
         </div>
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Reset your password</p>

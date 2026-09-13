@@ -1,8 +1,8 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { Sun, Moon, Search } from "lucide-react"
+import { WKIcon } from "@/components/ui/WKIcon"
 import UserMenu from "./UserMenu"
 import NotificationBell from "./NotificationBell"
 import { useTheme } from "@/context/ThemeContext"
@@ -39,13 +39,7 @@ export default function Navbar({ onMenuClick, title, onSearchClick }: NavbarProp
       <div className="flex items-center gap-3 min-w-0" style={{ position: "relative", zIndex: 1 }}>
         {/* Logo - mobile only, sidebar handles desktop */}
         <Link href="/dashboard" className="flex items-center gap-2 lg:hidden shrink-0">
-          <Image
-            src={theme === "dark" ? "/logo-dark.png" : "/logo.png"}
-            alt="Waiseka"
-            width={32}
-            height={32}
-            className="rounded-lg"
-          />
+          <WKIcon size={32} scope={theme} className="rounded-lg" />
           <span className="text-base font-bold" style={{ color: "var(--color-text-primary)" }}>
             WaiseKa
           </span>

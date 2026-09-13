@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useTheme } from '@/context/ThemeContext'
+import { WKIcon } from '@/components/ui/WKIcon'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard,
@@ -126,14 +126,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           style={{ borderColor: 'var(--color-border)' }}
         >
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image
-              src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'}
-              alt="Waiseka"
-              width={32}
-              height={32}
-              className="rounded-lg lg:w-[30px] lg:h-[30px]"
-              style={{ objectFit: 'contain' }}
-            />
+            <WKIcon size={32} scope={theme} className="rounded-lg lg:w-[30px] lg:h-[30px]" />
             <span
               className={cn('text-lg font-bold', collapsed ? 'lg:hidden' : '')}
               style={{ color: 'var(--color-text-primary)' }}

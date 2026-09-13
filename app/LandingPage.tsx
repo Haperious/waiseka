@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import { WKIcon } from '@/components/ui/WKIcon'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useCurrency } from '@/context/CurrencyContext'
@@ -135,13 +135,7 @@ export default function LandingPage() {
       {/* ── NAV ───────────────────────────────────────────────────────── */}
       <nav className={`${styles.nav} ${scrolled ? styles.navScrolled : ''}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Image
-            src={isDark ? '/logo-dark.png' : '/logo.png'}
-            alt="WaiseKa"
-            width={34}
-            height={34}
-            style={{ borderRadius: 10, objectFit: 'contain', flexShrink: 0 }}
-          />
+          <WKIcon size={34} scope={isDark ? 'dark' : 'light'} />
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-text-primary)' }}>
             WaiseKa
           </span>
@@ -406,13 +400,7 @@ export default function LandingPage() {
       {/* ── FOOTER ────────────────────────────────────────────────────── */}
       <footer className={styles.footer}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Image
-            src={isDark ? '/logo-dark.png' : '/logo.png'}
-            alt="WaiseKa"
-            width={26}
-            height={26}
-            style={{ borderRadius: 8, objectFit: 'contain', flexShrink: 0 }}
-          />
+          <WKIcon size={26} scope={isDark ? 'dark' : 'light'} />
           <div>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>WaiseKa</span>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 1 }}>

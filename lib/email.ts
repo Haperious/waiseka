@@ -80,7 +80,7 @@ const BASE_CSS = `
 `
 
 function emailHeader() {
-  return `<div class="mhead"><img src="${APP_URL}/logo.png" width="32" height="32" alt="WaiseKa" style="border-radius:9px;display:block;flex-shrink:0;margin-right:10px"><span class="mbrand">Waise<span>Ka</span></span></div>`
+  return `<div class="mhead"><img src="${APP_URL}/brand/wk-icon.png" width="32" height="32" alt="WaiseKa" style="border-radius:9px;display:block;flex-shrink:0;margin-right:10px"><span class="mbrand">Waise<span>Ka</span></span></div>`
 }
 
 function emailFooter(links: Array<{ href: string; label: string }>, note: string, brand = 'WaiseKa') {
