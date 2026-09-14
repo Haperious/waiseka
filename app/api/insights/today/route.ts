@@ -12,6 +12,7 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { resolveCutoffPeriod } from '@/lib/services/cutoff'
 import { getAccountActivityMap, computeOutstanding, nextDueDate } from '@/lib/services/accountBalance'
+import { formatAmount } from '@/lib/currency'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IAccount } from '@/lib/models/Account'
 import type { IPlannedTransfer } from '@/lib/models/PlannedTransfer'
@@ -46,6 +47,7 @@ export async function GET() {
   ])
 
   const items: InsightItem[] = []
+  const currency = user?.preferences?.currency ?? 'PHP'
 
   // ── Budget breach / near-limit ──────────────────────────────────────────
   if (budgets.length > 0) {
@@ -72,8 +74,8 @@ export async function GET() {
         title: pct >= 100 ? `${budget.category} is over` : `${budget.category} is close to its limit`,
         body:
           pct >= 100
-            ? `₱${Math.round(spent).toLocaleString()} spent on a ₱${Math.round(budget.limit).toLocaleString()} ceiling - ₱${Math.round(over).toLocaleString()} over.`
-            : `₱${Math.round(spent).toLocaleString()} of ₱${Math.round(budget.limit).toLocaleString()} spent this month.`,
+            ? `${formatAmount(spent, currency)} spent on a ${formatAmount(budget.limit, currency)} ceiling - ${formatAmount(over, currency)} over.`
+            : `${formatAmount(spent, currency)} of ${formatAmount(budget.limit, currency)} spent this month.`,
         href: '/budgets',
       })
     }
@@ -100,7 +102,7 @@ export async function GET() {
           daysUntilDue === 0
             ? `${account.name} due today`
             : `${account.name} due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`,
-        body: `₱${Math.round(outstanding).toLocaleString()} outstanding.`,
+        body: `${formatAmount(outstanding, currency)} outstanding.`,
         href: '/accounts',
       })
     }
@@ -126,7 +128,7 @@ export async function GET() {
         id: `planned-transfer-${planned._id.toString()}`,
         severity: 'info',
         icon: 'PiggyBank',
-        title: `₱${Math.round(planned.amount).toLocaleString()} not yet moved`,
+        title: `${formatAmount(planned.amount, currency)} not yet moved`,
         body: `Expected this cutoff (${period.label}). Your transfer is still pending.`,
         href: '/accounts',
       })
