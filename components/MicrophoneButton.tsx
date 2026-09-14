@@ -167,7 +167,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
         >
           <span style={{ color: 'var(--color-text-secondary)' }}>Manage voice keywords</span>
           <Link
-            href="/settings/voice-keywords"
+            href="/settings?tab=voice"
             className="flex items-center gap-1 text-xs font-medium"
             style={{ color: 'var(--color-accent)' }}
           >
