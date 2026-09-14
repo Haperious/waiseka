@@ -1,0 +1,11 @@
+{
+  "key": "mobile-ui-refresh",
+  "title": "Mobile just got a facelift",
+  "description": "We updated the mobile view with a smoother, easier-to-use design. Check it out on your phone!",
+  "imagePath": "/announcements/mobile-ui-refresh.png",
+  "imageAlt": "Screenshot of the refreshed WaiseKa mobile interface",
+  "ctaLabel": null,
+  "ctaHref": null,
+  "targetTier": "all",
+  "priority": 9
+}
