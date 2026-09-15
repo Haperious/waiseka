@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireVerifiedSession } from '@/lib/auth-helpers'
+import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { adminGate } from '@/lib/admin-gate'
 import type { EmailLogType } from '@/lib/models/EmailLog'
 
 export async function GET(req: NextRequest) {
-  const session = await requireVerifiedSession()
-  try { adminGate(session) } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  const session = await requireAdminSession()
+  if (session instanceof NextResponse) return session
 
   const { searchParams } = new URL(req.url)
   const page  = Math.max(1, parseInt(searchParams.get('page')  ?? '1'))

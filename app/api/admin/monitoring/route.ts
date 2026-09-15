@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import { requireVerifiedSession } from '@/lib/auth-helpers'
+import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { adminGate } from '@/lib/admin-gate'
 import type { IUser } from '@/lib/models/User'
 
 export async function GET() {
-  const session = await requireVerifiedSession()
-  try { adminGate(session) } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  const session = await requireAdminSession()
+  if (session instanceof NextResponse) return session
 
   const db = await getDb()
   const col = db.collection<IUser>('users')

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { requireVerifiedSession } from '@/lib/auth-helpers'
+import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { adminGate } from '@/lib/admin-gate'
 import { sendReEngageEmail } from '@/lib/email'
 import type { IUser } from '@/lib/models/User'
 import type { IGoal } from '@/lib/models/Goal'
@@ -15,8 +14,8 @@ function fmt(n: number, sym: string) {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireVerifiedSession()
-  try { adminGate(session) } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  const session = await requireAdminSession()
+  if (session instanceof NextResponse) return session
 
   const { id } = await params
 
