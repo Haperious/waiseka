@@ -1,6 +1,6 @@
 import nodemailer, { type Transporter } from 'nodemailer'
+import { APP_URL } from '@/lib/app-url'
 
-const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
 const CONTACT_EMAIL = 'waise.ka.official@gmail.com'
 
 // ─── Transport ────────────────────────────────────────────────────────────────

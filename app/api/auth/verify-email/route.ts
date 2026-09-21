@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/mongodb'
 import type { IUser } from '@/lib/models/User'
-
-const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
+import { APP_URL } from '@/lib/app-url'
 
 export async function GET(req: NextRequest) {
   const token = new URL(req.url).searchParams.get('token')

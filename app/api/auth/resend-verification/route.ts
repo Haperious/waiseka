@@ -6,6 +6,7 @@ import { ObjectId } from 'mongodb'
 import { sendVerificationEmail } from '@/lib/email'
 import type { IUser } from '@/lib/models/User'
 import type { IEmailLog } from '@/lib/models/EmailLog'
+import { APP_URL } from '@/lib/app-url'
 
 const EXPIRY_HOURS = 24
 
@@ -35,7 +36,7 @@ export async function POST() {
     createdAt: new Date(),
   })
 
-  const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/auth/verify-email?token=${token}`
+  const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${token}`
 
   sendVerificationEmail({
     firstName: user.name.split(' ')[0],

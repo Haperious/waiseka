@@ -9,6 +9,7 @@ import type { IAccount } from '@/lib/models/Account'
 import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import type { IEmailLog } from '@/lib/models/EmailLog'
+import { APP_URL } from '@/lib/app-url'
 
 // 5 registrations per IP per hour
 const RATE_LIMIT = 5
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest) {
       createdAt: now,
     })
 
-    const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/auth/verify-email?token=${verifyToken}`
+    const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${verifyToken}`
 
     const emailLogs = db.collection<Omit<IEmailLog, '_id'>>('email_logs')
 

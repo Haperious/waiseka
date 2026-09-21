@@ -5,6 +5,7 @@ import { sendResetPasswordEmail } from '@/lib/email'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import type { IUser } from '@/lib/models/User'
 import type { IEmailLog } from '@/lib/models/EmailLog'
+import { APP_URL } from '@/lib/app-url'
 
 const EXPIRY_MINUTES = 30
 // 3 requests per IP per 15 minutes
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
     hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
   })
 
-  const resetUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/reset-password?token=${token}`
+  const resetUrl = `${APP_URL}/reset-password?token=${token}`
   const firstName = user.name.split(' ')[0]
 
   sendResetPasswordEmail({

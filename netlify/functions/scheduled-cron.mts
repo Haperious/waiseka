@@ -32,7 +32,7 @@ async function alertFailure(reason: string, detail: string) {
 }
 
 export default async () => {
-  const base = process.env.URL // Netlify sets this to the production site URL
+  const base = process.env.URL?.replace(/\/+$/, '') // Netlify sets this to the production site URL
   const secret = process.env.CRON_SECRET
 
   if (!base || !secret) {
