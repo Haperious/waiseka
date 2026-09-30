@@ -231,7 +231,7 @@ async function checkSpendingAlert(
     daysRemaining,
     recentTxns: recentTxns.map((t: ITransaction) => ({
       merchantName: t.description || t.category,
-      date: new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: new Date(t.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
       label: t.amount === triggerAmount ? "exceeded limit" : "",
       amount: fmt(t.amount),
     })),
