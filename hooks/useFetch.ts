@@ -40,8 +40,10 @@ export function useResource<T>(fetcher: () => Promise<T>, options: ResourceOptio
   const [refreshing, setRefreshing] = useState(false)
 
   const onErrorRef = useRef(options.onError)
+  const fetcherRef = useRef(fetcher)
   useEffect(() => {
     onErrorRef.current = options.onError
+    fetcherRef.current = fetcher
   })
 
   const settle = useCallback((source: () => Promise<T>, outcome: { data: T } | { error: unknown }) => {
@@ -66,10 +68,13 @@ export function useResource<T>(fetcher: () => Promise<T>, options: ResourceOptio
 
   const refetch = useCallback(async () => {
     setRefreshing(true)
+    // Same rule as the effect above: drop the result if the inputs changed while it was in flight
+    const isCurrent = () => fetcherRef.current === fetcher
     try {
-      settle(fetcher, { data: await fetcher() })
+      const data = await fetcher()
+      if (isCurrent()) settle(fetcher, { data })
     } catch (error) {
-      settle(fetcher, { error })
+      if (isCurrent()) settle(fetcher, { error })
     } finally {
       setRefreshing(false)
     }
