@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Transaction } from '@/hooks/useTransactions'
 import { useCategories } from '@/hooks/useCategories'
+import { usePreferences } from '@/hooks/usePreferences'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useCurrency } from '@/context/CurrencyContext'
 import MicrophoneButton from '@/components/MicrophoneButton'
@@ -23,6 +24,7 @@ interface TransactionFormProps {
 export default function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast()
   const { categories } = useCategories()
+  const { preferences, loading: prefsLoading } = usePreferences()
   const { accounts } = useAccounts()
   const { currency } = useCurrency()
   const [loading, setLoading] = useState(false)
@@ -33,32 +35,22 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
     description: transaction?.description ?? '',
     date: transaction?.date ? format(new Date(transaction.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
     isRecurring: transaction?.isRecurring ?? false,
-    accountId: transaction?.accountId ?? UNASSIGNED,
+    // null = not chosen yet, so a new transaction falls back to the default account below
+    accountId: (transaction ? transaction.accountId ?? UNASSIGNED : null) as string | null,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [defaultAccountApplied, setDefaultAccountApplied] = useState(false)
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
 
-  // Pre-fill the account dropdown with the user's default account, but only for
-  // brand-new transactions - never override an existing transaction's saved account.
-  useEffect(() => {
-    if (transaction || defaultAccountApplied || activeAccounts.length === 0) return
-
-    fetch('/api/preferences')
-      .then((r) => r.json())
-      .then((prefs) => {
-        const defaultId = prefs?.defaultAccountId as string | null | undefined
-        const stillActive = defaultId && activeAccounts.some((a) => a._id === defaultId)
-        const fallback = activeAccounts.find((a) => a.type === 'debit')
-        setForm((prev) => ({
-          ...prev,
-          accountId: prev.accountId || (stillActive ? defaultId! : fallback?._id ?? prev.accountId),
-        }))
-      })
-      .catch(() => {})
-      .finally(() => setDefaultAccountApplied(true))
-  }, [transaction, defaultAccountApplied, activeAccounts])
+  // Pre-fill the account dropdown with the user's default account (or first debit
+  // account), but only for brand-new transactions the user hasn't picked one for.
+  const defaultAccountId = useMemo(() => {
+    if (prefsLoading) return UNASSIGNED
+    const preferred = preferences?.defaultAccountId
+    if (preferred && activeAccounts.some((a) => a._id === preferred)) return preferred
+    return activeAccounts.find((a) => a.type === 'debit')?._id ?? UNASSIGNED
+  }, [prefsLoading, preferences, activeAccounts])
+  const accountId = form.accountId ?? defaultAccountId
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -85,7 +77,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
           ...form,
           amount: Number(form.amount),
           currency,
-          accountId: form.accountId || null,
+          accountId: accountId || null,
         }),
       })
       if (!res.ok) {
@@ -161,7 +153,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       />
       <Select
         label="Account (optional)"
-        value={form.accountId}
+        value={accountId}
         onValueChange={(v) => setForm({ ...form, accountId: v })}
         options={accountOptions}
         placeholder="Unassigned"

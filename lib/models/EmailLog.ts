@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb'
+import { Db, ObjectId } from 'mongodb'
 
 export type EmailLogType =
   | 'welcome'           // sent on account creation
@@ -18,4 +18,12 @@ export interface IEmailLog {
   /** Populated for spending_alert- enables per-category dedup within a month */
   category?: string
   sentAt: Date
+}
+
+/** Record a sent email. `sentAt` defaults to now. */
+export async function logEmail(
+  db: Db,
+  entry: Omit<IEmailLog, '_id' | 'sentAt'> & { sentAt?: Date },
+): Promise<void> {
+  await db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({ ...entry, sentAt: entry.sentAt ?? new Date() })
 }

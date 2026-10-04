@@ -22,6 +22,7 @@ import { useToast } from '@/components/ui/Toast'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useVoiceKeywords, VoiceKeyword } from '@/hooks/useVoiceKeywords'
 import { useCategories } from '@/hooks/useCategories'
+import { usePreferences } from '@/hooks/usePreferences'
 import { useSession, signOut } from 'next-auth/react'
 import { isPremium } from '@/lib/tier'
 import { cn } from '@/lib/utils'
@@ -38,6 +39,10 @@ type Frequency = 'daily' | 'weekly' | 'monthly'
 type TabId = 'account' | 'security' | 'money' | 'notifs' | 'display' | 'voice'
 
 const TAB_IDS: TabId[] = ['account', 'security', 'money', 'notifs', 'display', 'voice']
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback
+}
 
 // ── Toggle switch ────────────────────────────────────────────────────────────
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -187,6 +192,7 @@ export default function SettingsPage() {
   // ── Voice keywords state ─────────────────────────────────────────────────
   const { keywords: voiceKeywords, addKeyword: addVoiceKeyword, removeKeyword: removeVoiceKeyword } = useVoiceKeywords()
   const { categories } = useCategories()
+  const { update: updatePreferences } = usePreferences()
   const [voiceSearch, setVoiceSearch] = useState('')
   const [voiceModalOpen, setVoiceModalOpen] = useState(false)
   const [editingVoiceKeyword, setEditingVoiceKeyword] = useState<string | null>(null)
@@ -361,21 +367,12 @@ export default function SettingsPage() {
     if (selectedCurrency === currency) return
     setCurrencyLoading(true)
     try {
-      const res = await fetch('/api/preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currency: selectedCurrency }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setCurrency(selectedCurrency)
-        const info = currencies.find((c) => c.code === selectedCurrency)
-        toast(`Currency updated to ${info?.label} ${info?.symbol}`, 'success')
-      } else {
-        toast(data.error ?? 'Failed to update currency', 'error')
-      }
-    } catch {
-      toast('Something went wrong', 'error')
+      await updatePreferences({ currency: selectedCurrency })
+      setCurrency(selectedCurrency)
+      const info = currencies.find((c) => c.code === selectedCurrency)
+      toast(`Currency updated to ${info?.label} ${info?.symbol}`, 'success')
+    } catch (err) {
+      toast(errorMessage(err, 'Failed to update currency'), 'error')
     } finally {
       setCurrencyLoading(false)
     }
@@ -387,19 +384,10 @@ export default function SettingsPage() {
     setReportsDefaultView(next)
     setReportsViewLoading(true)
     try {
-      const res = await fetch('/api/preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportsDefaultView: next }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        setReportsDefaultView(prev)
-        toast(data.error ?? 'Failed to update default report view', 'error')
-      }
-    } catch {
+      await updatePreferences({ reportsDefaultView: next })
+    } catch (err) {
       setReportsDefaultView(prev)
-      toast('Something went wrong', 'error')
+      toast(errorMessage(err, 'Failed to update default report view'), 'error')
     } finally {
       setReportsViewLoading(false)
     }
@@ -409,20 +397,11 @@ export default function SettingsPage() {
     if (defaultAccountId === savedDefaultAccountId) return
     setDefaultAccountLoading(true)
     try {
-      const res = await fetch('/api/preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ defaultAccountId: defaultAccountId || null }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setSavedDefaultAccountId(defaultAccountId)
-        toast('Default account updated', 'success')
-      } else {
-        toast(data.error ?? 'Failed to update default account', 'error')
-      }
-    } catch {
-      toast('Something went wrong', 'error')
+      await updatePreferences({ defaultAccountId: defaultAccountId || null })
+      setSavedDefaultAccountId(defaultAccountId)
+      toast('Default account updated', 'success')
+    } catch (err) {
+      toast(errorMessage(err, 'Failed to update default account'), 'error')
     } finally {
       setDefaultAccountLoading(false)
     }
@@ -446,20 +425,11 @@ export default function SettingsPage() {
     }
     setCutoffLoading(true)
     try {
-      const res = await fetch('/api/preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cutoffMode, cutoffDays: days }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setSavedCutoff({ mode: cutoffMode, midDay: cutoffMidDay, customDays: cutoffMode === 'custom' ? days : customCutoffDays })
-        toast('Cutoff schedule updated', 'success')
-      } else {
-        toast(data.error ?? 'Failed to update cutoff schedule', 'error')
-      }
-    } catch {
-      toast('Something went wrong', 'error')
+      await updatePreferences({ cutoffMode, cutoffDays: days })
+      setSavedCutoff({ mode: cutoffMode, midDay: cutoffMidDay, customDays: cutoffMode === 'custom' ? days : customCutoffDays })
+      toast('Cutoff schedule updated', 'success')
+    } catch (err) {
+      toast(errorMessage(err, 'Failed to update cutoff schedule'), 'error')
     } finally {
       setCutoffLoading(false)
     }

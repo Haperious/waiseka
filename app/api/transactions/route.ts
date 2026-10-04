@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { isPremium } from '@/lib/tier'
-import { FREE_HISTORY_DAYS, PREMIUM_HISTORY_DAYS } from '@/lib/constants'
+import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
 import { parseTransactionDate } from '@/lib/utils'
@@ -35,10 +34,7 @@ export async function GET(req: NextRequest) {
   if (type) query.type = type
   if (category) query.category = category
 
-  const historyDays = userIsPremium ? PREMIUM_HISTORY_DAYS : FREE_HISTORY_DAYS
-  const retentionWindowStart = new Date()
-  retentionWindowStart.setUTCDate(retentionWindowStart.getUTCDate() - historyDays)
-  retentionWindowStart.setUTCHours(0, 0, 0, 0)
+  const retentionWindowStart = historyWindowStart(userIsPremium)
 
   // Always exclude archived transactions and enforce retention window
   query.isArchived = { $ne: true }

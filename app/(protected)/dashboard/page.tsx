@@ -14,7 +14,6 @@ import { isPremium } from '@/lib/tier'
 import { useLanguage } from '@/context/LanguageContext'
 import type { Budget } from '@/hooks/useBudgets'
 import { useAccounts } from '@/hooks/useAccounts'
-import { useTransactions } from '@/hooks/useTransactions'
 import { useToast } from '@/components/ui/Toast'
 import TransactionForm from '../transactions/TransactionForm'
 import { onTransactionSaved } from '@/lib/transactionEvents'
@@ -172,8 +171,6 @@ export default function DashboardPage() {
     }
   }
 
-  const { refetch } = useTransactions({ limit: 1 })
-
   const MONTHS = useMemo(() => [
     { value: '1',  label: t('common.january')   },
     { value: '2',  label: t('common.february')  },
@@ -299,17 +296,15 @@ export default function DashboardPage() {
 
   const onTransactionSuccess = useCallback(() => {
     setAddTxOpen(false)
-    refetch()
     loadAnalyticsSummary()
     loadBudgets()
-  }, [refetch, loadAnalyticsSummary, loadBudgets])
+  }, [loadAnalyticsSummary, loadBudgets])
 
   // Refresh dashboard data when the mobile quick-add sheet saves a transaction
   useEffect(() => onTransactionSaved(() => {
-    refetch()
     loadAnalyticsSummary()
     loadBudgets()
-  }), [refetch, loadAnalyticsSummary, loadBudgets])
+  }), [loadAnalyticsSummary, loadBudgets])
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>

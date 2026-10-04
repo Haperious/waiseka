@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { isPremium } from '@/lib/tier'
-import { FREE_HISTORY_DAYS } from '@/lib/constants'
+import { isPremium, historyWindowStart } from '@/lib/tier'
+import { MONTH_LABELS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
-
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export interface MonthlySummary {
   month: string
@@ -34,15 +32,14 @@ export async function GET(req: NextRequest) {
 
   let effectiveStart = yearStart
   if (!userIsPremium) {
-    const freeWindowStart = new Date()
-    freeWindowStart.setDate(freeWindowStart.getDate() - FREE_HISTORY_DAYS)
-    freeWindowStart.setUTCHours(0, 0, 0, 0)
+    const freeWindowStart = historyWindowStart(false)
     if (freeWindowStart > yearStart) {
       effectiveStart = freeWindowStart
     }
   }
 
-  // Single aggregation: group by month and transaction type
+  // Single aggregation: group by month and transaction type. Transfers flagged
+  // countsAsSavings are bucketed as savings, matching /api/summary.
   const rows = await db.collection<ITransaction>('transactions').aggregate([
     {
       $match: {
@@ -52,7 +49,16 @@ export async function GET(req: NextRequest) {
     },
     {
       $group: {
-        _id: { month: { $month: '$date' }, type: '$type' },
+        _id: {
+          month: { $month: '$date' },
+          type: {
+            $cond: [
+              { $and: [{ $eq: ['$type', 'transfer'] }, { $eq: ['$countsAsSavings', true] }] },
+              'savings',
+              '$type',
+            ],
+          },
+        },
         total: { $sum: '$amount' },
       },
     },

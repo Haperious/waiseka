@@ -1,11 +1,7 @@
 import { Db } from 'mongodb'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { ICategory } from '@/lib/models/Category'
-
-export const MONTH_LABELS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-]
+import { MONTH_LABELS } from '@/lib/constants'
 
 export interface MonthMeta {
   year: number

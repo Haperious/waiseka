@@ -5,13 +5,9 @@ import { getDb } from '@/lib/mongodb'
 import { sendReEngageEmail } from '@/lib/email'
 import type { IUser } from '@/lib/models/User'
 import type { IGoal } from '@/lib/models/Goal'
-import type { IEmailLog } from '@/lib/models/EmailLog'
-
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
-
-function fmt(n: number, sym: string) {
-  return `${sym}${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
-}
+import { logEmail } from '@/lib/models/EmailLog'
+import { MONTH_NAMES } from '@/lib/constants'
+import { formatCurrency } from '@/lib/utils'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
@@ -29,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const now = new Date()
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
   const daysRemaining = monthEnd.getUTCDate() - now.getUTCDate()
-  const monthName = MONTH_NAMES[now.getMonth()]
+  const monthName = MONTH_NAMES[now.getUTCMonth()]
   const sym = user.preferences?.currencySymbol ?? '₱'
 
   const lastSeen = user.notifications?.lastSeen ? new Date(user.notifications.lastSeen) : null
@@ -49,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const goalPercent = topGoal && topGoal.targetAmount > 0
     ? Math.round((topGoal.savedAmount / topGoal.targetAmount) * 100)
     : 0
-  const goalTarget = topGoal ? fmt(topGoal.targetAmount, sym) : fmt(0, sym)
+  const goalTarget = formatCurrency(topGoal?.targetAmount ?? 0, sym)
 
   try {
     await sendReEngageEmail({
@@ -68,11 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         { _id: user._id },
         { $set: { 'notifications.email.lastSentReEngage': new Date() } }
       ),
-      db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
-        userId: id,
-        type: 're_engage',
-        sentAt: new Date(),
-      } as unknown as Omit<IEmailLog, '_id'>),
+      logEmail(db, { userId: id, type: 're_engage' }),
     ])
 
     return NextResponse.json({ ok: true, sentTo: user.email })

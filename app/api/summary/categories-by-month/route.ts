@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { isPremium } from '@/lib/tier'
-import { FREE_HISTORY_DAYS } from '@/lib/constants'
+import { isPremium, historyWindowStart } from '@/lib/tier'
+import { MONTH_LABELS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
 import type { ICategory } from '@/lib/models/Category'
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 // Fallback palette when a category has no stored color
 const FALLBACK_COLORS = [
   '#166534', '#16A34A', '#4ADE80', '#84CC16',
@@ -36,9 +35,7 @@ export async function GET(req: NextRequest) {
 
   let effectiveStart = yearStart
   if (!userIsPremium) {
-    const freeWindowStart = new Date()
-    freeWindowStart.setDate(freeWindowStart.getDate() - FREE_HISTORY_DAYS)
-    freeWindowStart.setUTCHours(0, 0, 0, 0)
+    const freeWindowStart = historyWindowStart(false)
     if (freeWindowStart > yearStart) {
       effectiveStart = freeWindowStart
     }
@@ -105,20 +102,6 @@ export async function GET(req: NextRequest) {
     color: colorMap[cat] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
     data:  categoryMonthMap[cat],
   }))
-
-  // For free users, zero out months outside the free window
-  if (!userIsPremium) {
-    const freeWindowStart = new Date()
-    freeWindowStart.setDate(freeWindowStart.getDate() - FREE_HISTORY_DAYS)
-    for (const cat of result) {
-      for (let m = 0; m < 12; m++) {
-        const monthEnd = new Date(Date.UTC(year, m + 1, 0, 23, 59, 59, 999))
-        if (monthEnd < freeWindowStart) {
-          cat.data[m] = 0
-        }
-      }
-    }
-  }
 
   return NextResponse.json({
     months: MONTH_LABELS,

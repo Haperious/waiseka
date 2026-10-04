@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { extractApiError } from '@/hooks/useFetch'
 
 export interface Preferences {
@@ -17,32 +17,46 @@ export interface Preferences {
   voiceKeywords?: { keyword: string; category: string; type?: 'income' | 'expense' | 'savings' }[]
 }
 
-export function usePreferences() {
+interface PreferencesContextValue {
+  preferences: Preferences | null
+  loading: boolean
+  /** Optimistically applies `patch`, PUTs it, and rolls back (then rethrows) on failure. */
+  update: (patch: Partial<Preferences>) => Promise<void>
+}
+
+const PreferencesContext = createContext<PreferencesContextValue | null>(null)
+
+// Backs every usePreferences()/useVoiceKeywords() call with one shared fetch, instead of
+// each consumer (quick-add sheet, command palette, forms, pages) hitting /api/preferences
+// on mount.
+export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<Preferences | null>(null)
   const [loading, setLoading] = useState(true)
+  // Latest value for update()'s rollback and for back-to-back patches in the same tick.
   const preferencesRef = useRef<Preferences | null>(null)
-  preferencesRef.current = preferences
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/preferences')
+    fetch('/api/preferences')
+      .then(async (res) => {
         if (!res.ok) throw new Error(await extractApiError(res))
-        const data: Preferences = await res.json()
-        if (!cancelled) setPreferences(data)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
+        return res.json() as Promise<Preferences>
+      })
+      .then((data) => {
+        if (cancelled) return
+        preferencesRef.current = data
+        setPreferences(data)
+      })
+      .catch((err) => console.error('[preferences] load failed:', err))
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   const update = useCallback(async (patch: Partial<Preferences>) => {
     const prev = preferencesRef.current
-    setPreferences((p) => (p ? { ...p, ...patch } : p))
+    const optimistic = prev ? { ...prev, ...patch } : prev
+    preferencesRef.current = optimistic
+    setPreferences(optimistic)
     try {
       const res = await fetch('/api/preferences', {
         method: 'PUT',
@@ -51,12 +65,22 @@ export function usePreferences() {
       })
       if (!res.ok) throw new Error(await extractApiError(res))
       const updated: Preferences = await res.json()
+      preferencesRef.current = updated
       setPreferences(updated)
     } catch (err) {
+      preferencesRef.current = prev
       setPreferences(prev)
       throw err
     }
   }, [])
 
-  return { preferences, loading, update }
+  const value = useMemo(() => ({ preferences, loading, update }), [preferences, loading, update])
+
+  return React.createElement(PreferencesContext.Provider, { value }, children)
+}
+
+export function usePreferences(): PreferencesContextValue {
+  const ctx = useContext(PreferencesContext)
+  if (!ctx) throw new Error('usePreferences must be used within a PreferencesProvider')
+  return ctx
 }

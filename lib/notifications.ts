@@ -7,7 +7,7 @@ import { formatCurrency } from '@/lib/utils'
 import type { IUser } from '@/lib/models/User'
 import type { IBudget } from '@/lib/models/Budget'
 import type { ITransaction } from '@/lib/models/Transaction'
-import type { IEmailLog } from '@/lib/models/EmailLog'
+import { logEmail, type IEmailLog } from '@/lib/models/EmailLog'
 
 type NotificationType = 'reminder' | 'inactivity'
 
@@ -31,14 +31,10 @@ function initFirebase() {
 }
 
 /**
- * Send an FCM push notification.
- * Silently skips if the user is not on the premium tier.
- * Free users can still configure email frequency in settings but FCM push is premium-only.
- */
-/**
  * Fire-and-forget spending alert: checks if a new expense crossed the budget
  * limit for its category and sends a one-time email alert per calendar month.
- * Must be called after the transaction is persisted.
+ * Must be called after the transaction is persisted. For a batch insert, call once
+ * per category with the batch's combined amount as `triggerAmount`.
  */
 export async function checkSpendingAlert(
   userId: string,
@@ -121,14 +117,14 @@ export async function checkSpendingAlert(
     surplusCategoryRemaining: surplus ? fmt(surplus.limit - (spentMap[surplus.category] ?? 0)) : fmt(0),
   })
 
-  await db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
-    userId,
-    type: 'spending_alert',
-    category,
-    sentAt: now,
-  } as unknown as Omit<IEmailLog, '_id'>)
+  await logEmail(db, { userId, type: 'spending_alert', category, sentAt: now })
 }
 
+/**
+ * Send an FCM push notification.
+ * Silently skips if the user is not on the premium tier.
+ * Free users can still configure email frequency in settings but FCM push is premium-only.
+ */
 export async function sendPushNotification({
   fcmToken,
   type,

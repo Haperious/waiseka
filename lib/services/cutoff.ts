@@ -1,7 +1,4 @@
-const MONTH_LABELS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-]
+import { MONTH_LABELS } from '@/lib/constants'
 
 export interface CutoffPreferences {
   cutoffMode?: 'semi-monthly' | 'monthly' | 'custom'

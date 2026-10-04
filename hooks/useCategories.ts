@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useFetch, extractApiError } from '@/hooks/useFetch'
 
 export interface Category {
@@ -10,7 +10,18 @@ export interface Category {
   color: string
 }
 
-export function useCategories() {
+interface CategoriesContextValue {
+  categories: Category[]
+  loading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+}
+
+const CategoriesContext = createContext<CategoriesContextValue | null>(null)
+
+// Backs every useCategories() call with one shared fetch, instead of each consumer
+// (quick-add sheet, transaction/budget forms, settings) hitting /api/categories on mount.
+export function CategoriesProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([])
 
   const fetcher = useCallback(async () => {
@@ -28,5 +39,16 @@ export function useCategories() {
 
   useEffect(() => { fetchCategories() }, [fetchCategories])
 
-  return { categories, loading, error, refetch: fetchCategories }
+  const value = useMemo<CategoriesContextValue>(
+    () => ({ categories, loading, error, refetch: fetchCategories }),
+    [categories, loading, error, fetchCategories],
+  )
+
+  return React.createElement(CategoriesContext.Provider, { value }, children)
+}
+
+export function useCategories(): CategoriesContextValue {
+  const ctx = useContext(CategoriesContext)
+  if (!ctx) throw new Error('useCategories must be used within a CategoriesProvider')
+  return ctx
 }

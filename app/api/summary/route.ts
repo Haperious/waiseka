@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { isPremium } from '@/lib/tier'
-import { FREE_HISTORY_DAYS } from '@/lib/constants'
+import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
 
@@ -18,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const db = await getDb()
 
-  // -- Tier gate: free users cannot query beyond FREE_HISTORY_DAYS
+  // -- Tier gate: free users cannot query beyond their history window
   const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
   const userIsPremium = user ? isPremium(user) : false
 
@@ -29,9 +28,7 @@ export async function GET(req: NextRequest) {
   let endDate: Date
 
   if (!userIsPremium) {
-    const freeWindowStart = new Date()
-    freeWindowStart.setDate(freeWindowStart.getDate() - FREE_HISTORY_DAYS)
-    freeWindowStart.setUTCHours(0, 0, 0, 0)
+    const freeWindowStart = historyWindowStart(false)
 
     if (requestedEnd < freeWindowStart) {
       return NextResponse.json({
@@ -54,7 +51,11 @@ export async function GET(req: NextRequest) {
 
   const col = db.collection<ITransaction>('transactions')
 
-  const [summary] = await col.aggregate([
+  // One pass over the month's transactions: totals and the expense-by-category breakdown
+  const [facet] = await col.aggregate<{
+    summary: { totalIncome: number; totalExpenses: number; totalSavings: number; netSavings: number; savingsRate: number }[]
+    categoryBreakdown: { category: string; total: number; count: number }[]
+  }>([
     {
       $match: {
         userId: session.user.id,
@@ -62,88 +63,90 @@ export async function GET(req: NextRequest) {
       },
     },
     {
-      $group: {
-        _id: null,
-        totalIncome: {
-          $sum: { $cond: [{ $eq: ['$type', 'income'] }, '$amount', 0] },
-        },
-        totalExpenses: {
-          $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] },
-        },
-        totalSavings: {
-          $sum: {
-            $cond: [
-              {
-                $or: [
-                  { $eq: ['$type', 'savings'] },
-                  { $and: [{ $eq: ['$type', 'transfer'] }, { $eq: ['$countsAsSavings', true] }] },
-                ],
+      $facet: {
+        summary: [
+          {
+            $group: {
+              _id: null,
+              totalIncome: {
+                $sum: { $cond: [{ $eq: ['$type', 'income'] }, '$amount', 0] },
               },
-              '$amount',
-              0,
-            ],
-          },
-        },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        totalIncome: 1,
-        totalExpenses: 1,
-        totalSavings: 1,
-        // Money actively set aside (explicit 'savings' transactions plus transfers
-        // into a savings/time_deposit account) counts as savings on top of leftover
-        // cash flow, so it's recognized even when it never shows up as an 'expense'.
-        netSavings: {
-          $add: [{ $subtract: ['$totalIncome', '$totalExpenses'] }, '$totalSavings'],
-        },
-        savingsRate: {
-          $cond: [
-            { $gt: ['$totalIncome', 0] },
-            {
-              $multiply: [
-                {
-                  $divide: [
-                    { $add: [{ $subtract: ['$totalIncome', '$totalExpenses'] }, '$totalSavings'] },
-                    '$totalIncome',
+              totalExpenses: {
+                $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] },
+              },
+              totalSavings: {
+                $sum: {
+                  $cond: [
+                    {
+                      $or: [
+                        { $eq: ['$type', 'savings'] },
+                        { $and: [{ $eq: ['$type', 'transfer'] }, { $eq: ['$countsAsSavings', true] }] },
+                      ],
+                    },
+                    '$amount',
+                    0,
                   ],
                 },
-                100,
-              ],
+              },
             },
-            0,
-          ],
-        },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalIncome: 1,
+              totalExpenses: 1,
+              totalSavings: 1,
+              // Money actively set aside (explicit 'savings' transactions plus transfers
+              // into a savings/time_deposit account) counts as savings on top of leftover
+              // cash flow, so it's recognized even when it never shows up as an 'expense'.
+              netSavings: {
+                $add: [{ $subtract: ['$totalIncome', '$totalExpenses'] }, '$totalSavings'],
+              },
+              savingsRate: {
+                $cond: [
+                  { $gt: ['$totalIncome', 0] },
+                  {
+                    $multiply: [
+                      {
+                        $divide: [
+                          { $add: [{ $subtract: ['$totalIncome', '$totalExpenses'] }, '$totalSavings'] },
+                          '$totalIncome',
+                        ],
+                      },
+                      100,
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
+          },
+        ],
+        categoryBreakdown: [
+          { $match: { type: 'expense' } },
+          {
+            $group: {
+              _id: '$category',
+              total: { $sum: '$amount' },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { total: -1 } },
+          {
+            $project: {
+              _id: 0,
+              category: '$_id',
+              total: 1,
+              count: 1,
+            },
+          },
+        ],
       },
     },
   ]).toArray()
 
-  const categoryBreakdown = await col.aggregate([
-    {
-      $match: {
-        userId: session.user.id,
-        type: 'expense',
-        date: { $gte: startDate, $lte: endDate },
-      },
-    },
-    {
-      $group: {
-        _id: '$category',
-        total: { $sum: '$amount' },
-        count: { $sum: 1 },
-      },
-    },
-    { $sort: { total: -1 } },
-    {
-      $project: {
-        _id: 0,
-        category: '$_id',
-        total: 1,
-        count: 1,
-      },
-    },
-  ]).toArray()
+  const summary = facet?.summary[0]
+  const categoryBreakdown = facet?.categoryBreakdown ?? []
 
   const totalExpenses = summary?.totalExpenses ?? 0
   const categoryWithPercent = categoryBreakdown.map((c) => ({

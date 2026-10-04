@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useMemo, useRef } from 'react'
+import { usePreferences } from '@/hooks/usePreferences'
 
 export interface VoiceKeyword {
   keyword: string
@@ -15,59 +16,40 @@ export interface VoiceKeyword {
  */
 const LEGACY_STORAGE_KEY = 'waiseka:voiceKeywords'
 
+const EMPTY: VoiceKeyword[] = []
+
 export function useVoiceKeywords() {
-  const [keywords, setKeywords] = useState<VoiceKeyword[]>([])
-  const keywordsRef = useRef<VoiceKeyword[]>([])
+  const { preferences, update } = usePreferences()
+  const keywords = useMemo(() => preferences?.voiceKeywords ?? EMPTY, [preferences])
+  // Latest list, so back-to-back add/remove calls build on each other
+  const keywordsRef = useRef(keywords)
+
+  useEffect(() => {
+    keywordsRef.current = keywords
+  }, [keywords])
 
   useEffect(() => {
     try {
       localStorage.removeItem(LEGACY_STORAGE_KEY)
     } catch {}
-
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/preferences')
-        if (!res.ok) return
-        const data: { voiceKeywords?: VoiceKeyword[] } | null = await res.json()
-        if (cancelled) return
-        keywordsRef.current = data?.voiceKeywords ?? []
-        setKeywords(keywordsRef.current)
-      } catch {
-        // keep empty list on network errors
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
   }, [])
 
-  const save = useCallback(async (updated: VoiceKeyword[]) => {
-    const prev = keywordsRef.current
+  const save = useCallback((updated: VoiceKeyword[]) => {
     keywordsRef.current = updated
-    setKeywords(updated)
-    try {
-      const res = await fetch('/api/preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voiceKeywords: updated }),
-      })
-      if (!res.ok) throw new Error('Failed to save voice keywords')
-    } catch {
-      keywordsRef.current = prev
-      setKeywords(prev)
-    }
-  }, [])
+    update({ voiceKeywords: updated }).catch(() => {
+      // update() already rolled the shared preferences back
+    })
+  }, [update])
 
   const addKeyword = useCallback((keyword: string, category: string, type?: 'income' | 'expense' | 'savings') => {
     const trimmed = keyword.trim().toLowerCase()
     if (!trimmed) return
     const filtered = keywordsRef.current.filter((k) => k.keyword.toLowerCase() !== trimmed)
-    void save([...filtered, { keyword: trimmed, category, ...(type && { type }) }])
+    save([...filtered, { keyword: trimmed, category, ...(type && { type }) }])
   }, [save])
 
   const removeKeyword = useCallback((keyword: string) => {
-    void save(keywordsRef.current.filter((k) => k.keyword.toLowerCase() !== keyword.toLowerCase()))
+    save(keywordsRef.current.filter((k) => k.keyword.toLowerCase() !== keyword.toLowerCase()))
   }, [save])
 
   return { keywords, addKeyword, removeKeyword }

@@ -40,6 +40,14 @@ export const FREE_HISTORY_DAYS = 1095
 /** Rolling retention window (in days) for premium-tier transactions. 7 years = 2555 days. */
 export const PREMIUM_HISTORY_DAYS = 2555
 
+// ── Calendar ─────────────────────────────────────────────────────────────────
+export const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+export const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
 // ── AI query cap ─────────────────────────────────────────────────────────────
 // The monthly AI query cap is stored in the database, not here.
 // Source of truth: GlobalSettings.aiQueryCap, overridable per user via

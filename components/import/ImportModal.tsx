@@ -36,21 +36,14 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
   const [wrongPassword, setWrongPassword] = useState(false)
 
   useEffect(() => {
-    if (open) {
-      setStage('idle')
-      setExtracted([])
-      fetchUsage()
-    }
+    if (!open) return
+    setStage('idle')
+    setExtracted([])
+    fetch('/api/import/usage')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ImportUsage | null) => { if (data) setUsage(data) })
+      .catch(() => { /* non-fatal */ })
   }, [open])
-
-  const fetchUsage = async () => {
-    try {
-      const res = await fetch('/api/import/usage')
-      if (res.ok) setUsage(await res.json())
-    } catch {
-      // non-fatal
-    }
-  }
 
   const uploadFile = async (file: File, password?: string) => {
     setStage('processing')

@@ -11,36 +11,34 @@ import type { IUser } from '@/lib/models/User'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IGoal } from '@/lib/models/Goal'
 import type { ITransaction } from '@/lib/models/Transaction'
-import type { IEmailLog } from '@/lib/models/EmailLog'
+import { logEmail } from '@/lib/models/EmailLog'
+import { MONTH_NAMES } from '@/lib/constants'
+import { formatCurrency as fmt } from '@/lib/utils'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(n: number, sym: string) {
-  return `${sym}${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
-}
-
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const EMAIL_THRESHOLD: Record<string, number> = { daily: 1, weekly: 7, monthly: 30 }
+
+type CategoryTotal = { _id: string; total: number; count?: number }
+
+function toTotalMap(rows: CategoryTotal[]): Record<string, number> {
+  return Object.fromEntries(rows.map((r) => [r._id, r.total]))
+}
 
 // ─── AI Query Reset (daily midnight) ─────────────────────────────────────────
 
 export async function resetAiQueries() {
   try {
     const db = await getDb()
-    const users = db.collection<IUser>('users')
     const now = new Date()
-    const toReset = await users.find({ 'ai.resetDate': { $lte: now } }).toArray()
-
-    for (const user of toReset) {
-      const nextReset = new Date(user.ai.resetDate)
-      nextReset.setMonth(nextReset.getMonth() + 1)
-      nextReset.setDate(1)
-      nextReset.setHours(0, 0, 0, 0)
-      await users.updateOne(
-        { _id: user._id },
-        { $set: { 'ai.queriesUsed': 0, 'ai.resetDate': nextReset, updatedAt: new Date() } }
-      )
-    }
+    // Every due user resets to the 1st of next month (same convention as registration).
+    // Computed from `now` rather than each user's old resetDate, so a missed run can't
+    // leave a user with a resetDate that's still in the past.
+    const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    await db.collection<IUser>('users').updateMany(
+      { 'ai.resetDate': { $lte: now } },
+      { $set: { 'ai.queriesUsed': 0, 'ai.resetDate': nextReset, updatedAt: now } }
+    )
   } catch (err) {
     console.error('[scheduler] AI reset error:', err)
   }
@@ -56,7 +54,7 @@ export async function sendBudgetReminders() {
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
     const daysInMonth = monthEnd.getUTCDate()
     const daysRemaining = daysInMonth - now.getUTCDate()
-    const monthName = MONTH_NAMES[now.getMonth()]
+    const monthName = MONTH_NAMES[now.getUTCMonth()]
 
     const users = await db.collection<IUser>('users')
       .find({ 'notifications.email.enabled': true }, { projection: { name: 1, email: 1, preferences: 1, notifications: 1 } })
@@ -72,23 +70,31 @@ export async function sendBudgetReminders() {
       const userId = user._id.toString()
       const sym = user.preferences?.currencySymbol ?? '₱'
 
-      const [budgets, spentAgg, incomeAgg] = await Promise.all([
-        db.collection<IBudget>('budgets').find({ userId }).toArray(),
-        db.collection<ITransaction>('transactions').aggregate([
-          { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
-          { $group: { _id: '$category', total: { $sum: '$amount' } } },
-        ]).toArray(),
-        db.collection<ITransaction>('transactions').aggregate([
-          { $match: { userId, type: 'income', date: { $gte: monthStart, $lte: monthEnd } } },
-          { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]).toArray(),
-      ])
-
+      const budgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
       if (budgets.length === 0) continue
 
-      const spentMap = Object.fromEntries(spentAgg.map((r) => [(r as { _id: string; total: number })._id, (r as { _id: string; total: number }).total]))
-      const totalIncome = incomeAgg[0]?.total ?? 0
-      const totalSpent = Object.values(spentMap).reduce((a, b) => a + (b as number), 0) as number
+      const [agg] = await db.collection<ITransaction>('transactions').aggregate<{
+        spent: CategoryTotal[]
+        income: { total: number }[]
+      }>([
+        { $match: { userId, type: { $in: ['income', 'expense'] }, date: { $gte: monthStart, $lte: monthEnd } } },
+        {
+          $facet: {
+            spent: [
+              { $match: { type: 'expense' } },
+              { $group: { _id: '$category', total: { $sum: '$amount' } } },
+            ],
+            income: [
+              { $match: { type: 'income' } },
+              { $group: { _id: null, total: { $sum: '$amount' } } },
+            ],
+          },
+        },
+      ]).toArray()
+
+      const spentMap = toTotalMap(agg?.spent ?? [])
+      const totalIncome = agg?.income[0]?.total ?? 0
+      const totalSpent = Object.values(spentMap).reduce((a, b) => a + b, 0)
       const totalLimit = budgets.reduce((a, b) => a + b.limit, 0)
       const usedPercent = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
 
@@ -124,13 +130,7 @@ export async function sendBudgetReminders() {
         alertCategory,
         projectedOverage,
       })
-        .then(() =>
-          db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
-            userId,
-            type: 'budget_reminder',
-            sentAt: new Date(),
-          } as unknown as Omit<IEmailLog, '_id'>)
-        )
+        .then(() => logEmail(db, { userId, type: 'budget_reminder' }))
         .catch((err) => console.error(`[scheduler] budget reminder error for user ${userId}:`, err))
     }
   } catch (err) {
@@ -147,7 +147,7 @@ export async function sendReEngageEmails() {
     const cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
     const daysRemaining = monthEnd.getUTCDate() - now.getUTCDate()
-    const monthName = MONTH_NAMES[now.getMonth()]
+    const monthName = MONTH_NAMES[now.getUTCMonth()]
 
     const users = await db.collection<IUser>('users')
       .find({
@@ -196,13 +196,7 @@ export async function sendReEngageEmails() {
         topGoalPercent: goalPercent,
         topGoalTarget: fmt(topGoal.targetAmount, sym),
       })
-        .then(() =>
-          db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
-            userId,
-            type: 're_engage',
-            sentAt: new Date(),
-          } as unknown as Omit<IEmailLog, '_id'>)
-        )
+        .then(() => logEmail(db, { userId, type: 're_engage' }))
         .catch((err) => console.error(`[scheduler] re-engage error for user ${userId}:`, err))
     }
   } catch (err) {
@@ -216,12 +210,14 @@ export async function sendMonthlyReports() {
   try {
     const db = await getDb()
     const now = new Date()
-    const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1
-    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
+    const prevMonth = now.getUTCMonth() === 0 ? 11 : now.getUTCMonth() - 1
+    const prevYear = now.getUTCMonth() === 0 ? now.getUTCFullYear() - 1 : now.getUTCFullYear()
     const monthStart = new Date(Date.UTC(prevYear, prevMonth, 1))
     const monthEnd = new Date(Date.UTC(prevYear, prevMonth + 1, 0, 23, 59, 59, 999))
+    // The month before the reported one, for the insight comparison
+    const compareStart = new Date(Date.UTC(prevYear, prevMonth - 1, 1))
     const monthName = MONTH_NAMES[prevMonth]
-    const nextMonthName = MONTH_NAMES[now.getMonth()]
+    const nextMonthName = MONTH_NAMES[now.getUTCMonth()]
 
     const DOT_COLORS = ['#f97316', '#3b82f6', '#8b5cf6', '#ec4899', '#22c55e']
 
@@ -233,49 +229,51 @@ export async function sendMonthlyReports() {
       const userId = user._id.toString()
       const sym = user.preferences?.currencySymbol ?? '₱'
 
-      const [incomeAgg, expenseAgg, categoryAgg, prevMonthAgg, budgets] = await Promise.all([
-        db.collection<ITransaction>('transactions').aggregate([
-          { $match: { userId, type: 'income', date: { $gte: monthStart, $lte: monthEnd } } },
-          { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]).toArray(),
-        db.collection<ITransaction>('transactions').aggregate([
-          { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
-          { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]).toArray(),
-        db.collection<ITransaction>('transactions').aggregate([
-          { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
-          { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
-          { $sort: { total: -1 } },
-          { $limit: 5 },
-        ]).toArray(),
-        // Previous-previous month for insight comparison
-        db.collection<ITransaction>('transactions').aggregate([
-          {
-            $match: {
-              userId, type: 'expense',
-              date: {
-                $gte: new Date(Date.UTC(prevYear, prevMonth - 1, 1)),
-                $lte: new Date(Date.UTC(prevYear, prevMonth, 0, 23, 59, 59, 999)),
-              },
-            },
+      // One aggregation over both months: totals and categories for the reported month,
+      // categories for the month before it.
+      const [agg] = await db.collection<ITransaction>('transactions').aggregate<{
+        totals: CategoryTotal[]
+        categories: Required<CategoryTotal>[]
+        prevCategories: CategoryTotal[]
+      }>([
+        { $match: { userId, type: { $in: ['income', 'expense'] }, date: { $gte: compareStart, $lte: monthEnd } } },
+        {
+          $facet: {
+            totals: [
+              { $match: { date: { $gte: monthStart } } },
+              { $group: { _id: '$type', total: { $sum: '$amount' } } },
+            ],
+            categories: [
+              { $match: { type: 'expense', date: { $gte: monthStart } } },
+              { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+              { $sort: { total: -1 } },
+            ],
+            prevCategories: [
+              { $match: { type: 'expense', date: { $lt: monthStart } } },
+              { $group: { _id: '$category', total: { $sum: '$amount' } } },
+            ],
           },
-          { $group: { _id: '$category', total: { $sum: '$amount' } } },
-        ]).toArray(),
-        db.collection<IBudget>('budgets').find({ userId }).toArray(),
-      ])
+        },
+      ]).toArray()
 
-      const totalIncome = incomeAgg[0]?.total ?? 0
-      const totalSpent = expenseAgg[0]?.total ?? 0
+      const totals = toTotalMap(agg?.totals ?? [])
+      const totalIncome = totals.income ?? 0
+      const totalSpent = totals.expense ?? 0
       const totalSaved = Math.max(0, totalIncome - totalSpent)
 
       if (totalIncome === 0 && totalSpent === 0) continue // Skip users with no activity
 
-      const spentMap = Object.fromEntries(categoryAgg.map((r) => [(r as { _id: string; total: number })._id, (r as { _id: string; total: number }).total]))
+      const budgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
+      const categories = agg?.categories ?? []
+      const topCategories = categories.slice(0, 5)
+      // Use every category here, not just the top 5 - otherwise an over-budget category
+      // outside the top 5 would be counted as on budget.
+      const spentMap = toTotalMap(categories)
       const categoriesOnBudget = budgets.filter((b) => (spentMap[b.category] ?? 0) <= b.limit).length
 
       // Build insight: compare top category vs previous month
-      const topCat = categoryAgg[0]
-      const prevSpentMap = Object.fromEntries(prevMonthAgg.map((r) => [(r as { _id: string; total: number })._id, (r as { _id: string; total: number }).total]))
+      const topCat = topCategories[0]
+      const prevSpentMap = toTotalMap(agg?.prevCategories ?? [])
       const prevTopSpent = topCat ? (prevSpentMap[topCat._id] ?? 0) : 0
       const currTopSpent = topCat?.total ?? 0
       const changePercent = prevTopSpent > 0
@@ -303,15 +301,12 @@ export async function sendMonthlyReports() {
         totalSaved: fmt(totalSaved, sym),
         categoriesOnBudget,
         totalCategories: budgets.length,
-        topCategories: categoryAgg.map((doc, i: number) => {
-          const c = doc as { _id: string; total: number; count: number }
-          return {
-            name: c._id,
-            txnCount: c.count,
-            totalSpent: fmt(c.total, sym),
-            dotColor: DOT_COLORS[i % DOT_COLORS.length],
-          }
-        }),
+        topCategories: topCategories.map((c, i) => ({
+          name: c._id,
+          txnCount: c.count,
+          totalSpent: fmt(c.total, sym),
+          dotColor: DOT_COLORS[i % DOT_COLORS.length],
+        })),
         insight: {
           comparedCategory: topCat?._id ?? 'spending',
           changePercent,
@@ -320,13 +315,7 @@ export async function sendMonthlyReports() {
           monthlySavingsFree,
         },
       })
-        .then(() =>
-          db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
-            userId,
-            type: 'monthly_report',
-            sentAt: new Date(),
-          } as unknown as Omit<IEmailLog, '_id'>)
-        )
+        .then(() => logEmail(db, { userId, type: 'monthly_report' }))
         .catch((err) => console.error(`[scheduler] monthly report error for user ${userId}:`, err))
     }
   } catch (err) {

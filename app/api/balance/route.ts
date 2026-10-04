@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { isPremium } from '@/lib/tier'
+import { isPremium, historyWindowStart } from '@/lib/tier'
 import { FREE_HISTORY_DAYS, PREMIUM_HISTORY_DAYS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
@@ -39,9 +39,7 @@ export async function GET(req: NextRequest) {
   const userIsPremium = user ? isPremium(user) : false
 
   const historyDays = userIsPremium ? PREMIUM_HISTORY_DAYS : FREE_HISTORY_DAYS
-  const windowStart = new Date()
-  windowStart.setUTCDate(windowStart.getUTCDate() - historyDays)
-  windowStart.setUTCHours(0, 0, 0, 0)
+  const windowStart = historyWindowStart(userIsPremium)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const matchStage: Record<string, any> = {

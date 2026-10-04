@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/mongodb'
 import { sendSetupNudgeEmail } from '@/lib/email'
-import type { IEmailLog } from '@/lib/models/EmailLog'
+import { logEmail, type IEmailLog } from '@/lib/models/EmailLog'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
 
@@ -97,11 +97,7 @@ export async function POST(req: NextRequest) {
   })
 
   // ── Log to EmailLog ────────────────────────────────────────────────────────
-  await db.collection<Omit<IEmailLog, '_id'>>('email_logs').insertOne({
-    userId,
-    type: 'setup_nudge',
-    sentAt: now,
-  } as unknown as Omit<IEmailLog, '_id'>)
+  await logEmail(db, { userId, type: 'setup_nudge', sentAt: now })
 
   return NextResponse.json({ sent: true, noBudget, noGoals })
 }
