@@ -60,10 +60,10 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    const resetDate = new Date()
-    resetDate.setMonth(resetDate.getMonth() + 1)
-    resetDate.setDate(1)
-    resetDate.setHours(0, 0, 0, 0)
+    // Midnight on the 1st of next month. Built directly - setMonth(+1) on the 29th-31st
+    // overflows (Jan 31 -> Mar 3), which then landed on Mar 1 and skipped February.
+    const today = new Date()
+    const resetDate = new Date(today.getFullYear(), today.getMonth() + 1, 1)
 
     const now = new Date()
     const result = await users.insertOne({

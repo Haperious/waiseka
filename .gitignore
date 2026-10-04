@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# yarn is the package manager (yarn.lock) - keep npm's lockfile out
+package-lock.json
 /.pnp
 .pnp.*
 .yarn/*
