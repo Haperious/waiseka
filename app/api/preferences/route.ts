@@ -4,7 +4,7 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import type { IUser } from '@/lib/models/User'
-import { MAX_HIDDEN_ACCOUNTS } from '@/lib/constants'
+import { MAX_HIDDEN_ACCOUNTS, MAX_VOICE_KEYWORDS } from '@/lib/constants'
 
 const VALID_CURRENCIES = ['PHP', 'QAR', 'USD']
 
@@ -36,6 +36,7 @@ export async function PUT(req: NextRequest) {
     cutoffDays,
     cutoffAnchorDate,
     reportsDefaultView,
+    voiceKeywords,
   } = body
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
@@ -109,6 +110,36 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid reportsDefaultView' }, { status: 400 })
     }
     update['preferences.reportsDefaultView'] = reportsDefaultView
+  }
+
+  if (voiceKeywords !== undefined) {
+    if (
+      !Array.isArray(voiceKeywords) ||
+      voiceKeywords.some(
+        (k) =>
+          !k ||
+          typeof k.keyword !== 'string' ||
+          !k.keyword.trim() ||
+          k.keyword.length > 50 ||
+          typeof k.category !== 'string' ||
+          !k.category ||
+          k.category.length > 100 ||
+          (k.type !== undefined && !['income', 'expense', 'savings'].includes(k.type))
+      )
+    ) {
+      return NextResponse.json({ error: 'Invalid voiceKeywords' }, { status: 400 })
+    }
+    if (voiceKeywords.length > MAX_VOICE_KEYWORDS) {
+      return NextResponse.json(
+        { error: `Cannot save more than ${MAX_VOICE_KEYWORDS} voice keywords` },
+        { status: 400 }
+      )
+    }
+    update['preferences.voiceKeywords'] = voiceKeywords.map((k) => ({
+      keyword: k.keyword.trim().toLowerCase(),
+      category: k.category,
+      ...(k.type && { type: k.type }),
+    }))
   }
 
   const db = await getDb()

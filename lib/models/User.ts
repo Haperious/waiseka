@@ -47,6 +47,8 @@ export interface IUser {
     cutoffAnchorDate?: string
     /** Default view shown on the monthly reports page. */
     reportsDefaultView?: 'chart' | 'table'
+    /** Custom voice-input keywords mapping a spoken word to a category (and optionally a transaction type). */
+    voiceKeywords?: { keyword: string; category: string; type?: 'income' | 'expense' | 'savings' }[]
   }
   onboarding: IOnboarding
   ai: {

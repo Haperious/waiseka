@@ -30,6 +30,9 @@ export const FREE_ACCOUNT_LIMIT = 5
 /** Payload-size guard on preferences.transactionsHiddenAccountIds - not a tier limit. */
 export const MAX_HIDDEN_ACCOUNTS = 50
 
+/** Payload-size guard on preferences.voiceKeywords - not a tier limit. */
+export const MAX_VOICE_KEYWORDS = 100
+
 // ── Transaction history ──────────────────────────────────────────────────────
 /** Rolling retention window (in days) for free-tier transactions. 3 years = 1095 days. */
 export const FREE_HISTORY_DAYS = 1095

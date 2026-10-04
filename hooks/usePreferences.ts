@@ -14,6 +14,7 @@ export interface Preferences {
   cutoffDays?: number[]
   cutoffAnchorDate?: string
   reportsDefaultView?: 'chart' | 'table'
+  voiceKeywords?: { keyword: string; category: string; type?: 'income' | 'expense' | 'savings' }[]
 }
 
 export function usePreferences() {
