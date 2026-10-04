@@ -21,13 +21,22 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
           const db = await getDb()
           const dbUser = await db
             .collection<IUser>('users')
-            .findOne({ _id: new ObjectId(token.id as string) }, { projection: { passwordChangedAt: 1 } })
+            .findOne(
+              { _id: new ObjectId(token.id as string) },
+              { projection: { passwordChangedAt: 1, isVerified: 1 } }
+            )
 
           const dbChangedAt = dbUser?.passwordChangedAt?.getTime() ?? null
           const tokenChangedAt = (token.passwordChangedAt as number | null) ?? null
 
           if (dbChangedAt && dbChangedAt !== tokenChangedAt) {
             return null
+          }
+
+          // isVerified is snapshotted at login, so verifying via the email link (often opened in
+          // another tab/browser) would otherwise never reach an already-open session.
+          if (dbUser && typeof dbUser.isVerified === 'boolean') {
+            token.isVerified = dbUser.isVerified
           }
 
           // Update lastLogin on each active session refresh (throttled to once per hour to

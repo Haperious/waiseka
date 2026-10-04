@@ -42,10 +42,11 @@ function VerifyEmailContent() {
           Email verified!
         </p>
         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          Your account is now active. You can log in and start using WaiseKa.
+          Your account is now active. You can start using WaiseKa.
         </p>
-        <Link href="/login">
-          <Button className="w-full mt-2">Go to login</Button>
+        {/* /dashboard falls through to /login via the proxy when there's no session */}
+        <Link href="/dashboard">
+          <Button className="w-full mt-2">Continue to WaiseKa</Button>
         </Link>
       </div>
     )
