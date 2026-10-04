@@ -136,7 +136,8 @@ export default function ReviewTable({ transactions, onConfirm, loading }: Review
                     onChange={() =>
                       setChecked((prev) => {
                         const next = new Set(prev)
-                        next.has(row._key) ? next.delete(row._key) : next.add(row._key)
+                        if (next.has(row._key)) next.delete(row._key)
+                        else next.add(row._key)
                         return next
                       })
                     }

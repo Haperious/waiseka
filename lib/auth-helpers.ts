@@ -14,7 +14,6 @@ const SESSION_CACHE_TTL_MS = 5_000
 type SessionCacheEntry = { promise: Promise<Session | null>; expiresAt: number }
 
 declare global {
-  // eslint-disable-next-line no-var
   var _sessionCache: Map<string, SessionCacheEntry> | undefined
 }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export interface Notification {
   _id: string
@@ -20,18 +20,6 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const res = await fetch('/api/notifications/items/unread-count')
-      if (!res.ok) return
-      const data = await res.json()
-      setUnreadCount(data.count ?? 0)
-    } catch {
-      // silent - polling failure shouldn't surface an error
-    }
-  }, [])
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true)
@@ -51,12 +39,16 @@ export function useNotifications() {
 
   // Initial fetch + 60s polling of unread count
   useEffect(() => {
-    fetchUnreadCount()
-    intervalRef.current = setInterval(fetchUnreadCount, 60_000)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+    const poll = () => {
+      fetch('/api/notifications/items/unread-count')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => { if (data) setUnreadCount(data.count ?? 0) })
+        .catch(() => { /* silent - polling failure shouldn't surface an error */ })
     }
-  }, [fetchUnreadCount])
+    poll()
+    const interval = setInterval(poll, 60_000)
+    return () => clearInterval(interval)
+  }, [])
 
   const markRead = useCallback(async (id: string) => {
     // Optimistic update

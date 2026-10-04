@@ -95,9 +95,8 @@ export default function OnboardingChecklist({
     new Set(initialStepsCompleted)
   )
   const [dismissed, setDismissed] = useState(initialDismissed)
-  const [completedAt, setCompletedAt] = useState<Date | null>(initialCompletedAt ?? null)
   const [collapsed, setCollapsed] = useState(false)
-  const [allDoneVisible, setAllDoneVisible] = useState(false)
+  const [celebrationOver, setCelebrationOver] = useState(false)
 
   // Track which steps we've already persisted to avoid duplicate PATCH calls
   const persistedSteps = useRef<Set<OnboardingStepId>>(new Set(initialStepsCompleted))
@@ -138,19 +137,19 @@ export default function OnboardingChecklist({
 
   // ── All-done detection ────────────────────────────────────────────────
 
+  // Celebrate once when the last step is completed (never for an already-completed checklist)
+  const allDone = STEPS.every((s) => stepsCompleted.has(s.id))
+  const allDoneVisible = allDone && !initialCompletedAt && !celebrationOver
+
   useEffect(() => {
-    if (completedAt) return
-    const allDone = STEPS.every((s) => stepsCompleted.has(s.id))
-    if (allDone) {
-      setCompletedAt(new Date())
-      setAllDoneVisible(true)
-      // Auto-hide: first clear the celebration card, then unmount entirely
-      setTimeout(() => {
-        setAllDoneVisible(false)
-        setDismissed(true)
-      }, 4000)
-    }
-  }, [stepsCompleted, completedAt])
+    if (!allDoneVisible) return
+    // Auto-hide: first clear the celebration card, then unmount entirely
+    const t = setTimeout(() => {
+      setCelebrationOver(true)
+      setDismissed(true)
+    }, 4000)
+    return () => clearTimeout(t)
+  }, [allDoneVisible])
 
   // ── Dismiss ────────────────────────────────────────────────────────────
 
@@ -196,10 +195,10 @@ export default function OnboardingChecklist({
         >
           <Sparkles className="h-8 w-8" style={{ color: 'var(--color-accent)' }} />
           <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
-            You're all set!
+            You&apos;re all set!
           </p>
           <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            You've completed the WaiseKa setup. Happy budgeting!
+            You&apos;ve completed the WaiseKa setup. Happy budgeting!
           </p>
         </div>
       </div>

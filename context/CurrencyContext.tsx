@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
 import { formatAmount, getCurrencySymbol, CurrencyCode } from '@/lib/currency'
 
 interface CurrencyContextValue {
@@ -20,9 +20,13 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 export function CurrencyProvider({ children, initialCurrency }: { children: React.ReactNode; initialCurrency?: CurrencyCode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(initialCurrency ?? 'PHP')
 
-  useEffect(() => {
+  // Follow a new server-provided currency (e.g. after login) - adjusted during render
+  // rather than in an effect, so there's no frame showing the stale currency.
+  const [prevInitial, setPrevInitial] = useState(initialCurrency)
+  if (initialCurrency !== prevInitial) {
+    setPrevInitial(initialCurrency)
     if (initialCurrency) setCurrencyState(initialCurrency)
-  }, [initialCurrency])
+  }
 
   const setCurrency = useCallback((code: CurrencyCode) => {
     setCurrencyState(code)

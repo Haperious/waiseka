@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { format } from 'date-fns'
 import {
   Plus, TrendingUp, TrendingDown, PiggyBank,
@@ -63,10 +64,10 @@ export default function TransactionsPage() {
   const initialSearch = searchParams.get('search') ?? ''
 
   const [page, setPage] = useState(1)
-  const [isMobile, setIsMobile] = useState(false)
+  const isMobile = useMediaQuery('(max-width: 639px)')
   // Below `lg` - matches the breakpoint the mobile day-grouped list already switches on -
   // so the bulk sheet only replaces the modal where the row layout is mobile-shaped.
-  const [isBelowLg, setIsBelowLg] = useState(false)
+  const isBelowLg = useMediaQuery('(max-width: 1023px)')
   const [filterType, setFilterType] = useState('all')
   const [filterAccount, setFilterAccount] = useState('all')
   const [search, setSearch] = useState(initialSearch)
@@ -113,22 +114,6 @@ export default function TransactionsPage() {
     refetch()
     refetchAccounts()
   }), [refetch, refetchAccounts])
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px)')
-    setIsMobile(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1023px)')
-    setIsBelowLg(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setIsBelowLg(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
 
   const handleDelete = async () => {
     if (!deleteTx) return

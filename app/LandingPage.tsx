@@ -6,6 +6,7 @@ import { WKIcon } from '@/components/ui/WKIcon'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import type { CurrencyCode } from '@/lib/currency'
 import type { TranslationKey } from '@/lib/translations'
 import { tips } from '@/lib/tipsContent'
@@ -52,7 +53,7 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
   const [rowsIn, setRowsIn] = useState(false)
   const [howVisible, setHowVisible] = useState(false)
-  const [reducedMotion, setReducedMotion] = useState(false)
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   const howRef = useRef<HTMLDivElement>(null)
 
@@ -63,15 +64,9 @@ export default function LandingPage() {
   }, [])
 
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReducedMotion(mq.matches)
-    if (mq.matches) {
-      setRowsIn(true)
-      return
-    }
-    const id = setTimeout(() => setRowsIn(true), 150)
+    const id = setTimeout(() => setRowsIn(true), reducedMotion ? 0 : 150)
     return () => clearTimeout(id)
-  }, [])
+  }, [reducedMotion])
 
   useEffect(() => {
     const el = howRef.current

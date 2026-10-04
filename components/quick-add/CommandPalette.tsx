@@ -24,6 +24,8 @@ interface CommandPaletteProps {
   onClose: () => void
 }
 
+const NO_RESULTS: SearchResult[] = []
+
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -32,17 +34,21 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { keywords } = useVoiceKeywords()
 
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<SearchResult[]>([])
+  const [fetchedResults, setFetchedResults] = useState<SearchResult[]>([])
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Start each opening with an empty query (adjusted during render, not in an effect)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) setQuery("")
+  }
+
   useEffect(() => {
-    if (open) {
-      setQuery("")
-      setResults([])
-      const t = setTimeout(() => inputRef.current?.focus(), 20)
-      return () => clearTimeout(t)
-    }
+    if (!open) return
+    const t = setTimeout(() => inputRef.current?.focus(), 20)
+    return () => clearTimeout(t)
   }, [open])
 
   useEffect(() => {
@@ -63,19 +69,19 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const isCapture = Boolean(parsed?.amount && parsed?.type)
 
   // Debounced search - skip while the input reads as a capture command
+  const searching = open && !isCapture && query.trim() !== ""
+  const results = searching ? fetchedResults : NO_RESULTS
+
   useEffect(() => {
-    if (!open || isCapture || !query.trim()) {
-      setResults([])
-      return
-    }
+    if (!searching) return
     const t = setTimeout(() => {
       fetch(`/api/transactions?search=${encodeURIComponent(query.trim())}&limit=6`)
         .then((r) => (r.ok ? r.json() : null))
-        .then((data) => setResults(Array.isArray(data?.transactions) ? data.transactions : []))
+        .then((data) => setFetchedResults(Array.isArray(data?.transactions) ? data.transactions : []))
         .catch(() => {})
     }, 250)
     return () => clearTimeout(t)
-  }, [query, open, isCapture])
+  }, [query, searching])
 
   const handleCommit = async () => {
     if (!parsed?.amount || !parsed?.type || saving) return

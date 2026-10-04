@@ -35,10 +35,18 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
   const [pdfPassword, setPdfPassword] = useState('')
   const [wrongPassword, setWrongPassword] = useState(false)
 
+  // Start each opening fresh (adjusted during render, not in an effect)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) {
+      setStage('idle')
+      setExtracted([])
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-    setStage('idle')
-    setExtracted([])
     fetch('/api/import/usage')
       .then((res) => (res.ok ? res.json() : null))
       .then((data: ImportUsage | null) => { if (data) setUsage(data) })

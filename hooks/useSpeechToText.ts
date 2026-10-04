@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useClientValue } from '@/hooks/useClientValue'
 
 export type SpeechLang = 'fil-PH' | 'en-US'
 export const FALLBACK_LANG: SpeechLang = 'en-US'
@@ -50,14 +51,10 @@ interface UseSpeechToTextReturn {
 export function useSpeechToText(): UseSpeechToTextReturn {
   const [transcript, setTranscript] = useState('')
   const [isListening, setIsListening] = useState(false)
-  const [isSupported, setIsSupported] = useState(false)
+  const isSupported = useClientValue(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition), false)
   const [error, setError] = useState<string | null>(null)
   const [language, setLanguage] = useState<SpeechLang>('en-US')
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
-
-  useEffect(() => {
-    setIsSupported(!!(window.SpeechRecognition || window.webkitSpeechRecognition))
-  }, [])
 
   const buildRecognition = useCallback((): SpeechRecognitionInstance => {
     const Ctor = (window.SpeechRecognition ?? window.webkitSpeechRecognition)!

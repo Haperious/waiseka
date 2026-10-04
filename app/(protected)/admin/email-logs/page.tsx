@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/Card"
 import Button from "@/components/ui/Button"
 import { useToast } from "@/components/ui/Toast"
 import { cn } from "@/lib/utils"
+import { useResource } from "@/hooks/useFetch"
 import type { EmailLogType } from "@/lib/models/EmailLog"
 
 const EMAIL_TYPES: { value: EmailLogType | ""; label: string }[] = [
@@ -71,15 +72,14 @@ function TypeBadge({ type }: { type: EmailLogType }) {
   )
 }
 
+const NO_LOGS: EmailLog[] = []
+
 export default function AdminEmailLogsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
 
-  const [logs, setLogs] = useState<EmailLog[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<EmailLogType | "">("")
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
@@ -91,36 +91,35 @@ export default function AdminEmailLogsPage() {
   }, [session, status, router])
 
   const fetchLogs = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-      })
-      if (typeFilter) params.set("type", typeFilter)
-      if (search) params.set("search", search)
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    })
+    if (typeFilter) params.set("type", typeFilter)
+    if (search) params.set("search", search)
 
-      const res = await fetch(`/api/admin/email-logs?${params}`)
-      const data = await res.json()
-      setLogs(data.logs ?? [])
-      setTotal(data.total ?? 0)
-    } catch {
-      toast("Failed to load email logs", "error")
-    } finally {
-      setLoading(false)
-    }
-  }, [page, typeFilter, search, toast])
+    const res = await fetch(`/api/admin/email-logs?${params}`)
+    if (!res.ok) throw new Error(`email-logs ${res.status}`)
+    return res.json() as Promise<{ logs?: EmailLog[]; total?: number }>
+  }, [page, typeFilter, search])
 
-  useEffect(() => {
-    if (session?.user?.isAdmin) fetchLogs()
-  }, [fetchLogs, session])
+  const { data, loading, refetch } = useResource(fetchLogs, {
+    enabled: session?.user?.isAdmin === true,
+    onError: () => toast("Failed to load email logs", "error"),
+  })
+  const logs = data?.logs ?? NO_LOGS
+  const total = data?.total ?? 0
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
+  // Filter changes go back to page 1
+  const handleTypeFilterChange = (value: EmailLogType | "") => {
+    setTypeFilter(value)
     setPage(1)
-  }, [typeFilter, search])
+  }
 
-  const handleSearch = () => setSearch(searchInput)
+  const handleSearch = () => {
+    setSearch(searchInput)
+    setPage(1)
+  }
 
   if (status === "loading" || !session?.user?.isAdmin) return null
 
@@ -141,7 +140,7 @@ export default function AdminEmailLogsPage() {
             {total.toLocaleString()} total entries
           </p>
         </div>
-        <Button variant="outline" onClick={fetchLogs} disabled={loading}>
+        <Button variant="outline" onClick={refetch} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
           Refresh
         </Button>
@@ -152,7 +151,7 @@ export default function AdminEmailLogsPage() {
         {/* Type filter */}
         <select
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as EmailLogType | "")}
+          onChange={(e) => handleTypeFilterChange(e.target.value as EmailLogType | "")}
           className="text-sm px-3 py-2 rounded-lg border focus:outline-none"
           style={{
             borderColor: "var(--color-border)",

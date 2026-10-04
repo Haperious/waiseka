@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Star, X, MessageSquarePlus } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useClientValue } from '@/hooks/useClientValue'
 
 const DISMISSED_KEY_PREFIX = 'waiseka_survey_dismissed_'
+const SHOW_AFTER_MS = 7 * 24 * 60 * 60 * 1000
 
 interface SurveyBannerProps {
   userId: string
@@ -16,39 +19,30 @@ interface SurveyBannerProps {
 export default function SurveyBanner({ userId, accountCreatedAt }: SurveyBannerProps) {
   const { toast: showToast } = useToast()
 
-  const [visible, setVisible] = useState(false)
-  const [showForm, setShowForm] = useState(false)
+  // null = follow the automatic rule below; true/false once the user opens or closes it
+  const [openOverride, setOpenOverride] = useState<boolean | null>(null)
   const [rating, setRating] = useState(0)
   const [hovered, setHovered] = useState(0)
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const dismissedKey = `${DISMISSED_KEY_PREFIX}${userId}`
-
-  useEffect(() => {
-    const dismissed = localStorage.getItem(dismissedKey) === 'true'
-    if (dismissed) return
-
-    const daysSinceCreation =
-      (Date.now() - new Date(accountCreatedAt).getTime()) / (1000 * 60 * 60 * 24)
-
-    if (daysSinceCreation >= 7) {
-      setVisible(true)
-      setShowForm(true)
-    }
-  }, [userId, accountCreatedAt, dismissedKey])
+  const [dismissedFlag, setDismissedFlag] = useLocalStorage(`${DISMISSED_KEY_PREFIX}${userId}`)
+  const accountIsWeekOld = useClientValue(
+    () => Date.now() - new Date(accountCreatedAt).getTime() >= SHOW_AFTER_MS,
+    false,
+  )
+  // Auto-open for accounts at least a week old that haven't dismissed it
+  const visible = openOverride ?? (dismissedFlag !== 'true' && accountIsWeekOld)
 
   const handleDismiss = () => {
-    localStorage.setItem(dismissedKey, 'true')
-    setVisible(false)
-    setShowForm(false)
+    setDismissedFlag('true')
+    setOpenOverride(false)
   }
 
   const handleOpenFeedback = () => {
     setRating(0)
     setComment('')
-    setShowForm(true)
-    setVisible(true)
+    setOpenOverride(true)
   }
 
   const handleSubmit = async () => {
@@ -71,9 +65,8 @@ export default function SurveyBanner({ userId, accountCreatedAt }: SurveyBannerP
       }
 
       showToast('Thanks for your feedback! 🎉', 'success')
-      localStorage.setItem(dismissedKey, 'true')
-      setVisible(false)
-      setShowForm(false)
+      setDismissedFlag('true')
+      setOpenOverride(false)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong'
       showToast(message, 'error')
@@ -97,7 +90,6 @@ export default function SurveyBanner({ userId, accountCreatedAt }: SurveyBannerP
     )
   }
 
-  if (!showForm) return null
 
   return (
     <Card>

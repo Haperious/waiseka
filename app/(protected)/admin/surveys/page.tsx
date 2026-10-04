@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/utils'
+import { useResource } from '@/hooks/useFetch'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,21 +46,36 @@ function formatDate(iso: string) {
 
 const PAGE_SIZE = 20
 
+interface SurveyFilters {
+  ratings: number[]
+  from: string
+  to: string
+}
+
+const NO_FILTERS: SurveyFilters = { ratings: [], from: '', to: '' }
+const NO_SURVEYS: SurveyEntry[] = []
+
+function filterParams(filters: SurveyFilters): URLSearchParams {
+  const params = new URLSearchParams()
+  if (filters.ratings.length) params.set('rating', filters.ratings.join(','))
+  if (filters.from) params.set('from', filters.from)
+  if (filters.to)   params.set('to', filters.to)
+  return params
+}
+
 export default function AdminSurveysPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast: showToast } = useToast()
 
-  const [surveys, setSurveys]   = useState<SurveyEntry[]>([])
-  const [total, setTotal]       = useState(0)
   const [page, setPage]         = useState(1)
-  const [loading, setLoading]   = useState(true)
   const [exporting, setExporting] = useState(false)
 
-  // Filters
+  // Filter inputs (a draft) and the filters actually applied to the list/export
   const [selectedRatings, setSelectedRatings] = useState<number[]>([])
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate]     = useState('')
+  const [appliedFilters, setAppliedFilters] = useState(NO_FILTERS)
 
   // Redirect non-admins
   useEffect(() => {
@@ -67,75 +83,39 @@ export default function AdminSurveysPage() {
     if (!session?.user?.isAdmin) router.replace('/dashboard')
   }, [session, status, router])
 
-  const buildQueryString = useCallback(
-    (overridePage?: number) => {
-      const params = new URLSearchParams()
-      params.set('page', String(overridePage ?? page))
-      params.set('limit', String(PAGE_SIZE))
-      if (selectedRatings.length) params.set('rating', selectedRatings.join(','))
-      if (fromDate) params.set('from', fromDate)
-      if (toDate)   params.set('to', toDate)
-      return params.toString()
-    },
-    [page, selectedRatings, fromDate, toDate]
-  )
+  const fetchSurveys = useCallback(async () => {
+    const params = filterParams(appliedFilters)
+    params.set('page', String(page))
+    params.set('limit', String(PAGE_SIZE))
+    const res = await fetch(`/api/admin/surveys?${params}`)
+    if (!res.ok) throw new Error('Failed to fetch surveys')
+    return res.json() as Promise<{ surveys: SurveyEntry[]; total: number }>
+  }, [page, appliedFilters])
 
-  const fetchSurveys = useCallback(
-    async (resetPage = false) => {
-      setLoading(true)
-      const targetPage = resetPage ? 1 : page
-      if (resetPage) setPage(1)
-      try {
-        const res = await fetch(`/api/admin/surveys?${buildQueryString(targetPage)}`)
-        if (!res.ok) throw new Error('Failed to fetch surveys')
-        const data = await res.json()
-        setSurveys(data.surveys)
-        setTotal(data.total)
-      } catch {
-        showToast('Failed to load surveys', 'error')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [page, buildQueryString, showToast]
-  )
+  const { data, loading, refetch } = useResource(fetchSurveys, {
+    enabled: session?.user?.isAdmin === true,
+    onError: () => showToast('Failed to load surveys', 'error'),
+  })
+  const surveys = data?.surveys ?? NO_SURVEYS
+  const total = data?.total ?? 0
 
-  useEffect(() => {
-    if (session?.user?.isAdmin) fetchSurveys()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, session])
+  const handleApplyFilters = () => {
+    setAppliedFilters({ ratings: selectedRatings, from: fromDate, to: toDate })
+    setPage(1)
+  }
 
-  const handleApplyFilters = () => fetchSurveys(true)
-
-  const handleClearFilters = async () => {
+  const handleClearFilters = () => {
     setSelectedRatings([])
     setFromDate('')
     setToDate('')
+    setAppliedFilters(NO_FILTERS)
     setPage(1)
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ page: '1', limit: String(PAGE_SIZE) })
-      const res = await fetch(`/api/admin/surveys?${params.toString()}`)
-      if (!res.ok) throw new Error('Failed to fetch surveys')
-      const data = await res.json()
-      setSurveys(data.surveys)
-      setTotal(data.total)
-    } catch {
-      showToast('Failed to load surveys', 'error')
-    } finally {
-      setLoading(false)
-    }
   }
 
   const handleExport = async () => {
     setExporting(true)
     try {
-      const params = new URLSearchParams()
-      if (selectedRatings.length) params.set('rating', selectedRatings.join(','))
-      if (fromDate) params.set('from', fromDate)
-      if (toDate)   params.set('to', toDate)
-
-      const res = await fetch(`/api/admin/surveys/export?${params.toString()}`)
+      const res = await fetch(`/api/admin/surveys/export?${filterParams(appliedFilters)}`)
       if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -175,7 +155,7 @@ export default function AdminSurveysPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={() => fetchSurveys()} disabled={loading}>
+          <Button size="sm" variant="secondary" onClick={refetch} disabled={loading}>
             <RefreshCw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
             Refresh
           </Button>

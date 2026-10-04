@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useFetch, extractApiError } from "@/hooks/useFetch"
+import { useCallback } from "react"
+import { useResource, extractApiError } from "@/hooks/useFetch"
 
 export interface Goal {
   _id: string
@@ -15,25 +15,23 @@ export interface Goal {
   createdAt: string
 }
 
-export function useGoals() {
-  const [goals, setGoals] = useState<Goal[]>([])
+const NO_GOALS: Goal[] = []
 
+export function useGoals() {
   const fetcher = useCallback(async () => {
     const res = await fetch("/api/goals")
     if (!res.ok) throw new Error(await extractApiError(res))
-    return res.json() as Promise<Goal[]>
+    const data: unknown = await res.json()
+    return (Array.isArray(data) ? data : []) as Goal[]
   }, [])
 
-  const { execute, loading, error } = useFetch(fetcher)
-
-  const fetchGoals = useCallback(async () => {
-    const data = await execute()
-    if (data) setGoals(Array.isArray(data) ? data : [])
-  }, [execute])
-
-  useEffect(() => {
-    fetchGoals()
-  }, [fetchGoals])
+  const { data, loading, error, refetch, mutate } = useResource(fetcher)
+  const goals = data ?? NO_GOALS
+  // Local list update after a write - wraps mutate so the handlers below read like setState
+  const setGoals = useCallback(
+    (update: (goals: Goal[]) => Goal[]) => mutate((prev) => update(prev ?? [])),
+    [mutate],
+  )
 
   const createGoal = async (
     data: Omit<Goal, "_id" | "userId" | "savedAmount" | "status" | "createdAt">,
@@ -83,5 +81,5 @@ export function useGoals() {
     return updated
   }
 
-  return { goals, loading, error, createGoal, updateGoal, deleteGoal, addFunds, refetch: fetchGoals }
+  return { goals, loading, error, createGoal, updateGoal, deleteGoal, addFunds, refetch }
 }

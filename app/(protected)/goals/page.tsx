@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { format } from "date-fns"
 import {
   Plus,
@@ -19,6 +19,7 @@ import Modal from "@/components/ui/Modal"
 import Input from "@/components/ui/Input"
 import { SkeletonCard } from "@/components/ui/Skeleton"
 import { useGoals, Goal } from "@/hooks/useGoals"
+import { useResource } from "@/hooks/useFetch"
 import { useCurrency } from "@/context/CurrencyContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { TranslationKey } from "@/lib/translations"
@@ -123,7 +124,9 @@ function GoalCard({
   const isCompleted = goal.status === "completed"
   const isPaused = goal.status === "paused"
 
-  const now = Date.now()
+  // Captured once per card mount - render must stay pure, and the on-track math only
+  // needs day-level precision.
+  const [now] = useState(() => Date.now())
   const deadlineMs = new Date(goal.deadline).getTime()
   const startMs = new Date(goal.createdAt).getTime()
   const totalDuration = deadlineMs - startMs
@@ -450,6 +453,8 @@ function GoalCard({
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
+const NO_PROJECTIONS: Record<string, GoalProjection> = {}
+
 export default function GoalsPage() {
   const { formatAmount } = useCurrency()
   const { t } = useLanguage()
@@ -463,32 +468,28 @@ export default function GoalsPage() {
   const [addFundsGoal, setAddFundsGoal] = useState<Goal | null>(null)
   const [fundsAmount, setFundsAmount] = useState("")
   const [fundsLoading, setFundsLoading] = useState(false)
-  const [projections, setProjections] = useState<Record<string, GoalProjection>>({})
-  const [projectionsLoading, setProjectionsLoading] = useState(false)
+  const activeGoals = useMemo(() => goals.filter((g) => g.status === "active"), [goals])
 
-  // Fetch projections for all active goals in parallel
-  const fetchProjections = useCallback(async (activeGoals: Goal[]) => {
-    if (activeGoals.length === 0) return
-    setProjectionsLoading(true)
-    try {
-      const results = await Promise.allSettled(
-        activeGoals.map((g) =>
-          fetch(`/api/goals/${g._id}/projection`).then((r) => r.json() as Promise<GoalProjection>),
-        ),
-      )
-      const map: Record<string, GoalProjection> = {}
-      results.forEach((result, i) => {
-        if (result.status === "fulfilled") {
-          map[activeGoals[i]._id] = result.value
-        }
-      })
-      setProjections(map)
-    } catch {
-      // Non-critical- projection display degrades gracefully
-    } finally {
-      setProjectionsLoading(false)
-    }
-  }, [])
+  // Projections for all active goals, fetched in parallel and re-fetched whenever the
+  // goal list changes (adding funds updates savedAmount, which changes the projection).
+  // Non-critical - a failed projection just doesn't render.
+  const fetchProjections = useCallback(async () => {
+    const results = await Promise.allSettled(
+      activeGoals.map(async (g) => {
+        const r = await fetch(`/api/goals/${g._id}/projection`)
+        if (!r.ok) throw new Error(`projection ${r.status}`)
+        return r.json() as Promise<GoalProjection>
+      }),
+    )
+    const map: Record<string, GoalProjection> = {}
+    results.forEach((result, i) => {
+      if (result.status === "fulfilled") map[activeGoals[i]._id] = result.value
+    })
+    return map
+  }, [activeGoals])
+
+  const { data: projections = NO_PROJECTIONS, loading: projectionsLoading } =
+    useResource(fetchProjections, { enabled: !loading })
 
   const handleDelete = async () => {
     if (!deleteGoalItem) return
@@ -507,9 +508,6 @@ export default function GoalsPage() {
     try {
       await addFunds(addFundsGoal._id, Number(fundsAmount))
       toast(`${formatAmount(Number(fundsAmount))} added to "${addFundsGoal.title}"`, "success")
-      // Re-fetch projection for this goal since savedAmount changed
-      const updated = await fetch(`/api/goals/${addFundsGoal._id}/projection`).then((r) => r.json())
-      setProjections((prev) => ({ ...prev, [addFundsGoal._id]: updated }))
       setAddFundsGoal(null)
       setFundsAmount("")
     } catch {
@@ -519,14 +517,7 @@ export default function GoalsPage() {
     }
   }
 
-  const activeCount = goals.filter((g) => g.status === "active").length
-
-  // Fetch projections whenever goal list changes
-  useEffect(() => {
-    if (!loading) {
-      fetchProjections(goals.filter((g) => g.status === "active"))
-    }
-  }, [goals, loading, fetchProjections])
+  const activeCount = activeGoals.length
 
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>

@@ -9,12 +9,11 @@ import { useTheme } from "@/context/ThemeContext"
 import { useLanguage } from "@/context/LanguageContext"
 
 interface NavbarProps {
-  onMenuClick: () => void
   title?: string
   onSearchClick?: () => void
 }
 
-export default function Navbar({ onMenuClick, title, onSearchClick }: NavbarProps) {
+export default function Navbar({ title, onSearchClick }: NavbarProps) {
   const { theme, toggleTheme } = useTheme()
   const { language, setLanguage } = useLanguage()
 

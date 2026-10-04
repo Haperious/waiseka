@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useCallback } from 'react'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 
 export type Theme = 'light' | 'dark'
 
@@ -16,40 +17,29 @@ const ThemeContext = createContext<ThemeContextValue>({
   setTheme: () => {},
 })
 
-function applyTheme(t: Theme) {
-  const html = document.documentElement
-  html.classList.remove('light', 'dark')
-  html.classList.add(t)
-  localStorage.setItem('theme', t)
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light')
+  // localStorage is the fast local copy; the account preference (fetched below) wins once loaded
+  const [stored, setStored] = useLocalStorage('theme')
+  const theme: Theme = stored === 'dark' ? 'dark' : 'light'
 
   useEffect(() => {
-    const local = localStorage.getItem('theme') as Theme | null
-    if (local === 'light' || local === 'dark') {
-      setThemeState(local)
-      applyTheme(local)
-    } else {
-      applyTheme('light')
-    }
+    const html = document.documentElement
+    html.classList.remove('light', 'dark')
+    html.classList.add(theme)
+  }, [theme])
 
+  useEffect(() => {
     fetch('/api/users/me')
       .then((r) => r.json())
       .then((d) => {
         const saved = d?.preferences?.theme as Theme | undefined
-        if (saved === 'light' || saved === 'dark') {
-          setThemeState(saved)
-          applyTheme(saved)
-        }
+        if (saved === 'light' || saved === 'dark') setStored(saved)
       })
       .catch(() => {})
-  }, [])
+  }, [setStored])
 
   const setTheme = useCallback(async (t: Theme) => {
-    setThemeState(t)
-    applyTheme(t)
+    setStored(t)
     try {
       await fetch('/api/preferences', {
         method: 'PUT',
@@ -59,7 +49,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* localStorage is the fallback */
     }
-  }, [])
+  }, [setStored])
 
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'dark' ? 'light' : 'dark')

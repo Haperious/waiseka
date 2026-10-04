@@ -40,16 +40,20 @@ export default function QuickAddSheet({ open, onClose }: QuickAddSheetProps) {
   const [isDragging, setIsDragging] = useState(false)
   const dragStartY = useRef(0)
 
+  // Reset per open/close (adjusted during render, not in an effect)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) setDragOffset(0)
+    else setVisible(false)
+  }
+
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden"
-      setDragOffset(0)
-      const raf = requestAnimationFrame(() => setVisible(true))
-      return () => {
-        cancelAnimationFrame(raf)
-      }
-    } else {
-      setVisible(false)
+    if (!open) return
+    document.body.style.overflow = "hidden"
+    const raf = requestAnimationFrame(() => setVisible(true))
+    return () => {
+      cancelAnimationFrame(raf)
       document.body.style.overflow = ""
     }
   }, [open])
@@ -344,37 +348,27 @@ function VoiceMode({ onDone }: { onDone: () => void }) {
   const { keywords } = useVoiceKeywords()
   const { transcript, isListening, isSupported, startListening, stopListening, clearTranscript } = useSpeechToText()
 
-  const [parsed, setParsed] = useState<ParsedTransaction | null>(null)
-  const [noMatch, setNoMatch] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (!transcript) return
-    const result = parseSpeechToTransaction(transcript, keywords)
-    if (result.type || result.amount || result.category) {
-      setParsed(result)
-      setNoMatch(false)
-    } else {
-      setNoMatch(true)
-    }
-  }, [transcript, keywords])
+  // Derived from the transcript - mic clicks and retry both clear it, which resets these
+  const voiceResult = useMemo<ParsedTransaction | null>(
+    () => (transcript ? parseSpeechToTransaction(transcript, keywords) : null),
+    [transcript, keywords],
+  )
+  const matched = Boolean(voiceResult && (voiceResult.type || voiceResult.amount || voiceResult.category))
+  const parsed = matched ? voiceResult : null
+  const noMatch = voiceResult !== null && !matched
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening()
     } else {
       clearTranscript()
-      setParsed(null)
-      setNoMatch(false)
       startListening()
     }
   }
 
-  const handleRetry = () => {
-    setParsed(null)
-    setNoMatch(false)
-    clearTranscript()
-  }
+  const handleRetry = () => clearTranscript()
 
   const resolvedCategory = useMemo(() => {
     if (!parsed) return ""

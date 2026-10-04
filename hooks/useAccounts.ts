@@ -1,7 +1,7 @@
 'use client'
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useFetch, extractApiError } from '@/hooks/useFetch'
+import React, { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { useResource, extractApiError } from '@/hooks/useFetch'
 
 export interface Account {
   _id: string
@@ -44,26 +44,26 @@ interface AccountsContextValue {
 
 const AccountsContext = createContext<AccountsContextValue | null>(null)
 
+const NO_ACCOUNTS: Account[] = []
+
 // Backs every useAccounts() call in the app with one shared fetch/cache instead of
 // each consumer (dashboard, command palette, settings, etc.) independently hitting
 // /api/accounts on mount.
 export function AccountsProvider({ children }: { children: ReactNode }) {
-  const [accounts, setAccounts] = useState<Account[]>([])
-
   const fetcher = useCallback(async () => {
     const res = await fetch('/api/accounts')
     if (!res.ok) throw new Error(await extractApiError(res))
-    return res.json() as Promise<Account[]>
+    const data: unknown = await res.json()
+    return (Array.isArray(data) ? data : []) as Account[]
   }, [])
 
-  const { execute, loading, error } = useFetch(fetcher)
-
-  const fetchAccounts = useCallback(async () => {
-    const data = await execute()
-    if (data) setAccounts(Array.isArray(data) ? data : [])
-  }, [execute])
-
-  useEffect(() => { fetchAccounts() }, [fetchAccounts])
+  const { data, loading, error, refetch, mutate } = useResource(fetcher)
+  const accounts = data ?? NO_ACCOUNTS
+  // Local list update after a write - wraps mutate so the handlers below read like setState
+  const setAccounts = useCallback(
+    (update: (accounts: Account[]) => Account[]) => mutate((prev) => update(prev ?? [])),
+    [mutate],
+  )
 
   const createAccount = useCallback(async (
     data: Omit<Account, '_id' | 'userId' | 'displayOrder' | 'isArchived' | 'createdAt'>
@@ -77,7 +77,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     const created: Account = await res.json()
     setAccounts((prev) => [...prev, created])
     return created
-  }, [])
+  }, [setAccounts])
 
   const updateAccount = useCallback(async (id: string, data: Partial<Account>): Promise<Account> => {
     const res = await fetch(`/api/accounts/${id}`, {
@@ -89,26 +89,26 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     const updated: Account = await res.json()
     setAccounts((prev) => prev.map((a) => (a._id === id ? updated : a)))
     return updated
-  }, [])
+  }, [setAccounts])
 
   // Archive/unarchive via a full refetch rather than the PUT response - the PUT
   // route doesn't recompute balances, so patching state locally would momentarily
   // drop computedBalance/outstandingBalance from the affected account.
   const archiveAccount = useCallback(async (id: string) => {
     await updateAccount(id, { isArchived: true })
-    await fetchAccounts()
-  }, [updateAccount, fetchAccounts])
+    await refetch()
+  }, [updateAccount, refetch])
 
   const unarchiveAccount = useCallback(async (id: string) => {
     await updateAccount(id, { isArchived: false })
-    await fetchAccounts()
-  }, [updateAccount, fetchAccounts])
+    await refetch()
+  }, [updateAccount, refetch])
 
   const deleteAccount = useCallback(async (id: string): Promise<void> => {
     const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error(await extractApiError(res))
     setAccounts((prev) => prev.filter((a) => a._id !== id))
-  }, [])
+  }, [setAccounts])
 
   const value = useMemo<AccountsContextValue>(() => ({
     accounts,
@@ -119,8 +119,8 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     archiveAccount,
     unarchiveAccount,
     deleteAccount,
-    refetch: fetchAccounts,
-  }), [accounts, loading, error, createAccount, updateAccount, archiveAccount, unarchiveAccount, deleteAccount, fetchAccounts])
+    refetch,
+  }), [accounts, loading, error, createAccount, updateAccount, archiveAccount, unarchiveAccount, deleteAccount, refetch])
 
   return React.createElement(AccountsContext.Provider, { value }, children)
 }

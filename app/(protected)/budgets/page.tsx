@@ -28,10 +28,6 @@ function BudgetProgressBar({ spent, limit }: { spent: number; limit: number }) {
     percent >= 70 ? 'var(--color-warning)' :
     'var(--color-income)'
 
-  const trackColor =
-    percent >= 90 ? 'var(--color-expense-bg)' :
-    percent >= 70 ? 'var(--color-warning-bg)' :
-    'var(--color-income-bg)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

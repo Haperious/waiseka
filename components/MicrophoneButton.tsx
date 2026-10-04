@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Mic, Square, Loader2, Settings, ExternalLink } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Mic, Square, Settings, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { useVoiceKeywords } from '@/hooks/useVoiceKeywords'
+import { useClientValue } from '@/hooks/useClientValue'
 import { parseSpeechToTransaction, ParsedTransaction } from '@/lib/parseSpeechToTransaction'
 import { useCurrency } from '@/context/CurrencyContext'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -14,40 +15,28 @@ interface MicrophoneButtonProps {
   onFill: (data: Partial<{ type: 'income' | 'expense' | 'savings'; amount: number; category: string; description: string }>) => void
 }
 
-type UIState = 'idle' | 'listening' | 'processing' | 'preview' | 'error'
+type UIState = 'idle' | 'listening' | 'preview' | 'error'
 
 export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
   const { transcript, isListening, isSupported, error, language, setLanguage, startListening, stopListening, clearTranscript, clearError } =
     useSpeechToText()
   const { formatAmount } = useCurrency()
-  const { keywords, addKeyword, removeKeyword } = useVoiceKeywords()
+  const { keywords } = useVoiceKeywords()
 
-  const [uiState, setUiState] = useState<UIState>('idle')
-  const [parsed, setParsed] = useState<ParsedTransaction | null>(null)
   const [showKeywordManager, setShowKeywordManager] = useState(false)
-  const [isIOS, setIsIOS] = useState(false)
+  const isIOS = useClientValue(() => /iPad|iPhone|iPod/.test(navigator.userAgent), false)
 
-  useEffect(() => {
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent))
-  }, [])
-
-  // When transcript arrives, parse it
-  useEffect(() => {
-    if (!transcript) return
-    setUiState('processing')
+  // Everything below derives from the recognizer: every reset path clears the transcript.
+  const parsed = useMemo<ParsedTransaction | null>(() => {
+    if (!transcript) return null
     const result = parseSpeechToTransaction(transcript, keywords)
-    if (result.type || result.amount || result.category) {
-      setParsed(result)
-      setUiState('preview')
-    } else {
-      setUiState('error')
-    }
-  }, [transcript]) // eslint-disable-line react-hooks/exhaustive-deps
+    return result.type || result.amount || result.category ? result : null
+  }, [transcript, keywords])
 
-  // Keep uiState in sync with isListening
-  useEffect(() => {
-    if (isListening) setUiState('listening')
-  }, [isListening])
+  const uiState: UIState =
+    isListening ? 'listening'
+    : transcript ? (parsed ? 'preview' : 'error')
+    : 'idle'
 
   if (!isSupported) return null
 
@@ -56,12 +45,9 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
   const handleMicClick = () => {
     if (uiState === 'listening') {
       stopListening()
-      setUiState('idle')
     } else {
       clearTranscript()
       clearError()
-      setParsed(null)
-      setUiState('idle')
       startListening()
     }
   }
@@ -74,16 +60,10 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
       ...(parsed.category && { category: parsed.category }),
       ...(parsed.description && { description: parsed.description }),
     })
-    setParsed(null)
     clearTranscript()
-    setUiState('idle')
   }
 
-  const handleRetry = () => {
-    setParsed(null)
-    clearTranscript()
-    setUiState('idle')
-  }
+  const handleRetry = () => clearTranscript()
 
   const formatSummary = (p: ParsedTransaction) => {
     const parts: string[] = []
@@ -133,9 +113,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600',
             ].join(' ')}
           >
-            {uiState === 'processing' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : uiState === 'listening' ? (
+            {uiState === 'listening' ? (
               <Square className="h-4 w-4" />
             ) : (
               <Mic className="h-4 w-4" />

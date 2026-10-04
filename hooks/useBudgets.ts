@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useFetch, extractApiError } from '@/hooks/useFetch'
+import { useCallback } from 'react'
+import { useResource, extractApiError } from '@/hooks/useFetch'
 
 export interface Budget {
   _id: string
@@ -14,23 +14,23 @@ export interface Budget {
   createdAt: string
 }
 
-export function useBudgets() {
-  const [budgets, setBudgets] = useState<Budget[]>([])
+const NO_BUDGETS: Budget[] = []
 
+export function useBudgets() {
   const fetcher = useCallback(async () => {
     const res = await fetch('/api/budgets')
     if (!res.ok) throw new Error(await extractApiError(res))
-    return res.json() as Promise<Budget[]>
+    const data: unknown = await res.json()
+    return (Array.isArray(data) ? data : []) as Budget[]
   }, [])
 
-  const { execute, loading, error } = useFetch(fetcher)
-
-  const fetchBudgets = useCallback(async () => {
-    const data = await execute()
-    if (data) setBudgets(Array.isArray(data) ? data : [])
-  }, [execute])
-
-  useEffect(() => { fetchBudgets() }, [fetchBudgets])
+  const { data, loading, error, refetch, mutate } = useResource(fetcher)
+  const budgets = data ?? NO_BUDGETS
+  // Local list update after a write - wraps mutate so the handlers below read like setState
+  const setBudgets = useCallback(
+    (update: (budgets: Budget[]) => Budget[]) => mutate((prev) => update(prev ?? [])),
+    [mutate],
+  )
 
   const createBudget = async (data: Omit<Budget, '_id' | 'userId' | 'spent' | 'createdAt'>): Promise<Budget> => {
     const res = await fetch('/api/budgets', {
@@ -62,5 +62,5 @@ export function useBudgets() {
     setBudgets((prev) => prev.filter((b) => b._id !== id))
   }
 
-  return { budgets, loading, error, createBudget, updateBudget, deleteBudget, refetch: fetchBudgets }
+  return { budgets, loading, error, createBudget, updateBudget, deleteBudget, refetch }
 }

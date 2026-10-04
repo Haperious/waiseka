@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/utils'
+import { useResource } from '@/hooks/useFetch'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -236,17 +237,14 @@ function UserCard({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const NO_USERS: AdminUser[] = []
+
 export default function AdminUsersPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
 
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [statsLoading, setStatsLoading] = useState(true)
-  const [users, setUsers] = useState<AdminUser[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [usersLoading, setUsersLoading] = useState(true)
   const [confirmReset, setConfirmReset] = useState<string | null>(null)
   const [confirmReminder, setConfirmReminder] = useState<string | null>(null)
   const [sendingReminder, setSendingReminder] = useState<string | null>(null)
@@ -257,41 +255,38 @@ export default function AdminUsersPage() {
     if (!session?.user?.isAdmin) router.replace('/dashboard')
   }, [session, status, router])
 
+  const isAdmin = session?.user?.isAdmin === true
+
   const fetchStats = useCallback(async () => {
-    setStatsLoading(true)
-    try {
-      const res = await fetch('/api/admin/monitoring')
-      setStats(await res.json())
-    } catch {
-      toast('Failed to load stats', 'error')
-    } finally {
-      setStatsLoading(false)
-    }
-  }, [toast])
+    const res = await fetch('/api/admin/monitoring')
+    if (!res.ok) throw new Error(`monitoring ${res.status}`)
+    return res.json() as Promise<Stats>
+  }, [])
 
   const fetchUsers = useCallback(async () => {
-    setUsersLoading(true)
-    try {
-      const res = await fetch(`/api/admin/users?page=${page}&limit=${limit}`)
-      const data = await res.json()
-      setUsers(data.users ?? [])
-      setTotal(data.total ?? 0)
-    } catch {
-      toast('Failed to load users', 'error')
-    } finally {
-      setUsersLoading(false)
-    }
-  }, [page, toast])
+    const res = await fetch(`/api/admin/users?page=${page}&limit=${limit}`)
+    if (!res.ok) throw new Error(`users ${res.status}`)
+    return res.json() as Promise<{ users?: AdminUser[]; total?: number }>
+  }, [page])
 
-  useEffect(() => {
-    if (!session?.user?.isAdmin) return
-    fetchStats()
-    fetchUsers()
-  }, [session, fetchStats, fetchUsers])
+  const { data: stats = null, loading: statsLoading, refetch: refetchStats } = useResource(fetchStats, {
+    enabled: isAdmin,
+    onError: () => toast('Failed to load stats', 'error'),
+  })
+  const { data: usersPage, loading: usersLoading, refetch: refetchUsers, mutate: mutateUsers } = useResource(fetchUsers, {
+    enabled: isAdmin,
+    onError: () => toast('Failed to load users', 'error'),
+  })
+  const users = usersPage?.users ?? NO_USERS
+  const total = usersPage?.total ?? 0
+
+  // Local list update for optimistic edits - accepts a new list or an updater
+  const setUsers = (next: AdminUser[] | ((us: AdminUser[]) => AdminUser[])) =>
+    mutateUsers((prev) => ({ ...prev, users: typeof next === 'function' ? next(prev?.users ?? []) : next }))
 
   const refreshAll = () => {
-    fetchStats()
-    fetchUsers()
+    refetchStats()
+    refetchUsers()
   }
 
   const updateUser = async (id: string, patch: Record<string, unknown>) => {

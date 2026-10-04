@@ -31,7 +31,7 @@ async function alertFailure(reason: string, detail: string) {
   }
 }
 
-export default async () => {
+export default async function scheduledCron() {
   const base = process.env.URL?.replace(/\/+$/, '') // Netlify sets this to the production site URL
   const secret = process.env.CRON_SECRET
 

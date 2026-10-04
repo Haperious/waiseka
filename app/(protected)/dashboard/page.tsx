@@ -13,6 +13,7 @@ import { useSession } from 'next-auth/react'
 import { isPremium } from '@/lib/tier'
 import { useLanguage } from '@/context/LanguageContext'
 import type { Budget } from '@/hooks/useBudgets'
+import { useResource } from '@/hooks/useFetch'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useToast } from '@/components/ui/Toast'
 import TransactionForm from '../transactions/TransactionForm'
@@ -96,6 +97,8 @@ function BudgetBar({ budget, formatAmount }: { budget: Budget; formatAmount: (v:
   )
 }
 
+const NO_BUDGETS: Budget[] = []
+
 // ── Main dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { formatAmount } = useCurrency()
@@ -108,11 +111,7 @@ export default function DashboardPage() {
   const [addTxOpen,       setAddTxOpen]       = useState(false)
   const [selectedYear,    setSelectedYear]    = useState(String(currentYear))
   const [selectedMonth,   setSelectedMonth]   = useState(String(currentMonth))
-  const [analyticsSummary, setAnalyticsSummary] = useState<Summary | null>(null)
-  const [analyticsLoading, setAnalyticsLoading] = useState(true)
-  const [budgets,          setBudgets]          = useState<Budget[]>([])
-  const [budgetsLoading,   setBudgetsLoading]   = useState(true)
-  const { accounts, loading: accountsLoading } = useAccounts()
+  const { accounts } = useAccounts()
 
   // ── Dashboard v2: cutoff card, "needs you today", last-3-months band ─────
   const [cutoffData,    setCutoffData]    = useState<CutoffData | null>(null)
@@ -194,28 +193,20 @@ export default function DashboardPage() {
     [currentYear, userIsPremium],
   )
 
-  const loadAnalyticsSummary = useCallback(async () => {
-    setAnalyticsLoading(true)
-    try {
-      const res  = await fetch(`/api/summary?month=${selectedMonth}&year=${selectedYear}`)
-      const data = await res.json()
-      setAnalyticsSummary(data)
-    } catch { /* ignore */ }
-    finally  { setAnalyticsLoading(false) }
+  // Failures are non-fatal here - the cards just render their empty state
+  const fetchAnalyticsSummary = useCallback(async () => {
+    const res = await fetch(`/api/summary?month=${selectedMonth}&year=${selectedYear}`)
+    return res.ok ? (res.json() as Promise<Summary>) : null
   }, [selectedMonth, selectedYear])
 
-  const loadBudgets = useCallback(async () => {
-    setBudgetsLoading(true)
-    try {
-      const res  = await fetch(`/api/budgets?month=${selectedMonth}&year=${selectedYear}`)
-      const data = await res.json()
-      setBudgets(Array.isArray(data) ? data : [])
-    } catch { /* ignore */ }
-    finally  { setBudgetsLoading(false) }
+  const fetchBudgets = useCallback(async () => {
+    const res = await fetch(`/api/budgets?month=${selectedMonth}&year=${selectedYear}`)
+    const data: unknown = res.ok ? await res.json() : []
+    return (Array.isArray(data) ? data : []) as Budget[]
   }, [selectedMonth, selectedYear])
 
-  useEffect(() => { loadAnalyticsSummary() }, [loadAnalyticsSummary])
-  useEffect(() => { loadBudgets() },          [loadBudgets])
+  const { data: analyticsSummary = null, refetch: loadAnalyticsSummary } = useResource(fetchAnalyticsSummary)
+  const { data: budgets = NO_BUDGETS, loading: budgetsLoading, refetch: loadBudgets } = useResource(fetchBudgets)
 
   // Load pending feature announcements - at most once per browser session, guarded by a
   // per-user sessionStorage flag. The flag is a presentation-layer guard only; the

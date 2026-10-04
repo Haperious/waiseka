@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react'
 import { useDropzone, type Accept } from 'react-dropzone'
-import { Upload, FileText, Image, Lock } from 'lucide-react'
+import { FileText, Image as ImageIcon, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DropZoneProps {
@@ -48,7 +48,7 @@ export default function DropZone({ onFile, accept, label, description, locked, d
         {isPDF ? (
           <FileText className="h-8 w-8 text-gray-400" />
         ) : (
-          <Image className="h-8 w-8 text-gray-400" />
+          <ImageIcon className="h-8 w-8 text-gray-400" />
         )}
         <div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</p>

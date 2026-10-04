@@ -100,15 +100,22 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
     onCancel()
   }
 
+  // Hide immediately on close (adjusted during render, not in an effect)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (!open) setVisible(false)
+  }
+
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden'
-      const raf = requestAnimationFrame(() => setVisible(true))
-      closeBtnRef.current?.focus()
-      return () => cancelAnimationFrame(raf)
+    if (!open) return
+    document.body.style.overflow = 'hidden'
+    const raf = requestAnimationFrame(() => setVisible(true))
+    closeBtnRef.current?.focus()
+    return () => {
+      cancelAnimationFrame(raf)
+      document.body.style.overflow = ''
     }
-    setVisible(false)
-    document.body.style.overflow = ''
   }, [open])
 
   useEffect(() => {

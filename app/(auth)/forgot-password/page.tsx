@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
               <div className="text-4xl">📬</div>
               <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Check your inbox</p>
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                If that email is registered, we've sent a reset link valid for 30 minutes.
+                If that email is registered, we&apos;ve sent a reset link valid for 30 minutes.
               </p>
               <Link href="/login" className="text-sm hover:underline font-medium" style={{ color: 'var(--color-accent)' }}>
                 Back to login
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                Enter the email address you registered with and we'll send you a reset link.
+                Enter the email address you registered with and we&apos;ll send you a reset link.
               </p>
               <Input
                 label="Email"

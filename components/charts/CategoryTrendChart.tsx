@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { formatAmountShort } from '@/lib/currency'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 export interface CategoryTrendData {
   name: string
@@ -55,15 +55,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function CategoryTrendChart({ months, categories }: CategoryTrendChartProps) {
   const { currency } = useCurrency()
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px)')
-    setIsMobile(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
+  const isMobile = useMediaQuery('(max-width: 639px)')
 
   const chartHeight = isMobile ? 220 : 280
   const xAxisInterval = isMobile ? 1 : 0

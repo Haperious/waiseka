@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useTheme } from '@/context/ThemeContext'
 import { WKIcon } from '@/components/ui/WKIcon'
-import { useEffect, useState } from 'react'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -84,20 +84,10 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const { theme } = useTheme()
   const { t } = useLanguage()
   const isAdmin = session?.user?.isAdmin === true
-  const [collapsed, setCollapsed] = useState(false)
+  const [storedCollapsed, setStoredCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY)
+  const collapsed = storedCollapsed === '1'
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
-    if (stored === '1') setCollapsed(true)
-  }, [])
-
-  const toggleCollapsed = () => {
-    setCollapsed((prev) => {
-      const next = !prev
-      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
-      return next
-    })
-  }
+  const toggleCollapsed = () => setStoredCollapsed(collapsed ? '0' : '1')
 
   return (
     <>

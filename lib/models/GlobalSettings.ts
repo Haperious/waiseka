@@ -26,7 +26,6 @@ const SETTINGS_CACHE_TTL_MS = 60_000
 type SettingsCacheEntry = { settings: IGlobalSettings; expiresAt: number }
 
 declare global {
-  // eslint-disable-next-line no-var
   var _settingsCache: SettingsCacheEntry | null | undefined
 }
 
