@@ -28,8 +28,8 @@ export async function POST() {
   if (gateError) return gateError
 
   const now = new Date()
-  const startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-  const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+  const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
   // Per currency, primary first - the primary's figures fill the usual report; any
   // other currency gets its own labelled block (never added to the primary's)
   const [primarySummary, ...others] = await summarizeByCurrency(
@@ -40,7 +40,6 @@ export async function POST() {
   const income = primarySummary.income
   const expenses = primarySummary.expenses
   const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0
-  const categoryBreakdown = primarySummary.topCategories.map((c) => ({ _id: c.category, total: c.amount }))
 
   const recentSummary = {
     totalIncome: income,
@@ -55,8 +54,8 @@ export async function POST() {
     `Total Expenses: ${symbol}${expenses.toFixed(2)}`,
     `Net Savings: ${symbol}${(income - expenses).toFixed(2)}`,
     `Savings Rate: ${savingsRate.toFixed(1)}%`,
-    categoryBreakdown.length
-      ? `Top Categories: ${categoryBreakdown.map((c) => `${c._id} (${symbol}${c.total.toFixed(2)})`).join(', ')}`
+    primarySummary.topCategories.length
+      ? `Top Categories: ${primarySummary.topCategories.map((c) => `${c.category} (${symbol}${c.amount.toFixed(2)})`).join(', ')}`
       : '',
   ]
     .filter(Boolean)

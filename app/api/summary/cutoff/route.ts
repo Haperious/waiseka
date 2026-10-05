@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { resolveCutoffPeriod, cutoffPrefsFor } from '@/lib/services/cutoff'
-import { primaryCurrencyOf, viewCurrencyFrom, withCurrencyScope } from '@/lib/services/currencyScope'
+import { viewCurrencyOf, withCurrencyScope } from '@/lib/services/currencyScope'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
 
@@ -19,8 +19,7 @@ export async function GET(req: NextRequest) {
     .findOne({ _id: new ObjectId(session.user.id) }, { projection: { preferences: 1 } })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const primary = primaryCurrencyOf(user)
-  const currency = viewCurrencyFrom(req.nextUrl.searchParams, primary)
+  const { currency, primary } = viewCurrencyOf(user, req.nextUrl.searchParams)
   // Each currency can have its own pay schedule (e.g. QAR monthly, PHP semi-monthly)
   const period = resolveCutoffPeriod(cutoffPrefsFor(user.preferences, currency), new Date())
 

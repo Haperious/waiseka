@@ -6,7 +6,7 @@ import { isPremium, historyWindowStart } from '@/lib/tier'
 import { FREE_HISTORY_DAYS, PREMIUM_HISTORY_DAYS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
-import { primaryCurrencyOf, viewCurrencyFrom, withCurrencyScope } from '@/lib/services/currencyScope'
+import { viewCurrencyOf, withCurrencyScope } from '@/lib/services/currencyScope'
 
 /**
  * GET /api/balance
@@ -39,8 +39,7 @@ export async function GET(req: NextRequest) {
     .collection<IUser>('users')
     .findOne({ _id: new ObjectId(session.user.id) as never })
   const userIsPremium = user ? isPremium(user) : false
-  const primary = primaryCurrencyOf(user)
-  const currency = viewCurrencyFrom(searchParams, primary)
+  const { currency, primary } = viewCurrencyOf(user, searchParams)
 
   const historyDays = userIsPremium ? PREMIUM_HISTORY_DAYS : FREE_HISTORY_DAYS
   const windowStart = historyWindowStart(userIsPremium)

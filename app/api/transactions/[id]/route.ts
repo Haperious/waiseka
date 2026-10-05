@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
+import { objectIdParam } from '@/lib/route-params'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
@@ -11,8 +12,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await params
-  if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const body = await req.json()
 
   // Whitelist editable fields - never allow userId, _id, or other system fields to be overwritten
@@ -50,7 +51,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // Moving a transaction to another account moves it to that account's currency.
     // Transfers carry their currency from fromAccountId and are left alone.
     const existing = await db.collection<ITransaction>('transactions').findOne(
-      { _id: new ObjectId(id), userId: session.user.id },
+      { _id, userId: session.user.id },
       { projection: { type: 1 } }
     )
     if (existing && existing.type !== 'transfer') {
@@ -62,7 +63,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
   const transaction = await db.collection<ITransaction>('transactions').findOneAndUpdate(
-    { _id: new ObjectId(id), userId: session.user.id },
+    { _id, userId: session.user.id },
     { $set: update },
     { returnDocument: 'after' }
   )
@@ -75,11 +76,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await params
-  if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const db = await getDb()
   const transaction = await db.collection<ITransaction>('transactions').findOneAndDelete({
-    _id: new ObjectId(id),
+    _id,
     userId: session.user.id,
   })
 

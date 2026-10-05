@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currencyScope, INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency, sortCurrencies, viewCurrencyFrom, withCurrencyScope } from './currencyScope'
+import { currencyScope, INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency, sortCurrencies, viewCurrencyFrom, viewCurrencyOf, withCurrencyScope } from './currencyScope'
 
 describe('currencyScope', () => {
   it('includes transactions with no currency when scoping to the primary currency', () => {
@@ -72,6 +72,18 @@ describe('viewCurrencyFrom', () => {
   it('falls back to the primary when missing or unsupported', () => {
     expect(viewCurrencyFrom(new URLSearchParams(''), 'QAR')).toBe('QAR')
     expect(viewCurrencyFrom(new URLSearchParams('currency=EUR'), 'QAR')).toBe('QAR')
+  })
+})
+
+describe('viewCurrencyOf', () => {
+  it("resolves the view currency against the user's primary", () => {
+    const user = { preferences: { currency: 'QAR' } }
+    expect(viewCurrencyOf(user, new URLSearchParams('currency=PHP'))).toEqual({ currency: 'PHP', primary: 'QAR' })
+    expect(viewCurrencyOf(user, new URLSearchParams(''))).toEqual({ currency: 'QAR', primary: 'QAR' })
+  })
+
+  it('falls back to the app default when there is no user', () => {
+    expect(viewCurrencyOf(null, new URLSearchParams(''))).toEqual({ currency: 'PHP', primary: 'PHP' })
   })
 })
 

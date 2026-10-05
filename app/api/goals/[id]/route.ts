@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { ObjectId, Db } from "mongodb"
+import type { Db } from "mongodb"
 import { requireVerifiedSession } from "@/lib/auth-helpers"
 import { getDb } from "@/lib/mongodb"
+import { objectIdParam } from "@/lib/route-params"
 import type { IGoal } from "@/lib/models/Goal"
 import type { IUser } from "@/lib/models/User"
 import { sendSavingsMilestoneEmail } from "@/lib/email"
@@ -16,8 +17,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id } = await params
-  if (!ObjectId.isValid(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 })
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const body = await req.json()
 
   // Whitelist editable fields - never allow userId, _id, or system fields to be overwritten
@@ -59,7 +60,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // Fetch before updating so we can accurately detect milestone crossings
   const beforeGoal = await db.collection<IGoal>("goals").findOne({
-    _id: new ObjectId(id),
+    _id,
     userId: session.user.id,
   })
   if (!beforeGoal) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -74,7 +75,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const autoComplete = newSaved >= beforeGoal.targetAmount
 
     const goal = await db.collection<IGoal>("goals").findOneAndUpdate(
-      { _id: new ObjectId(id), userId: session.user.id },
+      { _id, userId: session.user.id },
       {
         $inc: { savedAmount: body.addAmount },
         $set: {
@@ -100,7 +101,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const goal = await db
     .collection<IGoal>("goals")
-    .findOneAndUpdate({ _id: new ObjectId(id), userId: session.user.id }, { $set: update }, { returnDocument: "after" })
+    .findOneAndUpdate({ _id, userId: session.user.id }, { $set: update }, { returnDocument: "after" })
 
   if (!goal) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -187,11 +188,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id } = await params
-  if (!ObjectId.isValid(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 })
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const db = await getDb()
   const goal = await db.collection<IGoal>("goals").findOneAndDelete({
-    _id: new ObjectId(id),
+    _id,
     userId: session.user.id,
   })
 

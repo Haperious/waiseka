@@ -34,23 +34,23 @@ export async function POST() {
   const [primarySummary, ...others] = await summarizeByCurrency(
     db, session.user.id, primaryCurrencyOf(user), threeMonthsAgo,
   )
-  const topCategories = primarySummary.topCategories.map((c) => ({ _id: c.category, total: c.amount }))
 
   const symbol = getCurrencySymbol(primarySummary.currency)
   const avgIncome = primarySummary.income / 3
   const avgExpenses = primarySummary.expenses / 3
   const savingsRate = avgIncome > 0 ? ((avgIncome - avgExpenses) / avgIncome) * 100 : 0
+  const monthlyCategories = primarySummary.topCategories.map((c) => ({ category: c.category, amount: c.amount / 3 }))
 
   const recentSummary = {
     totalIncome: avgIncome,
     totalExpenses: avgExpenses,
     savingsRate,
-    topCategories: topCategories.map((c) => ({ category: c._id, amount: c.total / 3 })),
+    topCategories: monthlyCategories,
   }
 
-  const categorySummary = topCategories.length
-    ? `Top expense categories (3-month average):\n${topCategories
-        .map((c) => `- ${c._id}: ${symbol}${(c.total / 3).toFixed(2)}/month`)
+  const categorySummary = monthlyCategories.length
+    ? `Top expense categories (3-month average):\n${monthlyCategories
+        .map((c) => `- ${c.category}: ${symbol}${c.amount.toFixed(2)}/month`)
         .join('\n')}`
     : 'No expense data available.'
 

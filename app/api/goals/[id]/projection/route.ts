@@ -9,9 +9,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
+import { objectIdParam } from '@/lib/route-params'
 import type { IGoal } from '@/lib/models/Goal'
 import { computeGoalProjection } from '@/lib/utils/goalProjection'
 
@@ -22,15 +22,12 @@ export async function GET(
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await params
-
-  if (!ObjectId.isValid(id)) {
-    return NextResponse.json({ error: 'Invalid goal ID' }, { status: 400 })
-  }
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
 
   const db = await getDb()
   const goal = await db.collection<IGoal>('goals').findOne({
-    _id: new ObjectId(id),
+    _id,
     userId: session.user.id,
   })
 

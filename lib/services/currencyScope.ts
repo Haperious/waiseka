@@ -63,6 +63,15 @@ export function viewCurrencyFrom(searchParams: URLSearchParams, primary: Currenc
   return isCurrencyCode(requested) ? requested : primary
 }
 
+/** For a route that has already loaded the user: the user's primary and the request's view currency. */
+export function viewCurrencyOf(
+  user: { preferences?: { currency?: string } } | null | undefined,
+  searchParams: URLSearchParams,
+): { currency: CurrencyCode; primary: CurrencyCode } {
+  const primary = primaryCurrencyOf(user)
+  return { currency: viewCurrencyFrom(searchParams, primary), primary }
+}
+
 /**
  * Currencies of the user's active (non-archived) accounts, primary first, then
  * alphabetical. Always contains the primary, so a user with no accounts still has one.

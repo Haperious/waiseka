@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ObjectId } from 'mongodb'
 import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
+import { objectIdParam } from '@/lib/route-params'
 import { sendReEngageEmail } from '@/lib/email'
 import type { IUser } from '@/lib/models/User'
 import type { IGoal } from '@/lib/models/Goal'
@@ -15,12 +15,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const session = await requireAdminSession()
   if (session instanceof NextResponse) return session
 
-  const { id } = await params
-  if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
 
   const db = await getDb()
   const user = await db.collection<IUser>('users').findOne(
-    { _id: new ObjectId(id) },
+    { _id },
     { projection: { name: 1, email: 1, preferences: 1, notifications: 1 } }
   )
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         { _id: user._id },
         { $set: { 'notifications.email.lastSentReEngage': new Date() } }
       ),
-      logEmail(db, { userId: id, type: 're_engage' }),
+      logEmail(db, { userId: _id.toString(), type: 're_engage' }),
     ])
 
     return NextResponse.json({ ok: true, sentTo: user.email })

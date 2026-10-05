@@ -5,7 +5,7 @@ import { getDb } from '@/lib/mongodb'
 import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
-import { primaryCurrencyOf, viewCurrencyFrom, withCurrencyScope } from '@/lib/services/currencyScope'
+import { viewCurrencyOf, withCurrencyScope } from '@/lib/services/currencyScope'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -21,8 +21,7 @@ export async function GET(req: NextRequest) {
   // -- Tier gate: free users cannot query beyond their history window
   const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
   const userIsPremium = user ? isPremium(user) : false
-  const primary = primaryCurrencyOf(user)
-  const currency = viewCurrencyFrom(searchParams, primary)
+  const { currency, primary } = viewCurrencyOf(user, searchParams)
 
   const requestedStart = new Date(Date.UTC(year, month - 1, 1))
   const requestedEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))

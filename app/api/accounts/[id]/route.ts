@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
+import { objectIdParam } from '@/lib/route-params'
 import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
 import { INVALID_CURRENCY_MESSAGE, isCurrencyCode } from '@/lib/services/currencyScope'
 
@@ -9,8 +9,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await params
-  if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const body = await req.json()
 
   // Whitelist editable fields - never allow userId, _id, or system fields to be overwritten
@@ -69,18 +69,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // changing it would silently re-denominate history. Same-currency writes are no-ops.
   if (update.currency !== undefined) {
     const current = await db.collection<IAccount>('accounts').findOne(
-      { _id: new ObjectId(id), userId: session.user.id },
+      { _id, userId: session.user.id },
       { projection: { currency: 1 } }
     )
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (current.currency !== update.currency) {
-      const accountObjectId = new ObjectId(id)
       const linked = await db.collection('transactions').countDocuments({
         userId: session.user.id,
         $or: [
-          { accountId: accountObjectId },
-          { fromAccountId: accountObjectId },
-          { toAccountId: accountObjectId },
+          { accountId: _id },
+          { fromAccountId: _id },
+          { toAccountId: _id },
         ],
       }, { limit: 1 })
       if (linked > 0) {
@@ -93,7 +92,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const account = await db.collection<IAccount>('accounts').findOneAndUpdate(
-    { _id: new ObjectId(id), userId: session.user.id },
+    { _id, userId: session.user.id },
     { $set: update },
     { returnDocument: 'after' }
   )
@@ -106,15 +105,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await params
-  if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const db = await getDb()
 
   // Never hard-delete an account that has transactions referencing it - it would
   // orphan historical records and break derived balance calculations. Archive instead.
   const transactionCount = await db.collection('transactions').countDocuments({
     userId: session.user.id,
-    accountId: new ObjectId(id),
+    accountId: _id,
   })
   if (transactionCount > 0) {
     return NextResponse.json(
@@ -124,7 +123,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   const account = await db.collection<IAccount>('accounts').findOneAndDelete({
-    _id: new ObjectId(id),
+    _id,
     userId: session.user.id,
   })
 

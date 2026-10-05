@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   let currencyContext: string[] = []
   if (currencies.length > 1) {
     const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
     const [primarySummary, ...others] = await summarizeByCurrency(db, userId, primary, monthStart)
     profileSummary = {
       totalIncome: primarySummary.income,
