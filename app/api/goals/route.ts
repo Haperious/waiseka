@@ -6,7 +6,7 @@ import { FREE_GOAL_LIMIT } from '@/lib/constants'
 import { ObjectId } from 'mongodb'
 import type { IGoal } from '@/lib/models/Goal'
 import type { IUser } from '@/lib/models/User'
-import { isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 export async function GET() {
   const session = await requireVerifiedSession()
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
   if (currency !== undefined && !isCurrencyCode(currency)) {
-    return NextResponse.json({ error: 'currency must be PHP, QAR, or USD' }, { status: 400 })
+    return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
   }
 
   const db = await getDb()

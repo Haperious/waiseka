@@ -6,7 +6,8 @@ import { FREE_BUDGET_LIMIT, PREMIUM_BUDGET_LIMIT } from '@/lib/constants'
 import { ObjectId } from 'mongodb'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
-import { isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { getSpentByCurrencyAndCategory } from '@/lib/services/budgetSpending'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -35,34 +36,21 @@ export async function GET(req: NextRequest) {
   weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
   weekEnd.setUTCHours(23, 59, 59, 999)
 
-  // Each budget only counts expenses in its own currency (a budget or transaction with
-  // no currency is in the primary). Spent is grouped by (currency, category) in one pass
-  // per period, with missing currencies folded into the primary - the same rule as currencyScope.
+  // Each budget only counts expenses in its own currency (a budget with no currency is in the primary)
   const user = await db
     .collection<IUser>('users')
     .findOne({ _id: new ObjectId(session.user.id) as never }, { projection: { preferences: 1 } })
   const primary = primaryCurrencyOf(user)
 
-  const spentBy = (start: Date, end: Date) =>
-    db.collection('transactions').aggregate<{ _id: { category: string; currency: string }; total: number }>([
-      { $match: { userId: session.user.id, type: 'expense', date: { $gte: start, $lte: end } } },
-      { $group: { _id: { category: '$category', currency: { $ifNull: ['$currency', primary] } }, total: { $sum: '$amount' } } },
-    ]).toArray()
-
-  const [monthlySpent, weeklySpent] = await Promise.all([spentBy(monthStart, monthEnd), spentBy(weekStart, weekEnd)])
-
-  const key = (currency: string, category: string) => `${currency}|${category}`
-  const monthlyMap = new Map(monthlySpent.map((r) => [key(r._id.currency, r._id.category), r.total]))
-  const weeklyMap = new Map(weeklySpent.map((r) => [key(r._id.currency, r._id.category), r.total]))
+  const [monthlySpent, weeklySpent] = await Promise.all([
+    getSpentByCurrencyAndCategory(db, session.user.id, primary, monthStart, monthEnd),
+    getSpentByCurrencyAndCategory(db, session.user.id, primary, weekStart, weekEnd),
+  ])
 
   const budgetsWithSpent = budgets.map((b) => {
     const currency = b.currency ?? primary
-    const k = key(currency, b.category)
-    return {
-      ...b,
-      currency,
-      spent: (b.period === 'weekly' ? weeklyMap.get(k) : monthlyMap.get(k)) ?? 0,
-    }
+    const spentIn = b.period === 'weekly' ? weeklySpent : monthlySpent
+    return { ...b, currency, spent: spentIn(currency, b.category) }
   })
 
   return NextResponse.json(budgetsWithSpent)
@@ -79,7 +67,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
   if (currency !== undefined && !isCurrencyCode(currency)) {
-    return NextResponse.json({ error: 'currency must be PHP, QAR, or USD' }, { status: 400 })
+    return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
   }
 
   const now = new Date()

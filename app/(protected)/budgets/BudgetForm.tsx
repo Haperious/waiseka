@@ -32,7 +32,7 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     // New budgets default to the currency being viewed (PRD Phase 4)
-    currency: (budget?.currency ?? viewCurrency) as CurrencyCode,
+    currency: budget?.currency ?? viewCurrency,
     category: budget?.category ?? '',
     limit: budget?.limit ? String(budget.limit) : '',
     period: budget?.period ?? 'monthly',

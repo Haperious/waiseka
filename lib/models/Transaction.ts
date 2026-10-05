@@ -1,10 +1,11 @@
 import { ObjectId } from 'mongodb'
+import type { CurrencyCode } from '@/lib/currency'
 
 export interface ITransaction {
   _id: ObjectId
   userId: string
   amount: number
-  currency: 'PHP' | 'QAR' | 'USD'
+  currency: CurrencyCode
   type: 'income' | 'expense' | 'savings' | 'transfer'
   category: string
   description?: string

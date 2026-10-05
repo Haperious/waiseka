@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { useResource, extractApiError } from '@/hooks/useFetch'
+import type { CurrencyCode } from '@/lib/currency'
 
 export interface Account {
   _id: string
@@ -10,7 +11,7 @@ export interface Account {
   institution?: string
   type: 'debit' | 'credit' | 'savings' | 'time_deposit' | 'cash' | 'e_wallet'
   openingBalance: number
-  currency: 'PHP' | 'QAR' | 'USD'
+  currency: CurrencyCode
   creditLimit?: number | null
   dueDay?: number | null
   lowBalanceThreshold?: number | null

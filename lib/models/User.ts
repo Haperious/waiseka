@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb'
+import type { CurrencyCode } from '@/lib/currency'
 
 export interface IConversationMessage {
   role: string
@@ -31,7 +32,7 @@ export interface IUser {
   premiumOverride: boolean
   isAdmin: boolean
   preferences: {
-    currency: 'PHP' | 'QAR' | 'USD'
+    currency: CurrencyCode
     currencySymbol: string
     theme?: 'light' | 'dark'
     /** Account pre-selected on the transaction form. Null/unset falls back to the oldest debit account, if any. */
@@ -46,7 +47,7 @@ export interface IUser {
     cutoffDays?: number[]
     cutoffAnchorDate?: string
     /** Per-currency cutoff schedules. A currency without an entry uses cutoffMode/cutoffDays above. */
-    cutoffByCurrency?: Partial<Record<'PHP' | 'QAR' | 'USD', { mode: 'semi-monthly' | 'monthly' | 'custom'; days: number[]; anchorDate?: string }>>
+    cutoffByCurrency?: Partial<Record<CurrencyCode, { mode: 'semi-monthly' | 'monthly' | 'custom'; days: number[]; anchorDate?: string }>>
     /** Default view shown on the monthly reports page. */
     reportsDefaultView?: 'chart' | 'table'
     /** Custom voice-input keywords mapping a spoken word to a category (and optionally a transaction type). */

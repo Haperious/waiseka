@@ -17,6 +17,7 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { resolveCutoffPeriod, cutoffPrefsFor } from '@/lib/services/cutoff'
 import { primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { getSpentByCurrencyAndCategory } from '@/lib/services/budgetSpending'
 import { getAccountActivityMap, computeOutstanding, nextDueDate } from '@/lib/services/accountBalance'
 import { formatAmount } from '@/lib/currency'
 import type { IBudget } from '@/lib/models/Budget'
@@ -59,17 +60,12 @@ export async function GET() {
   if (budgets.length > 0) {
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
-    // Spent per (currency, category); a missing currency is the primary (same rule as /api/budgets)
-    const spentRows = await db.collection<ITransaction>('transactions').aggregate<{ _id: { category: string; currency: string }; total: number }>([
-      { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
-      { $group: { _id: { category: '$category', currency: { $ifNull: ['$currency', primary] } }, total: { $sum: '$amount' } } },
-    ]).toArray()
-    const spentMap = new Map(spentRows.map((r) => [`${r._id.currency}|${r._id.category}`, r.total]))
+    const spentIn = await getSpentByCurrencyAndCategory(db, userId, primary, monthStart, monthEnd)
 
     for (const budget of budgets) {
       if (budget.period !== 'monthly') continue // weekly budgets are noisy for a daily digest
       const currency = budget.currency ?? primary
-      const spent = spentMap.get(`${currency}|${budget.category}`) ?? 0
+      const spent = spentIn(currency, budget.category)
       const pct = budget.limit > 0 ? (spent / budget.limit) * 100 : 0
       if (pct < BUDGET_NEAR_LIMIT_PCT) continue
 

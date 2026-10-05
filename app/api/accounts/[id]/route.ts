@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
-import { isCurrencyCode } from '@/lib/services/currencyScope'
+import { INVALID_CURRENCY_MESSAGE, isCurrencyCode } from '@/lib/services/currencyScope'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireVerifiedSession()
@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
   if (body.currency !== undefined) {
     if (!isCurrencyCode(body.currency)) {
-      return NextResponse.json({ error: 'currency must be PHP, QAR, or USD' }, { status: 400 })
+      return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
     }
     update.currency = body.currency
   }

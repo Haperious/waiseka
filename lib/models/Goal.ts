@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb'
+import type { CurrencyCode } from '@/lib/currency'
 
 export interface IGoal {
   _id: ObjectId
@@ -7,7 +8,7 @@ export interface IGoal {
   targetAmount: number
   savedAmount: number
   /** Missing = the user's primary currency (goals created before multi-currency). */
-  currency?: 'PHP' | 'QAR' | 'USD'
+  currency?: CurrencyCode
   deadline: Date
   priority: 'low' | 'medium' | 'high'
   status: 'active' | 'completed' | 'paused'

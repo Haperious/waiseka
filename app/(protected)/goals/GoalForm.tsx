@@ -35,7 +35,7 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
   const { viewCurrency, currencies, isMultiCurrency } = useViewCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
-    currency: (goal?.currency ?? viewCurrency) as CurrencyCode,
+    currency: goal?.currency ?? viewCurrency,
     title: goal?.title ?? '',
     targetAmount: goal?.targetAmount ? String(goal.targetAmount) : '',
     savedAmount: goal?.savedAmount != null ? String(goal.savedAmount) : '',

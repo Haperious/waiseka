@@ -2,13 +2,14 @@
 
 import { useCallback } from "react"
 import { useResource, extractApiError } from "@/hooks/useFetch"
+import type { CurrencyCode } from "@/lib/currency"
 
 export interface Transaction {
   _id: string
   userId: string
   amount: number
   /** Missing on imports/very old rows - those count as the primary currency. */
-  currency?: "PHP" | "QAR" | "USD" | null
+  currency?: CurrencyCode | null
   type: "income" | "expense" | "savings" | "transfer"
   category: string
   description?: string

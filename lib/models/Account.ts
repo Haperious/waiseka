@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb'
+import type { CurrencyCode } from '@/lib/currency'
 
 export interface IAccount {
   _id: ObjectId
@@ -8,7 +9,7 @@ export interface IAccount {
   type: 'debit' | 'credit' | 'savings' | 'time_deposit' | 'cash' | 'e_wallet'
   /** Anchor for the derived balance calculation - the real balance when the account was added. */
   openingBalance: number
-  currency: 'PHP' | 'QAR' | 'USD'
+  currency: CurrencyCode
   /** Credit-only. Ignored for all other account types. */
   creditLimit?: number | null
   /** Credit-only. Day of month the payment is due (1-31). Ignored for all other account types. */

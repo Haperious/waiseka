@@ -14,6 +14,10 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyCode[] = ['PHP', 'QAR', 'USD
 
 export const DEFAULT_CURRENCY: CurrencyCode = 'PHP'
 
+/** 400 error for a body currency that fails isCurrencyCode, e.g. "currency must be PHP, QAR, or USD". */
+export const INVALID_CURRENCY_MESSAGE =
+  `currency must be ${SUPPORTED_CURRENCIES.slice(0, -1).join(', ')}, or ${SUPPORTED_CURRENCIES[SUPPORTED_CURRENCIES.length - 1]}`
+
 export function isCurrencyCode(value: unknown): value is CurrencyCode {
   return typeof value === 'string' && (SUPPORTED_CURRENCIES as readonly string[]).includes(value)
 }

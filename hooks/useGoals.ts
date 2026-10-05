@@ -2,6 +2,7 @@
 
 import { useCallback } from "react"
 import { useResource, extractApiError } from "@/hooks/useFetch"
+import type { CurrencyCode } from "@/lib/currency"
 
 export interface Goal {
   _id: string
@@ -10,7 +11,7 @@ export interface Goal {
   targetAmount: number
   savedAmount: number
   /** Missing = the user's primary currency. */
-  currency?: "PHP" | "QAR" | "USD"
+  currency?: CurrencyCode
   deadline: string
   priority: "low" | "medium" | "high"
   status: "active" | "completed" | "paused"

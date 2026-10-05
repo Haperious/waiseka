@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { IUser, IConversationMessage } from '@/lib/models/User'
 import { ANTHROPIC_MODEL } from '@/lib/constants'
 import { getCurrencySymbol, type CurrencyCode } from '@/lib/currency'
+import { primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -18,9 +19,8 @@ interface RecentSummary {
  * e.g. for a goal kept in a non-primary currency.
  */
 export function buildFinancialProfile(user: IUser, recentSummary: RecentSummary, currency?: CurrencyCode): string {
-  const isOverride = currency !== undefined && currency !== user.preferences.currency
-  const code = isOverride ? currency : user.preferences.currency
-  const symbol = isOverride ? getCurrencySymbol(currency) : user.preferences.currencySymbol
+  const code = currency ?? primaryCurrencyOf(user)
+  const symbol = getCurrencySymbol(code)
   const income = recentSummary.totalIncome ?? 0
   const expenses = recentSummary.totalExpenses ?? 0
   const savingsRate = recentSummary.savingsRate ?? (income > 0 ? ((income - expenses) / income) * 100 : 0)

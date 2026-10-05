@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react'
 import { useResource, extractApiError } from '@/hooks/useFetch'
+import type { CurrencyCode } from '@/lib/currency'
 
 export interface Budget {
   _id: string
@@ -10,7 +11,7 @@ export interface Budget {
   limit: number
   period: 'monthly' | 'weekly'
   /** Always filled in by GET /api/budgets (missing in the DB = primary). Only same-currency expenses count. */
-  currency?: 'PHP' | 'QAR' | 'USD'
+  currency?: CurrencyCode
   spent: number
   color?: string
   createdAt: string

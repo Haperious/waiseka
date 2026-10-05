@@ -2,9 +2,10 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { extractApiError } from '@/hooks/useFetch'
+import type { CurrencyCode } from '@/lib/currency'
 
 export interface Preferences {
-  currency: 'PHP' | 'QAR' | 'USD'
+  currency: CurrencyCode
   currencySymbol: string
   theme?: 'light' | 'dark'
   defaultAccountId?: string | null
@@ -17,7 +18,7 @@ export interface Preferences {
    * Per-currency cutoff schedules; a currency without an entry uses cutoffMode/cutoffDays.
    * In an update patch, null removes a currency's own schedule (merged key by key server-side).
    */
-  cutoffByCurrency?: Partial<Record<'PHP' | 'QAR' | 'USD', { mode: 'semi-monthly' | 'monthly' | 'custom'; days: number[] } | null>>
+  cutoffByCurrency?: Partial<Record<CurrencyCode, { mode: 'semi-monthly' | 'monthly' | 'custom'; days: number[] } | null>>
   reportsDefaultView?: 'chart' | 'table'
   voiceKeywords?: { keyword: string; category: string; type?: 'income' | 'expense' | 'savings' }[]
 }

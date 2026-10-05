@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     ? (monthlySavings.totalIncome - monthlySavings.totalExpenses) / 3
     : 0
 
-  const symbol = goalCurrency === primary ? user.preferences.currencySymbol : getCurrencySymbol(goalCurrency)
+  const symbol = getCurrencySymbol(goalCurrency)
   const remaining = goal.targetAmount - goal.savedAmount
   const deadlineStr = goal.deadline
     ? new Date(goal.deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })

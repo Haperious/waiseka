@@ -6,6 +6,7 @@ import { getSettings } from '@/lib/models/GlobalSettings'
 import { aiGate } from '@/lib/ai-gate'
 import { buildFinancialProfile, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
+import { getCurrencySymbol } from '@/lib/currency'
 import { primaryCurrencyOf } from '@/lib/services/currencyScope'
 import { summarizeByCurrency, otherCurrencyBlock, MULTI_CURRENCY_RULE } from '@/lib/services/aiContext'
 
@@ -35,7 +36,7 @@ export async function POST() {
   )
   const topCategories = primarySummary.topCategories.map((c) => ({ _id: c.category, total: c.amount }))
 
-  const symbol = user.preferences.currencySymbol
+  const symbol = getCurrencySymbol(primarySummary.currency)
   const avgIncome = primarySummary.income / 3
   const avgExpenses = primarySummary.expenses / 3
   const savingsRate = avgIncome > 0 ? ((avgIncome - avgExpenses) / avgIncome) * 100 : 0

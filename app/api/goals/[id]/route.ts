@@ -6,7 +6,7 @@ import type { IGoal } from "@/lib/models/Goal"
 import type { IUser } from "@/lib/models/User"
 import { sendSavingsMilestoneEmail } from "@/lib/email"
 import { getCurrencySymbol } from "@/lib/currency"
-import { isCurrencyCode, primaryCurrencyOf } from "@/lib/services/currencyScope"
+import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from "@/lib/services/currencyScope"
 import { formatCurrency } from "@/lib/utils"
 import { computeGoalProjection } from "@/lib/utils/goalProjection"
 
@@ -38,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (body.deadline !== undefined) update.deadline = new Date(body.deadline)
   if (body.currency !== undefined) {
     if (!isCurrencyCode(body.currency)) {
-      return NextResponse.json({ error: "currency must be PHP, QAR, or USD" }, { status: 400 })
+      return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
     }
     update.currency = body.currency
   }

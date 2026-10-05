@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency, sortCurrencies, viewCurrencyFrom, withCurrencyScope } from './currencyScope'
+import { currencyScope, INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency, sortCurrencies, viewCurrencyFrom, withCurrencyScope } from './currencyScope'
 
 describe('currencyScope', () => {
   it('includes transactions with no currency when scoping to the primary currency', () => {
@@ -78,5 +78,11 @@ describe('viewCurrencyFrom', () => {
 describe('sortCurrencies', () => {
   it('puts the primary first, de-duplicated, then alphabetical', () => {
     expect(sortCurrencies(['USD', 'QAR', 'PHP', 'QAR'], 'QAR')).toEqual(['QAR', 'PHP', 'USD'])
+  })
+})
+
+describe('INVALID_CURRENCY_MESSAGE', () => {
+  it('lists every supported currency', () => {
+    expect(INVALID_CURRENCY_MESSAGE).toBe('currency must be PHP, QAR, or USD')
   })
 })
