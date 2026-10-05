@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { buildRangeReport, monthsBack } from '@/lib/services/monthlyStats'
+import { getRequestCurrencyScope } from '@/lib/services/requestCurrency'
 
 const RANGE_MONTHS = 3
 
@@ -33,11 +34,13 @@ export async function GET(req: NextRequest) {
 
   const db = await getDb()
   const months = monthsBack(new Date(), RANGE_MONTHS)
-  const report = await buildRangeReport(db, session.user.id, months)
+  const { currency, scope } = await getRequestCurrencyScope(db, session.user.id, req)
+  const report = await buildRangeReport(db, session.user.id, months, scope)
 
   const monthLabels = report.months.map((m) => m.label)
 
-  const summaryHeader = ['Metric', ...monthLabels, 'Total']
+  // Amounts are in one currency only (no conversion) - say which in the header
+  const summaryHeader = [`Metric (${currency})`, ...monthLabels, 'Total']
   const summaryRows: string[][] = [
     ['Income', ...report.months.map((m) => m.income), report.totals.income],
     ['Expenses', ...report.months.map((m) => m.expenses), report.totals.expenses],
@@ -46,7 +49,7 @@ export async function GET(req: NextRequest) {
     ['Savings Rate %', ...report.months.map((m) => m.savingsRate), report.totals.savingsRate],
   ].map((row) => row.map((v) => escapeCsvField(v as string | number)))
 
-  const categoryHeader = ['Category', ...monthLabels, '3-mo Avg', 'vs Avg %']
+  const categoryHeader = [`Category (${currency})`, ...monthLabels, '3-mo Avg', 'vs Avg %']
   const categoryRows = report.categories.map((c) =>
     [c.name, ...c.byMonth, Math.round(c.average * 100) / 100, c.currentVsAverage].map((v) =>
       escapeCsvField(v as string | number)
@@ -68,7 +71,7 @@ export async function GET(req: NextRequest) {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="waiseka-report-${from}-${to}.csv"`,
+      'Content-Disposition': `attachment; filename="waiseka-report-${currency}-${from}-${to}.csv"`,
     },
   })
 }

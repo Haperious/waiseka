@@ -10,7 +10,6 @@ import { Transaction } from '@/hooks/useTransactions'
 import { useCategories } from '@/hooks/useCategories'
 import { usePreferences } from '@/hooks/usePreferences'
 import { useAccounts } from '@/hooks/useAccounts'
-import { useCurrency } from '@/context/CurrencyContext'
 import MicrophoneButton from '@/components/MicrophoneButton'
 
 const UNASSIGNED = ''
@@ -26,7 +25,6 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   const { categories } = useCategories()
   const { preferences, loading: prefsLoading } = usePreferences()
   const { accounts } = useAccounts()
-  const { currency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     type: (transaction?.type ?? 'expense') as 'income' | 'expense' | 'savings',
@@ -76,7 +74,6 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
         body: JSON.stringify({
           ...form,
           amount: Number(form.amount),
-          currency,
           accountId: accountId || null,
         }),
       })
@@ -116,6 +113,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
         <MicrophoneButton
+          currency={activeAccounts.find((a) => a._id === accountId)?.currency}
           onFill={(data) =>
             setForm((prev) => ({
               ...prev,

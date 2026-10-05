@@ -8,7 +8,7 @@ import type { IUser } from '@/lib/models/User'
 import type { IAccount } from '@/lib/models/Account'
 import { parseTransactionDate } from '@/lib/utils'
 import { checkSpendingAlert } from '@/lib/notifications'
-import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
+import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -22,6 +22,8 @@ export async function GET(req: NextRequest) {
   const tags = searchParams.get('tags')
   const search = searchParams.get('search')
   const accountId = searchParams.get('accountId')
+  // Optional: only the view-currency switcher sends it. Absent = every currency (as before).
+  const currency = searchParams.get('currency')
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '20')
 
@@ -67,6 +69,10 @@ export async function GET(req: NextRequest) {
       { description: searchRegex },
       { category: searchRegex },
     ]
+  }
+
+  if (isCurrencyCode(currency)) {
+    query.$and = [...(query.$and ?? []), currencyScope(currency, primaryCurrencyOf(user))]
   }
 
   const col = db.collection<ITransaction>('transactions')

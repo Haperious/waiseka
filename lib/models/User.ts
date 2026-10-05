@@ -45,6 +45,8 @@ export interface IUser {
     /** Day-of-month cutoffs, e.g. [15, 30] for semi-monthly. A value >=30 stands for "end of month". */
     cutoffDays?: number[]
     cutoffAnchorDate?: string
+    /** Per-currency cutoff schedules. A currency without an entry uses cutoffMode/cutoffDays above. */
+    cutoffByCurrency?: Partial<Record<'PHP' | 'QAR' | 'USD', { mode: 'semi-monthly' | 'monthly' | 'custom'; days: number[]; anchorDate?: string }>>
     /** Default view shown on the monthly reports page. */
     reportsDefaultView?: 'chart' | 'table'
     /** Custom voice-input keywords mapping a spoken word to a category (and optionally a transaction type). */

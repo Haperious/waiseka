@@ -8,6 +8,19 @@ import { MAX_HIDDEN_ACCOUNTS, MAX_VOICE_KEYWORDS } from '@/lib/constants'
 
 const VALID_CURRENCIES = ['PHP', 'QAR', 'USD']
 
+function isValidCutoffMode(mode: unknown): mode is 'semi-monthly' | 'monthly' | 'custom' {
+  return mode === 'semi-monthly' || mode === 'monthly' || mode === 'custom'
+}
+
+function isValidCutoffDays(days: unknown): days is number[] {
+  return (
+    Array.isArray(days) &&
+    days.length > 0 &&
+    days.length <= 4 &&
+    days.every((d) => typeof d === 'number' && Number.isInteger(d) && d >= 1 && d <= 31)
+  )
+}
+
 export async function GET() {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -35,6 +48,7 @@ export async function PUT(req: NextRequest) {
     cutoffMode,
     cutoffDays,
     cutoffAnchorDate,
+    cutoffByCurrency,
     reportsDefaultView,
     voiceKeywords,
   } = body
@@ -80,22 +94,40 @@ export async function PUT(req: NextRequest) {
   }
 
   if (cutoffMode !== undefined) {
-    if (!['semi-monthly', 'monthly', 'custom'].includes(cutoffMode)) {
+    if (!isValidCutoffMode(cutoffMode)) {
       return NextResponse.json({ error: 'Invalid cutoffMode' }, { status: 400 })
     }
     update['preferences.cutoffMode'] = cutoffMode
   }
 
   if (cutoffDays !== undefined) {
-    if (
-      !Array.isArray(cutoffDays) ||
-      cutoffDays.length === 0 ||
-      cutoffDays.length > 4 ||
-      cutoffDays.some((d) => typeof d !== 'number' || !Number.isInteger(d) || d < 1 || d > 31)
-    ) {
+    if (!isValidCutoffDays(cutoffDays)) {
       return NextResponse.json({ error: 'Invalid cutoffDays' }, { status: 400 })
     }
     update['preferences.cutoffDays'] = cutoffDays
+  }
+
+  // Per-currency cutoff schedules, merged key by key: { PHP: { mode, days } } sets PHP's
+  // schedule, { PHP: null } removes it so PHP falls back to cutoffMode/cutoffDays.
+  const unset: Record<string, ''> = {}
+  if (cutoffByCurrency !== undefined) {
+    if (typeof cutoffByCurrency !== 'object' || cutoffByCurrency === null || Array.isArray(cutoffByCurrency)) {
+      return NextResponse.json({ error: 'Invalid cutoffByCurrency' }, { status: 400 })
+    }
+    for (const [code, entry] of Object.entries(cutoffByCurrency as Record<string, unknown>)) {
+      if (!VALID_CURRENCIES.includes(code)) {
+        return NextResponse.json({ error: 'Invalid cutoffByCurrency currency' }, { status: 400 })
+      }
+      if (entry === null) {
+        unset[`preferences.cutoffByCurrency.${code}`] = ''
+        continue
+      }
+      const { mode, days } = (entry ?? {}) as { mode?: unknown; days?: unknown }
+      if (!isValidCutoffMode(mode) || !isValidCutoffDays(days)) {
+        return NextResponse.json({ error: `Invalid cutoff schedule for ${code}` }, { status: 400 })
+      }
+      update[`preferences.cutoffByCurrency.${code}`] = { mode, days }
+    }
   }
 
   if (cutoffAnchorDate !== undefined) {
@@ -162,7 +194,7 @@ export async function PUT(req: NextRequest) {
 
   const user = await db.collection<IUser>('users').findOneAndUpdate(
     { _id: new ObjectId(session.user.id) },
-    { $set: update },
+    Object.keys(unset).length > 0 ? { $set: update, $unset: unset } : { $set: update },
     { returnDocument: 'after', projection: { preferences: 1 } }
   )
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })

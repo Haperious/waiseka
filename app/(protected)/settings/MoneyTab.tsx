@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
 import { useToast } from '@/components/ui/Toast'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useAccounts } from '@/hooks/useAccounts'
 import { usePreferences, type Preferences } from '@/hooks/usePreferences'
@@ -21,10 +22,14 @@ interface CutoffSettings {
   customDays: number[]
 }
 
-/** The saved cutoff schedule, in the shape the form edits. */
-function cutoffFromPreferences(preferences: Preferences | null): CutoffSettings {
-  const mode = preferences?.cutoffMode ?? 'semi-monthly'
-  const days = preferences?.cutoffDays ?? [15, 30]
+/**
+ * The saved cutoff schedule for `currency`, in the shape the form edits: its own entry in
+ * cutoffByCurrency if it has one, otherwise the top-level (primary) schedule.
+ */
+function cutoffFromPreferences(preferences: Preferences | null, currency?: CurrencyCode): CutoffSettings {
+  const own = currency ? preferences?.cutoffByCurrency?.[currency] : null
+  const mode = own?.mode ?? preferences?.cutoffMode ?? 'semi-monthly'
+  const days = own?.days ?? preferences?.cutoffDays ?? [15, 30]
   return {
     mode,
     midDay: days.find((day) => day < 30) ?? 15,
@@ -34,6 +39,8 @@ function cutoffFromPreferences(preferences: Preferences | null): CutoffSettings 
 
 export default function MoneyTab({ hidden }: SettingsTabProps) {
   const { preferences } = usePreferences()
+  const { currency: primary } = useCurrency()
+  const { currencies, isMultiCurrency } = useViewCurrency()
   // The account and cutoff forms start from the saved preferences - remount them once
   // those load so their initial state is right.
   const formKey = preferences ? 'loaded' : 'loading'
@@ -42,14 +49,27 @@ export default function MoneyTab({ hidden }: SettingsTabProps) {
     <div className={styles.panelBody} hidden={hidden}>
       <CurrencySection />
       <DefaultAccountSection key={`account-${formKey}`} />
-      <CutoffSection key={`cutoff-${formKey}`} />
+      {isMultiCurrency ? (
+        // One schedule per currency (PRD D3). The primary's is the top-level schedule;
+        // the others start out following it until given their own. The key also flips
+        // when a currency's own schedule is added/removed, so the form re-reads it.
+        currencies.map((c) => (
+          <CutoffSection
+            key={`cutoff-${formKey}-${c}-${preferences?.cutoffByCurrency?.[c] ? 'own' : 'inherited'}`}
+            currency={c}
+            primary={primary}
+          />
+        ))
+      ) : (
+        <CutoffSection key={`cutoff-${formKey}`} />
+      )}
     </div>
   )
 }
 
 // ── Currency ─────────────────────────────────────────────────────────────────
 function CurrencySection() {
-  const { currency, setCurrency, formatAmount } = useCurrency()
+  const { currency, setCurrency } = useCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
   const { update: updatePreferences } = usePreferences()
@@ -64,7 +84,7 @@ function CurrencySection() {
       await updatePreferences({ currency: selectedCurrency })
       setCurrency(selectedCurrency)
       const info = currencies.find((c) => c.code === selectedCurrency)
-      toast(`Currency updated to ${info?.label} ${info?.symbol}`, 'success')
+      toast(`Primary currency updated to ${info?.label} ${info?.symbol}`, 'success')
     } catch (err) {
       toast(errorMessage(err, 'Failed to update currency'), 'error')
     } finally {
@@ -97,11 +117,11 @@ function CurrencySection() {
           })}
         </div>
         <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-          Amounts show as entered. WaiseKa never converts.
+          {t('settings.currencySub')}
         </p>
         {selectedCurrency !== currency && (
           <p style={{ fontSize: '0.78rem', color: 'var(--color-warning)', padding: '8px 12px', borderRadius: 8, backgroundColor: 'var(--color-warning-bg)' }}>
-            Preview: {formatAmount(1500)} &rarr; amounts will display in {selectedCurrency}
+            New accounts will default to {selectedCurrency}. Existing accounts keep their own currency.
           </p>
         )}
         <div>
@@ -170,10 +190,17 @@ function DefaultAccountSection() {
 }
 
 // ── Sweldo cutoff ────────────────────────────────────────────────────────────
-function CutoffSection() {
+/**
+ * Without `currency`: the single schedule (single-currency users, unchanged).
+ * With `currency`: that currency's schedule - the primary edits the top-level schedule,
+ * any other currency edits its own entry in cutoffByCurrency.
+ */
+function CutoffSection({ currency, primary }: { currency?: CurrencyCode; primary?: CurrencyCode } = {}) {
   const { toast } = useToast()
   const { preferences, update: updatePreferences } = usePreferences()
-  const saved = cutoffFromPreferences(preferences)
+  const isOtherCurrency = currency !== undefined && currency !== primary
+  const hasOwnSchedule = isOtherCurrency && !!preferences?.cutoffByCurrency?.[currency]
+  const saved = cutoffFromPreferences(preferences, isOtherCurrency ? currency : undefined)
   const [cutoffMode, setCutoffMode] = useState<CutoffMode>(saved.mode)
   const [cutoffMidDay, setCutoffMidDay] = useState(saved.midDay)
   const [customCutoffDays, setCustomCutoffDays] = useState<number[]>(saved.customDays)
@@ -197,8 +224,25 @@ function CutoffSection() {
     }
     setLoading(true)
     try {
-      await updatePreferences({ cutoffMode, cutoffDays: days })
-      toast('Cutoff schedule updated', 'success')
+      await updatePreferences(
+        isOtherCurrency
+          ? { cutoffByCurrency: { [currency]: { mode: cutoffMode, days } } }
+          : { cutoffMode, cutoffDays: days }
+      )
+      toast(currency ? `${currency} cutoff schedule updated` : 'Cutoff schedule updated', 'success')
+    } catch (err) {
+      toast(errorMessage(err, 'Failed to update cutoff schedule'), 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUsePrimary = async () => {
+    if (!isOtherCurrency) return
+    setLoading(true)
+    try {
+      await updatePreferences({ cutoffByCurrency: { [currency]: null } })
+      toast(`${currency} now follows the ${primary} schedule`, 'success')
     } catch (err) {
       toast(errorMessage(err, 'Failed to update cutoff schedule'), 'error')
     } finally {
@@ -208,8 +252,13 @@ function CutoffSection() {
 
   return (
     <div className={styles.fieldGroup}>
-      <p className={styles.groupLabel}>Sweldo cutoff</p>
+      <p className={styles.groupLabel}>Sweldo cutoff{currency ? ` · ${currency}` : ''}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {isOtherCurrency && !hasOwnSchedule && (
+          <p style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            Following your {primary} schedule. Save a schedule here to give {currency} its own.
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {([
             { mode: 'semi-monthly', label: 'Semi-monthly', hint: 'Twice a month' },
@@ -323,10 +372,15 @@ function CutoffSection() {
           3 days before a recurring bill lands, WaiseKa uses this schedule to reset your safe-to-spend total.
         </p>
 
-        <div>
-          <Button onClick={handleSave} loading={loading} disabled={!isDirty}>
-            Save Cutoff Schedule
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button onClick={handleSave} loading={loading} disabled={!isDirty && (!isOtherCurrency || hasOwnSchedule)}>
+            {currency ? `Save ${currency} Cutoff Schedule` : 'Save Cutoff Schedule'}
           </Button>
+          {hasOwnSchedule && (
+            <Button variant="outline" onClick={handleUsePrimary} loading={loading}>
+              Use {primary} schedule
+            </Button>
+          )}
         </div>
       </div>
     </div>

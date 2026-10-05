@@ -6,6 +6,7 @@ import { isPremium, historyWindowStart } from '@/lib/tier'
 import { MONTH_LABELS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
+import { primaryCurrencyOf, viewCurrencyFrom, withCurrencyScope } from '@/lib/services/currencyScope'
 import type { ICategory } from '@/lib/models/Category'
 
 // Fallback palette when a category has no stored color
@@ -29,6 +30,8 @@ export async function GET(req: NextRequest) {
   // -- Tier gate: clamp to free window for non-premium users
   const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
   const userIsPremium = user ? isPremium(user) : false
+  const primary = primaryCurrencyOf(user)
+  const currency = viewCurrencyFrom(searchParams, primary)
 
   const yearStart = new Date(Date.UTC(year, 0, 1))
   const yearEnd   = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999))
@@ -44,11 +47,11 @@ export async function GET(req: NextRequest) {
   // Aggregate expense transactions grouped by month and category
   const rows = await db.collection<ITransaction>('transactions').aggregate([
     {
-      $match: {
+      $match: withCurrencyScope({
         userId: session.user.id,
         type: 'expense',
         date: { $gte: effectiveStart, $lte: yearEnd },
-      },
+      }, currency, primary),
     },
     {
       $group: {

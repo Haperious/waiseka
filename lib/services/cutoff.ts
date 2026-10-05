@@ -1,9 +1,31 @@
 import { MONTH_LABELS } from '@/lib/constants'
 
+export type CutoffMode = 'semi-monthly' | 'monthly' | 'custom'
+
+/** A single currency's own cutoff schedule (preferences.cutoffByCurrency[code]). */
+export interface CurrencyCutoff {
+  mode: CutoffMode
+  days: number[]
+  anchorDate?: string
+}
+
 export interface CutoffPreferences {
-  cutoffMode?: 'semi-monthly' | 'monthly' | 'custom'
+  cutoffMode?: CutoffMode
   cutoffDays?: number[]
   cutoffAnchorDate?: string
+  /** Per-currency overrides. A currency without an entry uses the top-level schedule. */
+  cutoffByCurrency?: Partial<Record<string, CurrencyCutoff>>
+}
+
+/**
+ * The cutoff schedule for one currency: its own entry in cutoffByCurrency if set,
+ * otherwise the top-level cutoffMode/cutoffDays - so users who never set a
+ * per-currency schedule keep exactly the schedule they have today.
+ */
+export function cutoffPrefsFor(prefs: CutoffPreferences | null | undefined, currency: string): CutoffPreferences {
+  const own = prefs?.cutoffByCurrency?.[currency]
+  if (own) return { cutoffMode: own.mode, cutoffDays: own.days, cutoffAnchorDate: own.anchorDate }
+  return { cutoffMode: prefs?.cutoffMode, cutoffDays: prefs?.cutoffDays, cutoffAnchorDate: prefs?.cutoffAnchorDate }
 }
 
 export interface CutoffPeriod {

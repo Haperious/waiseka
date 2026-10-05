@@ -7,6 +7,8 @@ export interface Transaction {
   _id: string
   userId: string
   amount: number
+  /** Missing on imports/very old rows - those count as the primary currency. */
+  currency?: "PHP" | "QAR" | "USD" | null
   type: "income" | "expense" | "savings" | "transfer"
   category: string
   description?: string
@@ -26,6 +28,8 @@ interface Filters {
   endDate?: string
   search?: string
   accountId?: string
+  /** Only set by the view-currency switcher (multi-currency users). Unset = every currency. */
+  currency?: string
   page?: number
   limit?: number
 }
@@ -47,6 +51,7 @@ export function useTransactions(filters: Filters = {}) {
     if (filters.endDate) params.set("endDate", filters.endDate)
     if (filters.search) params.set("search", filters.search)
     if (filters.accountId) params.set("accountId", filters.accountId)
+    if (filters.currency) params.set("currency", filters.currency)
     params.set("page", String(filters.page ?? 1))
     params.set("limit", String(filters.limit ?? 20))
 
@@ -65,6 +70,7 @@ export function useTransactions(filters: Filters = {}) {
     filters.endDate,
     filters.search,
     filters.accountId,
+    filters.currency,
     filters.page,
     filters.limit,
   ])

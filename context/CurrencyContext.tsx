@@ -7,6 +7,8 @@ interface CurrencyContextValue {
   currency: CurrencyCode
   currencySymbol: string
   formatAmount: (amount: number) => string
+  /** Formats in a specific currency (e.g. a transaction's or account's), falling back to the primary. */
+  formatAmountIn: (amount: number, code?: string | null) => string
   setCurrency: (code: CurrencyCode) => void
 }
 
@@ -14,6 +16,7 @@ const CurrencyContext = createContext<CurrencyContextValue>({
   currency: 'PHP',
   currencySymbol: '₱',
   formatAmount: (n) => `₱ ${n.toFixed(2)}`,
+  formatAmountIn: (n) => `₱ ${n.toFixed(2)}`,
   setCurrency: () => {},
 })
 
@@ -36,6 +39,7 @@ export function CurrencyProvider({ children, initialCurrency }: { children: Reac
     currency,
     currencySymbol: getCurrencySymbol(currency),
     formatAmount: (amount: number) => formatAmount(amount, currency),
+    formatAmountIn: (amount: number, code?: string | null) => formatAmount(amount, code || currency),
     setCurrency,
   }
 

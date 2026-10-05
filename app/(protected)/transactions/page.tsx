@@ -10,7 +10,8 @@ import Modal from '@/components/ui/Modal'
 import { useTransactions, Transaction } from '@/hooks/useTransactions'
 import { useAccounts } from '@/hooks/useAccounts'
 import { usePreferences } from '@/hooks/usePreferences'
-import { useCurrency } from '@/context/CurrencyContext'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
+import ViewCurrencySwitcher from '@/components/ViewCurrencySwitcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/components/ui/Toast'
 import { useSession } from 'next-auth/react'
@@ -41,7 +42,7 @@ const sectionHeaderStyle: React.CSSProperties = {
 }
 
 export default function TransactionsPage() {
-  const { currency } = useCurrency()
+  const { viewCurrency, isMultiCurrency } = useViewCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
   const { data: session } = useSession()
@@ -76,6 +77,18 @@ export default function TransactionsPage() {
     setPage(1)
   }
 
+  // Multi-currency users see one currency at a time. A selected account already pins the
+  // currency, so its own currency wins over the switcher (never an empty list).
+  const selectedAccount = accounts.find((a) => a._id === filters.account)
+  const listCurrency = selectedAccount?.currency ?? viewCurrency
+
+  // Switching currency goes back to page 1 (adjusted during render, not in an effect)
+  const [prevViewCurrency, setPrevViewCurrency] = useState(viewCurrency)
+  if (viewCurrency !== prevViewCurrency) {
+    setPrevViewCurrency(viewCurrency)
+    setPage(1)
+  }
+
   const userIsPremium = session
     ? isPremium({ tier: session.user.tier, premiumOverride: session.user.premiumOverride })
     : false
@@ -83,6 +96,7 @@ export default function TransactionsPage() {
   const { transactions, total, totalPages, loading, deleteTransaction, refetch } = useTransactions({
     type: filters.type === 'all' ? '' : filters.type,
     accountId: filters.account === 'all' ? '' : filters.account,
+    currency: isMultiCurrency ? listCurrency : undefined,
     search: filters.search,
     startDate: filters.startDate,
     endDate: filters.endDate,
@@ -109,7 +123,7 @@ export default function TransactionsPage() {
   }
 
   const exportCSV = () => {
-    const headers = [`Date,Type,Category,Description,Amount (${currency}),Tags`]
+    const headers = [`Date,Type,Category,Description,Amount (${listCurrency}),Tags`]
     const rows = transactions.map((tx) =>
       [
         format(new Date(tx.date), 'yyyy-MM-dd'),
@@ -151,6 +165,7 @@ export default function TransactionsPage() {
               {total} {t('tx.totalRecords')}
             </p>
           </div>
+          {!selectedAccount && <ViewCurrencySwitcher />}
         </div>
 
         {/* Button row - Add is hidden on mobile since the FAB covers it; full width so remaining buttons are always visible */}

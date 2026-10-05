@@ -9,6 +9,8 @@ import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
+import ViewCurrencySwitcher from '@/components/ViewCurrencySwitcher'
 import { useSession } from 'next-auth/react'
 import { isPremium } from '@/lib/tier'
 import { useLanguage } from '@/context/LanguageContext'
@@ -101,7 +103,10 @@ const NO_BUDGETS: Budget[] = []
 
 // ── Main dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { formatAmount } = useCurrency()
+  // Summaries (cutoff, monthly totals, 3-month band) are per view currency. Budgets have
+  // no currency until Phase 4, so they stay in the primary.
+  const { formatAmount: formatPrimary } = useCurrency()
+  const { viewCurrency, formatView: formatAmount } = useViewCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
   const now = new Date()
@@ -122,28 +127,38 @@ export default function DashboardPage() {
   const [rangeMovers,    setRangeMovers]    = useState<CategoryMover[]>([])
   const [rangeLoading,   setRangeLoading]   = useState(true)
 
+  // The insights feed covers every currency, so it loads once
   useEffect(() => {
-    fetch('/api/summary/cutoff')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setCutoffData(data))
-      .catch(() => {})
-      .finally(() => setCutoffLoading(false))
-
     fetch('/api/insights/today')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setInsights(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => setInsightsLoading(false))
+  }, [])
 
-    fetch('/api/summary/range')
+  // Re-fetched when the view currency changes; a stale response is dropped
+  useEffect(() => {
+    let cancelled = false
+    const q = `currency=${viewCurrency}`
+
+    fetch(`/api/summary/cutoff?${q}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled) setCutoffData(data) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCutoffLoading(false) })
+
+    fetch(`/api/summary/range?${q}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
+        if (cancelled) return
         setRangeMonths(data?.months ?? [])
         setRangeMovers(data?.movers ?? [])
       })
       .catch(() => {})
-      .finally(() => setRangeLoading(false))
-  }, [])
+      .finally(() => { if (!cancelled) setRangeLoading(false) })
+
+    return () => { cancelled = true }
+  }, [viewCurrency])
 
   const { data: session } = useSession()
   const userIsPremium = session?.user ? isPremium(session.user as { tier: string; premiumOverride: boolean }) : false
@@ -195,9 +210,9 @@ export default function DashboardPage() {
 
   // Failures are non-fatal here - the cards just render their empty state
   const fetchAnalyticsSummary = useCallback(async () => {
-    const res = await fetch(`/api/summary?month=${selectedMonth}&year=${selectedYear}`)
+    const res = await fetch(`/api/summary?month=${selectedMonth}&year=${selectedYear}&currency=${viewCurrency}`)
     return res.ok ? (res.json() as Promise<Summary>) : null
-  }, [selectedMonth, selectedYear])
+  }, [selectedMonth, selectedYear, viewCurrency])
 
   const fetchBudgets = useCallback(async () => {
     const res = await fetch(`/api/budgets?month=${selectedMonth}&year=${selectedYear}`)
@@ -275,10 +290,6 @@ export default function DashboardPage() {
     }
     return map
   }, [activeAccounts])
-  const totalMoney = useMemo(
-    () => [...moneyByCurrency.values()].reduce((sum, v) => sum + v, 0),
-    [moneyByCurrency]
-  )
 
   const budgetsNeedingAttention = useMemo(
     () => budgets.filter((b) => b.limit > 0 && b.spent / b.limit >= 0.9).length,
@@ -324,6 +335,7 @@ export default function DashboardPage() {
         <div style={{ minWidth: 90, flex: '0 0 auto' }}>
           <Select value={selectedYear} onValueChange={setSelectedYear} options={years} />
         </div>
+        <ViewCurrencySwitcher />
       </div>
 
       {/* ── Email verification banner ──────────────────────────────────── */}
@@ -379,12 +391,11 @@ export default function DashboardPage() {
       {/* ── Total Money + Cutoff row ──────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: 18 }} className="max-lg:!grid-cols-1">
         <TotalMoneyCard
-          totalMoney={totalMoney}
+          moneyByCurrency={moneyByCurrency}
           accountCount={activeAccounts.filter((a) => a.includeInTotal && a.type !== 'credit').length}
           healthScore={score}
           healthStatusLabel={statusLabel}
           accounts={activeAccounts}
-          formatAmount={formatAmount}
         />
         <CutoffCard data={cutoffData} loading={cutoffLoading} formatAmount={formatAmount} />
       </div>
@@ -394,7 +405,7 @@ export default function DashboardPage() {
 
       {/* ── Recent activity + Budgets ───────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }} className="max-lg:!grid-cols-1">
-        <RecentActivityCard formatAmount={formatAmount} />
+        <RecentActivityCard />
 
         <div style={{
           backgroundColor: 'var(--color-card)',
@@ -428,7 +439,7 @@ export default function DashboardPage() {
               </p>
             ) : (
               budgets.slice(0, 6).map(b => (
-                <BudgetBar key={b._id} budget={b} formatAmount={formatAmount} />
+                <BudgetBar key={b._id} budget={b} formatAmount={formatPrimary} />
               ))
             )}
           </div>

@@ -6,6 +6,7 @@ import { Camera, Mic, Square } from "lucide-react"
 import { useCategories } from "@/hooks/useCategories"
 import { useAccounts } from "@/hooks/useAccounts"
 import { useCurrency } from "@/context/CurrencyContext"
+import { getCurrencySymbol } from "@/lib/currency"
 import { useToast } from "@/components/ui/Toast"
 import { useLanguage } from "@/context/LanguageContext"
 import { useSpeechToText } from "@/hooks/useSpeechToText"
@@ -166,7 +167,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
   const { t } = useLanguage()
   const { categories } = useCategories()
   const { accounts } = useAccounts()
-  const { currency, currencySymbol } = useCurrency()
+  const { currency: primaryCurrency } = useCurrency()
   const { toast } = useToast()
 
   const [type, setType] = useState<TxType>("expense")
@@ -177,6 +178,10 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
   const [saving, setSaving] = useState(false)
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+  // The symbol follows the selected account (unassigned → primary), matching what the server saves
+  const currencySymbol = getCurrencySymbol(
+    activeAccounts.find((a) => a._id === accountId)?.currency ?? primaryCurrency,
+  )
   const categoryOptions = useMemo(
     () => categories.filter((c) => c.type === type || c.type === "both" || type === "savings"),
     [categories, type],
@@ -205,7 +210,6 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
           date: format(new Date(), "yyyy-MM-dd"),
           isRecurring: false,
           accountId: accountId || null,
-          currency,
         }),
       })
       if (!res.ok) {
@@ -343,7 +347,8 @@ export function ChipScroller({
 function VoiceMode({ onDone }: { onDone: () => void }) {
   const { t } = useLanguage()
   const { toast } = useToast()
-  const { currency, formatAmount } = useCurrency()
+  // Voice entries are saved unassigned, so they're in the primary currency
+  const { formatAmount } = useCurrency()
   const { categories } = useCategories()
   const { keywords } = useVoiceKeywords()
   const { transcript, isListening, isSupported, startListening, stopListening, clearTranscript } = useSpeechToText()
@@ -393,7 +398,6 @@ function VoiceMode({ onDone }: { onDone: () => void }) {
           date: format(new Date(), "yyyy-MM-dd"),
           isRecurring: false,
           accountId: null,
-          currency,
         }),
       })
       if (!res.ok) {

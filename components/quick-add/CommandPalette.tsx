@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast"
 interface SearchResult {
   _id: string
   amount: number
+  currency?: string | null
   type: string
   category: string
   description?: string
@@ -29,7 +30,7 @@ const NO_RESULTS: SearchResult[] = []
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const { formatAmount } = useCurrency()
+  const { formatAmountIn } = useCurrency()
   const { accounts } = useAccounts()
   const { keywords } = useVoiceKeywords()
 
@@ -217,7 +218,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       color: "var(--color-text-primary)",
                     }}
                   >
-                    {formatAmount(parsed.amount ?? 0)}
+                    {formatAmountIn(parsed.amount ?? 0, matchedAccount?.currency)}
                   </p>
                   <p style={{ fontSize: "0.78rem", color: "var(--color-text-secondary)" }}>
                     {parsed.type} · {parsed.category ?? "Other"}
@@ -290,7 +291,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                             : "var(--color-savings)",
                     }}
                   >
-                    {formatAmount(r.amount)}
+                    {formatAmountIn(r.amount, r.currency)}
                   </span>
                 </button>
               ))}

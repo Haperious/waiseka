@@ -9,6 +9,7 @@ import {
 import { useCategories } from '@/hooks/useCategories'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useCurrency } from '@/context/CurrencyContext'
+import { getCurrencySymbol } from '@/lib/currency'
 import { useToast } from '@/components/ui/Toast'
 import { useLanguage } from '@/context/LanguageContext'
 import { emitTransactionSaved } from '@/lib/transactionEvents'
@@ -57,7 +58,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
   const { toast } = useToast()
   const { categories } = useCategories()
   const { accounts } = useAccounts()
-  const { currency, currencySymbol, formatAmount } = useCurrency()
+  const { currency: primaryCurrency, formatAmountIn } = useCurrency()
 
   const [visible, setVisible] = useState(false)
   const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
@@ -79,9 +80,13 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
   const closeBtnRef = useRef<HTMLButtonElement>(null)
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
-  const accountLabel = accountId
-    ? (activeAccounts.find((a) => a._id === accountId)?.name ?? t('bulk.unassigned'))
-    : t('bulk.unassigned')
+  const selectedAccount = accountId ? activeAccounts.find((a) => a._id === accountId) : undefined
+  const accountLabel = selectedAccount?.name ?? t('bulk.unassigned')
+  // Amounts are entered in the selected account's currency (unassigned → primary),
+  // matching what the server will save.
+  const entryCurrency = selectedAccount?.currency ?? primaryCurrency
+  const currencySymbol = getCurrencySymbol(entryCurrency)
+  const formatAmount = (v: number) => formatAmountIn(v, entryCurrency)
 
   const categoryOptions = useMemo(
     () => categories.filter((c) => c.type === type || c.type === 'both' || type === 'savings'),
@@ -178,7 +183,6 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
             category: l.category,
             description: l.description,
             date,
-            currency,
           })),
           accountId: accountId || null,
         }),
@@ -574,7 +578,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
       {accountPickerOpen && (
         <PickerOverlay onClose={() => setAccountPickerOpen(false)} title={t('quickAdd.account')}>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {[{ _id: '', name: t('bulk.unassigned'), computedBalance: undefined as number | undefined }, ...activeAccounts].map((a) => {
+            {[{ _id: '', name: t('bulk.unassigned'), computedBalance: undefined as number | undefined, currency: undefined as string | undefined }, ...activeAccounts].map((a) => {
               const isSelected = a._id === accountId
               return (
                 <li key={a._id || '__unassigned__'}>
@@ -593,7 +597,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
                     <span>{a.name}</span>
                     {a.computedBalance !== undefined && (
                       <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                        {formatAmount(a.computedBalance)}
+                        {formatAmountIn(a.computedBalance, a.currency)}
                       </span>
                     )}
                   </button>

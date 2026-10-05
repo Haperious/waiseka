@@ -7,6 +7,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useAccounts } from '@/hooks/useAccounts'
+import { useCurrency } from '@/context/CurrencyContext'
 
 const TYPE_ICON: Record<string, LucideIcon> = {
   income: TrendingUp,
@@ -27,11 +28,8 @@ const TYPE_BG: Record<string, string> = {
   transfer: 'var(--color-sage)',
 }
 
-export default function RecentActivityCard({
-  formatAmount,
-}: {
-  formatAmount: (v: number) => string
-}) {
+export default function RecentActivityCard() {
+  const { formatAmountIn } = useCurrency()
   const { transactions, total, loading } = useTransactions({ limit: 4 })
   const { accounts } = useAccounts()
 
@@ -105,7 +103,7 @@ export default function RecentActivityCard({
                   fontSize: '0.85rem', fontWeight: 700, color, flexShrink: 0,
                   fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                 }}>
-                  {sign}{formatAmount(Math.abs(tx.amount))}
+                  {sign}{formatAmountIn(Math.abs(tx.amount), tx.currency)}
                 </span>
               </div>
             )

@@ -9,7 +9,6 @@ import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useCategories } from '@/hooks/useCategories'
 import { useAccounts } from '@/hooks/useAccounts'
-import { useCurrency } from '@/context/CurrencyContext'
 
 const UNASSIGNED = ''
 
@@ -48,7 +47,6 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
   const { toast } = useToast()
   const { categories } = useCategories()
   const { accounts } = useAccounts()
-  const { currency } = useCurrency()
 
   const activeAccounts = accounts.filter((a) => !a.isArchived)
   const accountOptions = [
@@ -132,7 +130,6 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
         category: r.category,
         description: r.description,
         date,
-        currency,
       }))
 
       const res = await fetch('/api/transactions/bulk', {

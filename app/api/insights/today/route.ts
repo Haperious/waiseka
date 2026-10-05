@@ -4,13 +4,19 @@
  * Ranked feed backing the dashboard's "Needs you today" row. Composed from three
  * independent sources that already exist in different shapes elsewhere in the app -
  * this route is purely an aggregator, it writes nothing.
+ *
+ * Multi-currency: the feed covers every currency at once (an item is relevant whatever
+ * the view currency), but each item is computed and formatted in its own currency -
+ * budgets in the primary (they have no currency until Phase 4), credit cards and planned
+ * transfers in their account's currency, with that currency's cutoff period.
  */
 
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { resolveCutoffPeriod } from '@/lib/services/cutoff'
+import { resolveCutoffPeriod, cutoffPrefsFor } from '@/lib/services/cutoff'
+import { currencyScope, primaryCurrencyOf } from '@/lib/services/currencyScope'
 import { getAccountActivityMap, computeOutstanding, nextDueDate } from '@/lib/services/accountBalance'
 import { formatAmount } from '@/lib/currency'
 import type { IBudget } from '@/lib/models/Budget'
@@ -47,14 +53,14 @@ export async function GET() {
   ])
 
   const items: InsightItem[] = []
-  const currency = user?.preferences?.currency ?? 'PHP'
+  const primary = primaryCurrencyOf(user)
 
   // ── Budget breach / near-limit ──────────────────────────────────────────
   if (budgets.length > 0) {
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
     const spentRows = await db.collection<ITransaction>('transactions').aggregate<{ category: string; total: number }>([
-      { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
+      { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd }, ...currencyScope(primary, primary) } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
       { $project: { _id: 0, category: '$_id', total: 1 } },
     ]).toArray()
@@ -74,8 +80,8 @@ export async function GET() {
         title: pct >= 100 ? `${budget.category} is over` : `${budget.category} is close to its limit`,
         body:
           pct >= 100
-            ? `${formatAmount(spent, currency)} spent on a ${formatAmount(budget.limit, currency)} ceiling - ${formatAmount(over, currency)} over.`
-            : `${formatAmount(spent, currency)} of ${formatAmount(budget.limit, currency)} spent this month.`,
+            ? `${formatAmount(spent, primary)} spent on a ${formatAmount(budget.limit, primary)} ceiling - ${formatAmount(over, primary)} over.`
+            : `${formatAmount(spent, primary)} of ${formatAmount(budget.limit, primary)} spent this month.`,
         href: '/budgets',
       })
     }
@@ -102,7 +108,7 @@ export async function GET() {
           daysUntilDue === 0
             ? `${account.name} due today`
             : `${account.name} due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`,
-        body: `${formatAmount(outstanding, currency)} outstanding.`,
+        body: `${formatAmount(outstanding, account.currency)} outstanding.`,
         href: '/accounts',
       })
     }
@@ -110,25 +116,33 @@ export async function GET() {
 
   // ── Pending planned transfers ────────────────────────────────────────────
   if (plannedTransfers.length > 0) {
-    const period = resolveCutoffPeriod(user?.preferences ?? {}, now)
+    // Each planned transfer runs on its source account's currency and that currency's cutoff
+    const currencyByAccount = new Map(accounts.map((a) => [a._id.toString(), a.currency]))
+    const planned = plannedTransfers.map((p) => {
+      const currency = currencyByAccount.get(p.fromAccountId.toString()) ?? primary
+      return { p, currency, period: resolveCutoffPeriod(cutoffPrefsFor(user?.preferences, currency), now) }
+    })
+    const earliest = new Date(Math.min(...planned.map((x) => x.period.start.getTime())))
+    const latest = new Date(Math.max(...planned.map((x) => x.period.end.getTime())))
     const movedTransfers = await db.collection<ITransaction>('transactions').find({
       userId,
       type: 'transfer',
-      date: { $gte: period.start, $lte: period.end },
+      date: { $gte: earliest, $lte: latest },
     }).toArray()
-    const movedPairs = new Set(
-      movedTransfers.map((t) => `${t.fromAccountId?.toString()}:${t.toAccountId?.toString()}`)
-    )
 
-    for (const planned of plannedTransfers) {
-      const moved = movedPairs.has(`${planned.fromAccountId}:${planned.toAccountId}`)
+    for (const { p, currency, period } of planned) {
+      const moved = movedTransfers.some((t) =>
+        t.fromAccountId?.toString() === p.fromAccountId.toString() &&
+        t.toAccountId?.toString() === p.toAccountId.toString() &&
+        t.date >= period.start && t.date <= period.end
+      )
       if (moved) continue
 
       items.push({
-        id: `planned-transfer-${planned._id.toString()}`,
+        id: `planned-transfer-${p._id.toString()}`,
         severity: 'info',
         icon: 'PiggyBank',
-        title: `${formatAmount(planned.amount, currency)} not yet moved`,
+        title: `${formatAmount(p.amount, currency)} not yet moved`,
         body: `Expected this cutoff (${period.label}). Your transfer is still pending.`,
         href: '/accounts',
       })

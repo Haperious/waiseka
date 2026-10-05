@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveCutoffPeriod } from './cutoff'
+import { resolveCutoffPeriod, cutoffPrefsFor } from './cutoff'
 
 function utc(year: number, month1: number, day: number): Date {
   return new Date(Date.UTC(year, month1 - 1, day))
@@ -68,5 +68,35 @@ describe('resolveCutoffPeriod', () => {
     const period = resolveCutoffPeriod({ cutoffDays: [15, 30] }, utc(2026, 5, 15))
     expect(period.index).toBe(1)
     expect(period.daysLeft).toBe(1)
+  })
+})
+
+describe('cutoffPrefsFor', () => {
+  const prefs = {
+    cutoffMode: 'monthly' as const,
+    cutoffDays: [15],
+    cutoffByCurrency: { PHP: { mode: 'custom' as const, days: [5, 20] } },
+  }
+
+  it('uses the currency\'s own schedule when it has one', () => {
+    expect(cutoffPrefsFor(prefs, 'PHP')).toEqual({ cutoffMode: 'custom', cutoffDays: [5, 20], cutoffAnchorDate: undefined })
+  })
+
+  it('falls back to the top-level schedule for a currency without one', () => {
+    expect(cutoffPrefsFor(prefs, 'QAR')).toEqual({ cutoffMode: 'monthly', cutoffDays: [15], cutoffAnchorDate: undefined })
+  })
+
+  it('gives QAR on the 15th and PHP on the 5th/20th their own periods', () => {
+    const d = utc(2026, 10, 12)
+    const qar = resolveCutoffPeriod(cutoffPrefsFor(prefs, 'QAR'), d)
+    const php = resolveCutoffPeriod(cutoffPrefsFor(prefs, 'PHP'), d)
+    expect(qar.label).toBe('1–15 Oct')
+    expect(qar.daysLeft).toBe(4)
+    expect(php.label).toBe('6–20 Oct')
+    expect(php.daysLeft).toBe(9)
+  })
+
+  it('handles missing preferences', () => {
+    expect(cutoffPrefsFor(undefined, 'PHP')).toEqual({ cutoffMode: undefined, cutoffDays: undefined, cutoffAnchorDate: undefined })
   })
 })

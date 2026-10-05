@@ -58,7 +58,7 @@ function TypeBadge({ type }: { type: string }) {
 
 // ── Amount display ────────────────────────────────────────────────────────
 function AmountCell({ tx }: { tx: Transaction }) {
-  const { formatAmount } = useCurrency()
+  const { formatAmountIn } = useCurrency()
   const color =
     tx.type === 'income' ? 'var(--color-income)' :
     tx.type === 'savings' ? 'var(--color-savings)' :
@@ -74,7 +74,7 @@ function AmountCell({ tx }: { tx: Transaction }) {
       fontSize: '0.9rem',
       whiteSpace: 'nowrap',
     }}>
-      {prefix}{formatAmount(tx.amount)}
+      {prefix}{formatAmountIn(tx.amount, tx.currency)}
     </span>
   )
 }
@@ -82,20 +82,36 @@ function AmountCell({ tx }: { tx: Transaction }) {
 // ── Day-grouped rows (mobile) ────────────────────────────────────────────
 // Net total per day counts income/expense only - savings and transfers move
 // money sideways rather than in or out, so they're shown but excluded from the total.
+// Nets are kept per currency (never summed across currencies); '' = no currency,
+// which counts as the primary currency.
 function groupByDay(txs: Transaction[]) {
-  const groups: { dateKey: string; date: Date; items: Transaction[]; net: number }[] = []
+  const groups: { dateKey: string; date: Date; items: Transaction[]; netByCurrency: Map<string, number> }[] = []
   for (const tx of txs) {
     const dateKey = format(new Date(tx.date), 'yyyy-MM-dd')
     let group = groups[groups.length - 1]?.dateKey === dateKey ? groups[groups.length - 1] : undefined
     if (!group) {
-      group = { dateKey, date: new Date(tx.date), items: [], net: 0 }
+      group = { dateKey, date: new Date(tx.date), items: [], netByCurrency: new Map() }
       groups.push(group)
     }
     group.items.push(tx)
-    if (tx.type === 'income') group.net += tx.amount
-    else if (tx.type === 'expense') group.net -= tx.amount
+    const delta = tx.type === 'income' ? tx.amount : tx.type === 'expense' ? -tx.amount : 0
+    if (delta !== 0) {
+      const key = tx.currency ?? ''
+      group.netByCurrency.set(key, (group.netByCurrency.get(key) ?? 0) + delta)
+    }
   }
   return groups
+}
+
+/** Folds the no-currency bucket into the primary currency, primary first. */
+function mergeNoCurrency(netByCurrency: Map<string, number>, primary: string): [string, number][] {
+  // A day with only savings/transfers still shows a zero net, as before
+  const merged = new Map<string, number>(netByCurrency.size === 0 ? [[primary, 0]] : [])
+  for (const [code, net] of netByCurrency) {
+    const key = code || primary
+    merged.set(key, (merged.get(key) ?? 0) + net)
+  }
+  return [...merged].sort(([a], [b]) => (a === primary ? -1 : b === primary ? 1 : a.localeCompare(b)))
 }
 
 function MobileTransactionRow({ tx, accountNameById, onEdit, onDelete }: {
@@ -168,7 +184,7 @@ function MobileTransactionRow({ tx, accountNameById, onEdit, onDelete }: {
 /** Day-grouped list for phone/tablet widths (no table/columns). */
 export function MobileTransactionList({ transactions, loading, accountNameById, onEdit, onDelete }: TransactionListProps) {
   const { t } = useLanguage()
-  const { formatAmount } = useCurrency()
+  const { currency: primary, formatAmountIn } = useCurrency()
 
   if (loading) return <>{[...Array(6)].map((_, i) => <SkeletonRow key={i} />)}</>
 
@@ -191,11 +207,15 @@ export function MobileTransactionList({ transactions, loading, accountNameById, 
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               {format(group.date, 'EEE, MMM d')}
             </span>
-            <span style={{
-              fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-              color: group.net >= 0 ? 'var(--color-income)' : 'var(--color-expense)',
-            }}>
-              {group.net >= 0 ? '+' : '−'}{formatAmount(Math.abs(group.net))}
+            <span style={{ display: 'flex', gap: 8 }}>
+              {mergeNoCurrency(group.netByCurrency, primary).map(([code, net]) => (
+                <span key={code} style={{
+                  fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  color: net >= 0 ? 'var(--color-income)' : 'var(--color-expense)',
+                }}>
+                  {net >= 0 ? '+' : '−'}{formatAmountIn(Math.abs(net), code)}
+                </span>
+              ))}
             </span>
           </div>
           {group.items.map((tx, i) => (

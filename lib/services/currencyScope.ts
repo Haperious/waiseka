@@ -1,4 +1,5 @@
 import type { CurrencyCode } from '@/lib/currency'
+import type { Db } from 'mongodb'
 
 /**
  * Multi-currency helpers (docs/prd/multi-currency.md).
@@ -40,4 +41,34 @@ export function currencyScope(c: CurrencyCode, primary: CurrencyCode): Record<st
     return { $or: [{ currency: c }, { currency: null }, { currency: { $exists: false } }] }
   }
   return { currency: c }
+}
+
+/** Adds the currency scope to an existing $match without clobbering any $or/$and it already has. */
+export function withCurrencyScope<T extends Record<string, unknown>>(
+  match: T,
+  c: CurrencyCode,
+  primary: CurrencyCode
+): T & { $and: unknown[] } {
+  const existing = Array.isArray(match.$and) ? (match.$and as unknown[]) : []
+  return { ...match, $and: [...existing, currencyScope(c, primary)] }
+}
+
+/** The `?currency=` a summary endpoint should report in: a supported code, else the primary. */
+export function viewCurrencyFrom(searchParams: URLSearchParams, primary: CurrencyCode): CurrencyCode {
+  const requested = searchParams.get('currency')
+  return isCurrencyCode(requested) ? requested : primary
+}
+
+/**
+ * Currencies of the user's active (non-archived) accounts, primary first, then
+ * alphabetical. Always contains the primary, so a user with no accounts still has one.
+ */
+export async function getUserCurrencies(db: Db, userId: string, primary: CurrencyCode): Promise<CurrencyCode[]> {
+  const codes = await db.collection('accounts').distinct('currency', { userId, isArchived: { $ne: true } })
+  return sortCurrencies([primary, ...codes.filter(isCurrencyCode)], primary)
+}
+
+/** De-duplicates and orders currency codes: primary first, then alphabetical. */
+export function sortCurrencies(codes: CurrencyCode[], primary: CurrencyCode): CurrencyCode[] {
+  return [...new Set(codes)].sort((a, b) => (a === primary ? -1 : b === primary ? 1 : a.localeCompare(b)))
 }

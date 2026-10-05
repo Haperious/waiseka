@@ -13,14 +13,16 @@ import Button from '@/components/ui/Button'
 
 interface MicrophoneButtonProps {
   onFill: (data: Partial<{ type: 'income' | 'expense' | 'savings'; amount: number; category: string; description: string }>) => void
+  /** Currency of the account being filled; defaults to the primary currency. */
+  currency?: string | null
 }
 
 type UIState = 'idle' | 'listening' | 'preview' | 'error'
 
-export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
+export default function MicrophoneButton({ onFill, currency }: MicrophoneButtonProps) {
   const { transcript, isListening, isSupported, error, language, setLanguage, startListening, stopListening, clearTranscript, clearError } =
     useSpeechToText()
-  const { formatAmount } = useCurrency()
+  const { formatAmountIn } = useCurrency()
   const { keywords } = useVoiceKeywords()
 
   const [showKeywordManager, setShowKeywordManager] = useState(false)
@@ -72,7 +74,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
       p.type === 'savings' ? (isFil ? 'Ipon' : 'Savings') :
       (isFil ? 'Kita' : 'Income')
     )
-    if (p.amount !== undefined) parts.push(formatAmount(p.amount))
+    if (p.amount !== undefined) parts.push(formatAmountIn(p.amount, currency))
     if (p.category) parts.push(isFil ? `sa ${p.category}` : `on ${p.category}`)
     return parts.join(' ')
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency } from './currencyScope'
+import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency, sortCurrencies, viewCurrencyFrom, withCurrencyScope } from './currencyScope'
 
 describe('currencyScope', () => {
   it('includes transactions with no currency when scoping to the primary currency', () => {
@@ -45,5 +45,38 @@ describe('isCurrencyCode', () => {
     expect(isCurrencyCode('PHP')).toBe(true)
     expect(isCurrencyCode('EUR')).toBe(false)
     expect(isCurrencyCode(undefined)).toBe(false)
+  })
+})
+
+describe('withCurrencyScope', () => {
+  it('appends the scope to $and without touching an existing $or', () => {
+    const match = { userId: 'u', $or: [{ description: 'x' }] }
+    expect(withCurrencyScope(match, 'PHP', 'QAR')).toEqual({
+      userId: 'u',
+      $or: [{ description: 'x' }],
+      $and: [{ currency: 'PHP' }],
+    })
+  })
+
+  it('keeps existing $and clauses', () => {
+    const match = { userId: 'u', $and: [{ a: 1 }] }
+    expect(withCurrencyScope(match, 'PHP', 'QAR').$and).toEqual([{ a: 1 }, { currency: 'PHP' }])
+  })
+})
+
+describe('viewCurrencyFrom', () => {
+  it('returns a supported requested currency', () => {
+    expect(viewCurrencyFrom(new URLSearchParams('currency=PHP'), 'QAR')).toBe('PHP')
+  })
+
+  it('falls back to the primary when missing or unsupported', () => {
+    expect(viewCurrencyFrom(new URLSearchParams(''), 'QAR')).toBe('QAR')
+    expect(viewCurrencyFrom(new URLSearchParams('currency=EUR'), 'QAR')).toBe('QAR')
+  })
+})
+
+describe('sortCurrencies', () => {
+  it('puts the primary first, de-duplicated, then alphabetical', () => {
+    expect(sortCurrencies(['USD', 'QAR', 'PHP', 'QAR'], 'QAR')).toEqual(['QAR', 'PHP', 'USD'])
   })
 })

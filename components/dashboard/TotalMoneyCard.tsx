@@ -2,20 +2,27 @@
 
 import CompactHealthRing from './CompactHealthRing'
 import type { Account } from '@/hooks/useAccounts'
+import { useCurrency } from '@/context/CurrencyContext'
 
 interface TotalMoneyCardProps {
-  totalMoney: number
+  /** Total per currency - never summed across currencies (no FX conversion). */
+  moneyByCurrency: Map<string, number>
   accountCount: number
   healthScore: number
   healthStatusLabel: string
   accounts: Account[]
-  formatAmount: (v: number) => string
 }
 
 export default function TotalMoneyCard({
-  totalMoney, accountCount, healthScore, healthStatusLabel, accounts, formatAmount,
+  moneyByCurrency, accountCount, healthScore, healthStatusLabel, accounts,
 }: TotalMoneyCardProps) {
+  const { currency: primary, formatAmountIn } = useCurrency()
   const strip = accounts.slice(0, 4)
+  // One line per currency, primary first. No accounts yet → a single zero in the primary currency.
+  const totals: [string, number][] = moneyByCurrency.size === 0
+    ? [[primary, 0]]
+    : [...moneyByCurrency].sort(([a], [b]) => (a === primary ? -1 : b === primary ? 1 : a.localeCompare(b)))
+  const isMulti = totals.length > 1
 
   return (
     <div style={{
@@ -35,13 +42,15 @@ export default function TotalMoneyCard({
           }}>
             Total Money
           </p>
-          <p style={{
-            fontSize: '2.6rem', fontWeight: 800, lineHeight: 1,
-            letterSpacing: '-0.02em', color: 'var(--color-text-primary)',
-            fontVariantNumeric: 'tabular-nums',
-          }}>
-            {formatAmount(totalMoney)}
-          </p>
+          {totals.map(([code, total]) => (
+            <p key={code} style={{
+              fontSize: isMulti ? '1.9rem' : '2.6rem', fontWeight: 800, lineHeight: 1,
+              letterSpacing: '-0.02em', color: 'var(--color-text-primary)',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {formatAmountIn(total, code)}
+            </p>
+          ))}
           <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
             {accountCount} account{accountCount === 1 ? '' : 's'}
           </p>
@@ -88,7 +97,7 @@ export default function TotalMoneyCard({
                   fontSize: '0.82rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
                   color: amount < 0 ? 'var(--color-expense)' : 'var(--color-text-primary)',
                 }}>
-                  {formatAmount(amount)}
+                  {formatAmountIn(amount, account.currency)}
                 </span>
               </div>
             )

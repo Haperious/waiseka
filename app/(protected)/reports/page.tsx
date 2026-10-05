@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PieChart, Tags, Download, Crown, Lightbulb } from 'lucide-react'
-import { useCurrency } from '@/context/CurrencyContext'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
+import ViewCurrencySwitcher from '@/components/ViewCurrencySwitcher'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FREE_HISTORY_DAYS, PREMIUM_HISTORY_DAYS } from '@/lib/constants'
 import { usePreferences } from '@/hooks/usePreferences'
@@ -34,7 +35,7 @@ const SAVINGS_RATE_COLOR = (rate: number) =>
   rate >= 20 ? 'var(--color-accent)' : rate >= 10 ? 'var(--color-warning)' : 'var(--color-text-muted)'
 
 export default function ReportsPage() {
-  const { formatAmount } = useCurrency()
+  const { viewCurrency, formatView: formatAmount } = useViewCurrency()
   const { preferences } = usePreferences()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -46,13 +47,16 @@ export default function ReportsPage() {
   const [report, setReport] = useState<RangeReport | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Re-fetched when the view currency changes; a stale response is dropped
   useEffect(() => {
-    fetch('/api/summary/range')
+    let cancelled = false
+    fetch(`/api/summary/range?currency=${viewCurrency}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setReport(data))
+      .then((data) => { if (!cancelled) setReport(data) })
       .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [viewCurrency])
 
   const setView = (next: 'chart' | 'table') => {
     const params = new URLSearchParams(searchParams.toString())
@@ -108,6 +112,7 @@ export default function ReportsPage() {
         </div>
 
         <div className="reports-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ViewCurrencySwitcher />
           <div style={{
             display: 'flex', borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden',
           }}>
@@ -137,7 +142,7 @@ export default function ReportsPage() {
           </div>
 
           <a
-            href="/api/summary/export?format=csv"
+            href={`/api/summary/export?format=csv&currency=${viewCurrency}`}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 32, borderRadius: 8, border: '1px solid var(--color-border)',

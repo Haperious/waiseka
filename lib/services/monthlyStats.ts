@@ -3,6 +3,16 @@ import type { ITransaction } from '@/lib/models/Transaction'
 import type { ICategory } from '@/lib/models/Category'
 import { MONTH_LABELS } from '@/lib/constants'
 
+/**
+ * Optional extra $match clause - in practice currencyScope(c, primary). Callers that
+ * haven't been made currency-aware yet pass nothing and get every currency (as before).
+ */
+type ScopeFilter = Record<string, unknown> | undefined
+
+function scoped(match: Record<string, unknown>, scope: ScopeFilter): Record<string, unknown> {
+  return scope ? { ...match, $and: [scope] } : match
+}
+
 export interface MonthMeta {
   year: number
   /** 1-based. */
@@ -45,17 +55,18 @@ export async function aggregateExpensesByCategoryAndMonth(
   db: Db,
   userId: string,
   start: Date,
-  end: Date
+  end: Date,
+  scope?: ScopeFilter
 ): Promise<CategoryMonthRow[]> {
   const col = db.collection<ITransaction>('transactions')
   const rows = await col.aggregate<{ category: string; year: number; month: number; total: number }>([
     {
-      $match: {
+      $match: scoped({
         userId,
         type: 'expense',
         isArchived: { $ne: true },
         date: { $gte: start, $lte: end },
-      },
+      }, scope),
     },
     {
       $group: {
@@ -89,15 +100,16 @@ export async function aggregateMonthlyTotals(
   db: Db,
   userId: string,
   start: Date,
-  end: Date
+  end: Date,
+  scope?: ScopeFilter
 ): Promise<MonthlyTotalsRow[]> {
   const col = db.collection<ITransaction>('transactions')
   const rows = await col.aggregate<{ year: number; month: number; income: number; expenses: number; savings: number }>([
     {
-      $match: {
+      $match: scoped({
         userId,
         date: { $gte: start, $lte: end },
-      },
+      }, scope),
     },
     {
       $group: {
@@ -196,13 +208,13 @@ const FALLBACK_COLORS = [
  * both /api/summary/range and /api/summary/export - one aggregation pass, shared
  * by both consumers so their numbers can never drift apart.
  */
-export async function buildRangeReport(db: Db, userId: string, months: MonthMeta[]): Promise<RangeReport> {
+export async function buildRangeReport(db: Db, userId: string, months: MonthMeta[], scope?: ScopeFilter): Promise<RangeReport> {
   const rangeStart = months[0].start
   const rangeEnd = months[months.length - 1].end
 
   const [totalsRows, categoryRows] = await Promise.all([
-    aggregateMonthlyTotals(db, userId, rangeStart, rangeEnd),
-    aggregateExpensesByCategoryAndMonth(db, userId, rangeStart, rangeEnd),
+    aggregateMonthlyTotals(db, userId, rangeStart, rangeEnd, scope),
+    aggregateExpensesByCategoryAndMonth(db, userId, rangeStart, rangeEnd, scope),
   ])
 
   const totalsByKey = new Map(totalsRows.map((r) => [`${r.year}-${r.month}`, r]))

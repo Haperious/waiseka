@@ -67,6 +67,7 @@ async function main() {
     mismatched: 0,
     missingCurrency: 0,
     orphanAccountRef: 0,
+    outsidePrimaryScopeSingle: 0,
   }
 
   for (const user of users) {
@@ -108,6 +109,12 @@ async function main() {
         mismatches[key] = (mismatches[key] ?? 0) + 1
       }
     }
+    // Phase 3 regression check: every summary endpoint now defaults to the primary
+    // currency's scope (currency == primary, or missing). For a single-currency user
+    // that's identical to the old unscoped result iff no transaction falls outside it.
+    const outsidePrimary = userTx.filter((t) => t.currency && t.currency !== primary).length
+    if (!isMulti) totals.outsidePrimaryScopeSingle += outsidePrimary
+
     const mismatchCount = Object.values(mismatches).reduce((a, b) => a + b, 0)
     totals.mismatched += mismatchCount
     totals.missingCurrency += missing
@@ -130,6 +137,7 @@ async function main() {
     console.log(`    missing currency:     ${missing} (imported: ${missingImported})`)
     console.log(`    mismatched vs acct:   ${mismatchCount}${mismatchCount ? '  → ' + fmtCounts(mismatches) : ''}`)
     console.log(`    orphan account ref:   ${orphan}`)
+    console.log(`    outside primary scope: ${outsidePrimary}${outsidePrimary && !isMulti ? '  ← summaries would change' : ''}`)
     console.log(`  Budgets: ${budgetCounts[userId] ?? 0}   Goals: ${goalCounts[userId] ?? 0}`)
     console.log(`  Cutoff:                 ${user.preferences?.cutoffMode ?? '(default)'} ${JSON.stringify(user.preferences?.cutoffDays ?? [])}`)
   }
@@ -143,6 +151,7 @@ async function main() {
   console.log(`  Mismatched vs owning account:  ${totals.mismatched}`)
   console.log(`  Missing currency:              ${totals.missingCurrency}`)
   console.log(`  Referencing a missing account: ${totals.orphanAccountRef}`)
+  console.log(`  Single-currency users' tx outside primary scope: ${totals.outsidePrimaryScopeSingle}  (0 = Phase 3 changes nothing for them)`)
 
 }
 

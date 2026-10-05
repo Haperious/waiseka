@@ -6,6 +6,7 @@ import { FREE_BUDGET_LIMIT, PREMIUM_BUDGET_LIMIT } from '@/lib/constants'
 import { ObjectId } from 'mongodb'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
+import { currencyScope, primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -34,6 +35,13 @@ export async function GET(req: NextRequest) {
   weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
   weekEnd.setUTCHours(23, 59, 59, 999)
 
+  // Budgets carry no currency until Phase 4, so they're primary-currency budgets:
+  // only primary-currency spending counts toward them.
+  const user = await db
+    .collection<IUser>('users')
+    .findOne({ _id: new ObjectId(session.user.id) as never }, { projection: { preferences: 1 } })
+  const primary = primaryCurrencyOf(user)
+
   const [monthlySpent, weeklySpent] = await Promise.all([
     db.collection('transactions').aggregate([
       {
@@ -41,6 +49,7 @@ export async function GET(req: NextRequest) {
           userId: session.user.id,
           type: 'expense',
           date: { $gte: monthStart, $lte: monthEnd },
+          ...currencyScope(primary, primary),
         },
       },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
@@ -51,6 +60,7 @@ export async function GET(req: NextRequest) {
           userId: session.user.id,
           type: 'expense',
           date: { $gte: weekStart, $lte: weekEnd },
+          ...currencyScope(primary, primary),
         },
       },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },

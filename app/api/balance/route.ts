@@ -6,6 +6,7 @@ import { isPremium, historyWindowStart } from '@/lib/tier'
 import { FREE_HISTORY_DAYS, PREMIUM_HISTORY_DAYS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
+import { primaryCurrencyOf, viewCurrencyFrom, withCurrencyScope } from '@/lib/services/currencyScope'
 
 /**
  * GET /api/balance
@@ -15,6 +16,7 @@ import type { IUser } from '@/lib/models/User'
  * not spent or earned in the budget sense).
  *
  * Query params:
+ *   currency?: PHP | QAR | USD - which currency's balance (default: primary currency).
  *   upTo?: ISO date string- if provided, only transactions up to (and including)
  *          this date are counted. Used by the transactions page to anchor the
  *          running balance at a page boundary.
@@ -37,6 +39,8 @@ export async function GET(req: NextRequest) {
     .collection<IUser>('users')
     .findOne({ _id: new ObjectId(session.user.id) as never })
   const userIsPremium = user ? isPremium(user) : false
+  const primary = primaryCurrencyOf(user)
+  const currency = viewCurrencyFrom(searchParams, primary)
 
   const historyDays = userIsPremium ? PREMIUM_HISTORY_DAYS : FREE_HISTORY_DAYS
   const windowStart = historyWindowStart(userIsPremium)
@@ -57,7 +61,7 @@ export async function GET(req: NextRequest) {
   const col = db.collection<ITransaction>('transactions')
   const [result] = await col
     .aggregate([
-      { $match: matchStage },
+      { $match: withCurrencyScope(matchStage, currency, primary) },
       {
         $group: {
           _id: null,
