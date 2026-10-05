@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
+import { isCurrencyCode } from '@/lib/services/currencyScope'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireVerifiedSession()
@@ -32,7 +33,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     update.openingBalance = body.openingBalance
   }
   if (body.currency !== undefined) {
-    if (!['PHP', 'QAR', 'USD'].includes(body.currency)) {
+    if (!isCurrencyCode(body.currency)) {
       return NextResponse.json({ error: 'currency must be PHP, QAR, or USD' }, { status: 400 })
     }
     update.currency = body.currency
@@ -62,6 +63,34 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (body.includeInTotal !== undefined) update.includeInTotal = !!body.includeInTotal
 
   const db = await getDb()
+
+  // An account's currency is locked once any transaction references it (PRD D4) -
+  // changing it would silently re-denominate history. Same-currency writes are no-ops.
+  if (update.currency !== undefined) {
+    const current = await db.collection<IAccount>('accounts').findOne(
+      { _id: new ObjectId(id), userId: session.user.id },
+      { projection: { currency: 1 } }
+    )
+    if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (current.currency !== update.currency) {
+      const accountObjectId = new ObjectId(id)
+      const linked = await db.collection('transactions').countDocuments({
+        userId: session.user.id,
+        $or: [
+          { accountId: accountObjectId },
+          { fromAccountId: accountObjectId },
+          { toAccountId: accountObjectId },
+        ],
+      }, { limit: 1 })
+      if (linked > 0) {
+        return NextResponse.json(
+          { error: "This account already has transactions, so its currency can't be changed. Create a new account in the other currency instead." },
+          { status: 409 }
+        )
+      }
+    }
+  }
+
   const account = await db.collection<IAccount>('accounts').findOneAndUpdate(
     { _id: new ObjectId(id), userId: session.user.id },
     { $set: update },

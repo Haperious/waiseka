@@ -3,6 +3,9 @@ import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { ITransaction } from '@/lib/models/Transaction'
+import type { IAccount } from '@/lib/models/Account'
+import type { IUser } from '@/lib/models/User'
+import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireVerifiedSession()
@@ -28,18 +31,33 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const db = await getDb()
 
   if (body.accountId !== undefined) {
+    let account: IAccount | null = null
     if (body.accountId === null) {
       update.accountId = null
     } else {
       if (!ObjectId.isValid(body.accountId)) {
         return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
       }
-      const account = await db.collection('accounts').findOne({
+      account = await db.collection<IAccount>('accounts').findOne({
         _id: new ObjectId(body.accountId),
         userId: session.user.id,
       })
       if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
       update.accountId = new ObjectId(body.accountId)
+    }
+
+    // Moving a transaction to another account moves it to that account's currency.
+    // Transfers carry their currency from fromAccountId and are left alone.
+    const existing = await db.collection<ITransaction>('transactions').findOne(
+      { _id: new ObjectId(id), userId: session.user.id },
+      { projection: { type: 1 } }
+    )
+    if (existing && existing.type !== 'transfer') {
+      const user = await db.collection<IUser>('users').findOne(
+        { _id: new ObjectId(session.user.id) as never },
+        { projection: { preferences: 1 } }
+      )
+      update.currency = resolveTransactionCurrency(account, primaryCurrencyOf(user))
     }
   }
   const transaction = await db.collection<ITransaction>('transactions').findOneAndUpdate(

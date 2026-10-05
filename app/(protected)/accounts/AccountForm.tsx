@@ -8,6 +8,8 @@ import { useToast } from '@/components/ui/Toast'
 import { useLanguage } from '@/context/LanguageContext'
 import { TranslationKey } from '@/lib/translations'
 import { Account } from '@/hooks/useAccounts'
+import { useCurrency } from '@/context/CurrencyContext'
+import { getAllCurrencies, CurrencyCode } from '@/lib/currency'
 
 const TYPE_KEYS: Record<Account['type'], TranslationKey> = {
   debit: 'account.typeDebit',
@@ -29,11 +31,14 @@ interface AccountFormProps {
 export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: AccountFormProps) {
   const { toast } = useToast()
   const { t } = useLanguage()
+  const { currency: primaryCurrency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     name: account?.name ?? '',
     institution: account?.institution ?? '',
     type: account?.type ?? 'debit',
+    // Only chosen on create - an account's currency is locked once it has transactions
+    currency: primaryCurrency as CurrencyCode,
     openingBalance: account?.openingBalance != null ? String(account.openingBalance) : '0',
     creditLimit: account?.creditLimit != null ? String(account.creditLimit) : '',
     dueDay: account?.dueDay != null ? String(account.dueDay) : '',
@@ -44,6 +49,11 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
   const typeOptions = (Object.keys(TYPE_KEYS) as Account['type'][]).map((value) => ({
     value,
     label: t(TYPE_KEYS[value]),
+  }))
+
+  const currencyOptions = getAllCurrencies().map((c) => ({
+    value: c.code,
+    label: `${c.flag} ${c.code} (${c.symbol})`,
   }))
 
   const validate = () => {
@@ -77,6 +87,7 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
         type: form.type,
         openingBalance: form.openingBalance === '' ? 0 : Number(form.openingBalance),
       }
+      if (!account) payload.currency = form.currency
       if (form.type === 'credit') {
         payload.creditLimit = form.creditLimit ? Number(form.creditLimit) : null
         payload.dueDay = form.dueDay ? Number(form.dueDay) : null
@@ -126,6 +137,14 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
         onValueChange={(v) => setForm({ ...form, type: v as Account['type'] })}
         options={typeOptions}
       />
+      {!account && (
+        <Select
+          label="Currency"
+          value={form.currency}
+          onValueChange={(v) => setForm({ ...form, currency: v as CurrencyCode })}
+          options={currencyOptions}
+        />
+      )}
       <Input
         label="Institution (optional)"
         placeholder="e.g. Banco de Oro"

@@ -6,6 +6,7 @@ import { isPremium } from '@/lib/tier'
 import { FREE_ACCOUNT_LIMIT } from '@/lib/constants'
 import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
+import { isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
 import { getAccountActivityMap, computeAssetBalance, computeOutstanding } from '@/lib/services/accountBalance'
 
 export async function GET() {
@@ -55,6 +56,9 @@ export async function POST(req: NextRequest) {
   if (!ACCOUNT_TYPES.includes(type)) {
     return NextResponse.json({ error: `type must be one of: ${ACCOUNT_TYPES.join(', ')}` }, { status: 400 })
   }
+  if (currency !== undefined && currency !== null && !isCurrencyCode(currency)) {
+    return NextResponse.json({ error: 'currency must be PHP, QAR, or USD' }, { status: 400 })
+  }
   if (openingBalance !== undefined && (typeof openingBalance !== 'number' || !isFinite(openingBalance))) {
     return NextResponse.json({ error: 'openingBalance must be a number' }, { status: 400 })
   }
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest) {
     institution: institution ?? undefined,
     type,
     openingBalance: openingBalance ?? 0,
-    currency: currency ?? user.preferences?.currency ?? 'PHP',
+    currency: currency ?? primaryCurrencyOf(user),
     creditLimit: type === 'credit' ? (creditLimit ?? null) : null,
     dueDay: type === 'credit' ? (dueDay ?? null) : null,
     // Low-balance alerts only make sense for asset accounts; credit uses utilization instead.

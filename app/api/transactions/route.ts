@@ -5,8 +5,10 @@ import { getDb } from '@/lib/mongodb'
 import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
+import type { IAccount } from '@/lib/models/Account'
 import { parseTransactionDate } from '@/lib/utils'
 import { checkSpendingAlert } from '@/lib/notifications'
+import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { amount, type, category, description, date, tags, isRecurring, currency, accountId } = body
+  const { amount, type, category, description, date, tags, isRecurring, accountId } = body
 
   if (!type || !category || !date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -96,8 +98,9 @@ export async function POST(req: NextRequest) {
   const db = await getDb()
 
   // Verify the account belongs to this user before linking it - never trust a client-supplied id blindly
+  let account: IAccount | null = null
   if (accountId) {
-    const account = await db.collection('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
+    account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
     if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
   }
 
@@ -106,8 +109,9 @@ export async function POST(req: NextRequest) {
     { _id: new ObjectId(session.user.id) as never },
     { projection: { name: 1, email: 1, preferences: 1 } }
   )
-  const resolvedCurrency: ITransaction['currency'] =
-    currency ?? postUser?.preferences?.currency ?? 'PHP'
+  // Currency always comes from the account (or the primary currency when unassigned),
+  // never from the client - a PHP account's expense must never be tagged QAR.
+  const resolvedCurrency = resolveTransactionCurrency(account, primaryCurrencyOf(postUser))
 
   const now = new Date()
   const result = await db.collection<ITransaction>('transactions').insertOne({

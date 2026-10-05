@@ -5,8 +5,10 @@ import { getDb } from '@/lib/mongodb'
 import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
+import type { IAccount } from '@/lib/models/Account'
 import { parseTransactionDate } from '@/lib/utils'
 import { checkSpendingAlert } from '@/lib/notifications'
+import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 
 interface BulkTransactionItem {
   amount: number
@@ -15,7 +17,6 @@ interface BulkTransactionItem {
   description?: string
   date: string
   isRecurring?: boolean
-  currency?: string
 }
 
 interface ValidationError {
@@ -69,8 +70,9 @@ export async function POST(req: NextRequest) {
   const db = await getDb()
 
   // Verify the shared account belongs to this user before linking it to every row
+  let account: IAccount | null = null
   if (accountId) {
-    const account = await db.collection('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
+    account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
     if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
   }
 
@@ -82,22 +84,17 @@ export async function POST(req: NextRequest) {
   const userIsPremium = user ? isPremium(user) : false
   const retentionWindowStart = historyWindowStart(userIsPremium)
 
-  const ALLOWED_CURRENCIES: ITransaction['currency'][] = ['PHP', 'QAR', 'USD']
-  const rawCurrency = transactions[0].currency ?? user?.preferences?.currency ?? 'PHP'
-  const resolvedCurrency: ITransaction['currency'] = ALLOWED_CURRENCIES.includes(rawCurrency as ITransaction['currency'])
-    ? (rawCurrency as ITransaction['currency'])
-    : 'PHP'
+  // Every row shares the batch's account, so they share its currency (or the primary
+  // currency when unassigned). Client-sent per-row currencies are ignored.
+  const resolvedCurrency = resolveTransactionCurrency(account, primaryCurrencyOf(user))
 
   const now = new Date()
 
   const docs = transactions.map((t) => {
-    const txCurrency = ALLOWED_CURRENCIES.includes(t.currency as ITransaction['currency'])
-      ? (t.currency as ITransaction['currency'])
-      : resolvedCurrency
     return {
       userId: session.user.id,
       amount: t.amount,
-      currency: txCurrency,
+      currency: resolvedCurrency,
       type: t.type,
       category: t.category,
       description: t.description ?? '',
