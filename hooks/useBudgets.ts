@@ -9,6 +9,8 @@ export interface Budget {
   category: string
   limit: number
   period: 'monthly' | 'weekly'
+  /** Always filled in by GET /api/budgets (missing in the DB = primary). Only same-currency expenses count. */
+  currency?: 'PHP' | 'QAR' | 'USD'
   spent: number
   color?: string
   createdAt: string

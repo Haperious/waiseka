@@ -131,7 +131,8 @@ export async function POST(req: NextRequest) {
       expenseByCategory.set(t.category, entry)
     }
     for (const [category, { total, merchant }] of expenseByCategory) {
-      checkSpendingAlert(session.user.id, category, merchant, total, db, user)
+      // Every row shares the batch's account, so one currency for the whole batch
+      checkSpendingAlert(session.user.id, category, resolvedCurrency, merchant, total, db, user)
         .catch((err) => console.error('[transactions/bulk] spending alert error:', err))
     }
   }

@@ -7,6 +7,8 @@ import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Budget } from '@/hooks/useBudgets'
 import { useCategories } from '@/hooks/useCategories'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
+import { getAllCurrencies, type CurrencyCode } from '@/lib/currency'
 
 const COLORS = ['#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
@@ -26,8 +28,11 @@ interface BudgetFormProps {
 export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: BudgetFormProps) {
   const { toast } = useToast()
   const { categories } = useCategories()
+  const { viewCurrency, currencies, isMultiCurrency } = useViewCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
+    // New budgets default to the currency being viewed (PRD Phase 4)
+    currency: (budget?.currency ?? viewCurrency) as CurrencyCode,
     category: budget?.category ?? '',
     limit: budget?.limit ? String(budget.limit) : '',
     period: budget?.period ?? 'monthly',
@@ -55,7 +60,12 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, limit: Number(form.limit) }),
+        // Single-currency users never pick one: the server defaults to the primary
+        body: JSON.stringify({
+          ...form,
+          limit: Number(form.limit),
+          currency: isMultiCurrency ? form.currency : undefined,
+        }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -83,8 +93,22 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
     [categories]
   )
 
+  const currencyInfo = new Map(getAllCurrencies().map((c) => [c.code, c]))
+  const currencyOptions = currencies.map((code) => ({
+    value: code,
+    label: `${currencyInfo.get(code)?.flag ?? ''} ${code} (${currencyInfo.get(code)?.symbol ?? ''})`,
+  }))
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {isMultiCurrency && (
+        <Select
+          label="Currency"
+          value={form.currency}
+          onValueChange={(v) => setForm({ ...form, currency: v as CurrencyCode })}
+          options={currencyOptions}
+        />
+      )}
       <Select
         label="Category"
         value={form.category}

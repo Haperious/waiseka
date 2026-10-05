@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { IBudget } from '@/lib/models/Budget'
+import { isCurrencyCode } from '@/lib/services/currencyScope'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireVerifiedSession()
@@ -27,6 +28,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     update.period = body.period
   }
   if (body.color !== undefined) update.color = body.color
+  // Safe to change: spent is derived on read, never stored
+  if (body.currency !== undefined) {
+    if (!isCurrencyCode(body.currency)) {
+      return NextResponse.json({ error: 'currency must be PHP, QAR, or USD' }, { status: 400 })
+    }
+    update.currency = body.currency
+  }
 
   const db = await getDb()
   const budget = await db.collection<IBudget>('budgets').findOneAndUpdate(

@@ -103,9 +103,9 @@ const NO_BUDGETS: Budget[] = []
 
 // ── Main dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  // Summaries (cutoff, monthly totals, 3-month band) are per view currency. Budgets have
-  // no currency until Phase 4, so they stay in the primary.
-  const { formatAmount: formatPrimary } = useCurrency()
+  // Everything below the Total Money card - cutoff, monthly totals, budgets, the
+  // 3-month band - is in the view currency (always the primary for single-currency users).
+  const { currency: primary } = useCurrency()
   const { viewCurrency, formatView: formatAmount } = useViewCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
@@ -221,7 +221,11 @@ export default function DashboardPage() {
   }, [selectedMonth, selectedYear])
 
   const { data: analyticsSummary = null, refetch: loadAnalyticsSummary } = useResource(fetchAnalyticsSummary)
-  const { data: budgets = NO_BUDGETS, loading: budgetsLoading, refetch: loadBudgets } = useResource(fetchBudgets)
+  const { data: allBudgets = NO_BUDGETS, loading: budgetsLoading, refetch: loadBudgets } = useResource(fetchBudgets)
+  const budgets = useMemo(
+    () => allBudgets.filter((b) => (b.currency ?? primary) === viewCurrency),
+    [allBudgets, primary, viewCurrency],
+  )
 
   // Load pending feature announcements - at most once per browser session, guarded by a
   // per-user sessionStorage flag. The flag is a presentation-layer guard only; the
@@ -439,7 +443,7 @@ export default function DashboardPage() {
               </p>
             ) : (
               budgets.slice(0, 6).map(b => (
-                <BudgetBar key={b._id} budget={b} formatAmount={formatPrimary} />
+                <BudgetBar key={b._id} budget={b} formatAmount={formatAmount} />
               ))
             )}
           </div>

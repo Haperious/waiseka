@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus, Pencil, Trash2, Lock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useBudgets, Budget } from '@/hooks/useBudgets'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
 import { useCurrency } from '@/context/CurrencyContext'
+import ViewCurrencySwitcher from '@/components/ViewCurrencySwitcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { TranslationKey } from '@/lib/translations'
 import { useToast } from '@/components/ui/Toast'
@@ -210,10 +212,17 @@ function BudgetCard({
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function BudgetsPage() {
-  const { formatAmount } = useCurrency()
+  // One currency at a time: budgets, their totals and amounts are all in the view
+  // currency (single-currency users: always their primary, so nothing changes).
+  const { viewCurrency, formatView: formatAmount } = useViewCurrency()
+  const { currency: primary } = useCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
-  const { budgets, loading, deleteBudget, refetch } = useBudgets()
+  const { budgets: allBudgets, loading, deleteBudget, refetch } = useBudgets()
+  const budgets = useMemo(
+    () => allBudgets.filter((b) => (b.currency ?? primary) === viewCurrency),
+    [allBudgets, viewCurrency, primary],
+  )
 
   // Refresh spent totals when the mobile quick-add sheet saves a transaction
   useEffect(() => onTransactionSaved(refetch), [refetch])
@@ -252,10 +261,13 @@ export default function BudgetsPage() {
             {budgets.length} {t('budget.title').toLowerCase()} {t('budget.active')}
           </p>
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
-          <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
-          <span className="hidden sm:inline">{t('budget.add')}</span>
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <ViewCurrencySwitcher />
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
+            <span className="hidden sm:inline">{t('budget.add')}</span>
+          </Button>
+        </div>
       </div>
 
       {/* ── Free-tier cap banner ─────────────────────────────────────────────── */}

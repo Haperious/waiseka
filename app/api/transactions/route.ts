@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
   const transaction = await db.collection<ITransaction>('transactions').findOne({ _id: result.insertedId })
 
   if (type === 'expense' && postUser) {
-    checkSpendingAlert(session.user.id, category, description ?? category, amount, db, postUser).catch(
+    checkSpendingAlert(session.user.id, category, resolvedCurrency, description ?? category, amount, db, postUser).catch(
       (err) => console.error('[transactions] spending alert error:', err)
     )
   }

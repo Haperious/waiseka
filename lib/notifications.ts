@@ -4,6 +4,8 @@ import { Db } from 'mongodb'
 import { sendSpendingAlertEmail } from '@/lib/email'
 import { isPremium } from '@/lib/tier'
 import { formatCurrency } from '@/lib/utils'
+import { getCurrencySymbol, type CurrencyCode } from '@/lib/currency'
+import { currencyScope, primaryCurrencyOf } from '@/lib/services/currencyScope'
 import type { IUser } from '@/lib/models/User'
 import type { IBudget } from '@/lib/models/Budget'
 import type { ITransaction } from '@/lib/models/Transaction'
@@ -32,19 +34,29 @@ function initFirebase() {
 
 /**
  * Fire-and-forget spending alert: checks if a new expense crossed the budget
- * limit for its category and sends a one-time email alert per calendar month.
- * Must be called after the transaction is persisted. For a batch insert, call once
- * per category with the batch's combined amount as `triggerAmount`.
+ * limit for its (category, currency) and sends a one-time email alert per
+ * category, currency and calendar month. Must be called after the transaction is
+ * persisted. For a batch insert, call once per (category, currency) with the
+ * batch's combined amount as `triggerAmount`.
+ *
+ * Everything is scoped to `currency`: the budget it matches, the spending it sums,
+ * the "surplus" budget it suggests, and the symbol it formats with. A PHP expense
+ * can never trip a QAR budget.
  */
 export async function checkSpendingAlert(
   userId: string,
   category: string,
+  currency: CurrencyCode,
   merchantName: string,
   triggerAmount: number,
   db: Db,
   user: Pick<IUser, 'name' | 'email' | 'preferences'>,
 ): Promise<void> {
-  const budget = await db.collection<IBudget>('budgets').findOne({ userId, category })
+  const primary = primaryCurrencyOf(user)
+  // Same field name on budgets and transactions, so the one scope rule serves both
+  const scope = currencyScope(currency, primary)
+
+  const budget = await db.collection<IBudget>('budgets').findOne({ userId, category, ...scope })
   if (!budget) return
 
   const now = new Date()
@@ -53,14 +65,14 @@ export async function checkSpendingAlert(
 
   const [spentAgg, recentTxns, allBudgetSpent] = await Promise.all([
     db.collection<ITransaction>('transactions').aggregate([
-      { $match: { userId, category, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
+      { $match: { userId, category, type: 'expense', date: { $gte: monthStart, $lte: monthEnd }, ...scope } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]).toArray(),
     db.collection<ITransaction>('transactions')
-      .find({ userId, category, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } })
+      .find({ userId, category, type: 'expense', date: { $gte: monthStart, $lte: monthEnd }, ...scope })
       .sort({ date: -1 }).limit(3).toArray(),
     db.collection<ITransaction>('transactions').aggregate([
-      { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
+      { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd }, ...scope } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
     ]).toArray(),
   ])
@@ -72,20 +84,22 @@ export async function checkSpendingAlert(
   const previousTotal = totalSpent - triggerAmount
   if (previousTotal >= budget.limit) return
 
-  // Dedup: one alert per category per calendar month
+  // Dedup: one alert per (category, currency) per calendar month. Logs from before
+  // multi-currency have no currency and count as the primary's.
   const logMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
   const alreadyAlerted = await db.collection<IEmailLog>('email_logs').findOne({
     userId,
     type: 'spending_alert',
     category,
     sentAt: { $gte: monthStart, $lt: logMonthEnd },
+    ...scope,
   })
   if (alreadyAlerted) return
 
-  const sym = user.preferences?.currencySymbol ?? '₱'
+  const sym = getCurrencySymbol(currency)
   const fmt = (n: number) => formatCurrency(n, sym)
 
-  const allBudgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
+  const allBudgets = await db.collection<IBudget>('budgets').find({ userId, ...scope }).toArray()
   const spentMap = Object.fromEntries(
     allBudgetSpent.map((r) => [(r as { _id: string; total: number })._id, (r as { _id: string; total: number }).total])
   )
@@ -117,7 +131,7 @@ export async function checkSpendingAlert(
     surplusCategoryRemaining: surplus ? fmt(surplus.limit - (spentMap[surplus.category] ?? 0)) : fmt(0),
   })
 
-  await logEmail(db, { userId, type: 'spending_alert', category, sentAt: now })
+  await logEmail(db, { userId, type: 'spending_alert', category, currency, sentAt: now })
 }
 
 /**

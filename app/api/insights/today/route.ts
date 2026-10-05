@@ -7,7 +7,7 @@
  *
  * Multi-currency: the feed covers every currency at once (an item is relevant whatever
  * the view currency), but each item is computed and formatted in its own currency -
- * budgets in the primary (they have no currency until Phase 4), credit cards and planned
+ * budgets in their own currency (missing = primary), credit cards and planned
  * transfers in their account's currency, with that currency's cutoff period.
  */
 
@@ -16,7 +16,7 @@ import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { resolveCutoffPeriod, cutoffPrefsFor } from '@/lib/services/cutoff'
-import { currencyScope, primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { primaryCurrencyOf } from '@/lib/services/currencyScope'
 import { getAccountActivityMap, computeOutstanding, nextDueDate } from '@/lib/services/accountBalance'
 import { formatAmount } from '@/lib/currency'
 import type { IBudget } from '@/lib/models/Budget'
@@ -59,16 +59,17 @@ export async function GET() {
   if (budgets.length > 0) {
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
-    const spentRows = await db.collection<ITransaction>('transactions').aggregate<{ category: string; total: number }>([
-      { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd }, ...currencyScope(primary, primary) } },
-      { $group: { _id: '$category', total: { $sum: '$amount' } } },
-      { $project: { _id: 0, category: '$_id', total: 1 } },
+    // Spent per (currency, category); a missing currency is the primary (same rule as /api/budgets)
+    const spentRows = await db.collection<ITransaction>('transactions').aggregate<{ _id: { category: string; currency: string }; total: number }>([
+      { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
+      { $group: { _id: { category: '$category', currency: { $ifNull: ['$currency', primary] } }, total: { $sum: '$amount' } } },
     ]).toArray()
-    const spentMap = new Map(spentRows.map((r) => [r.category, r.total]))
+    const spentMap = new Map(spentRows.map((r) => [`${r._id.currency}|${r._id.category}`, r.total]))
 
     for (const budget of budgets) {
       if (budget.period !== 'monthly') continue // weekly budgets are noisy for a daily digest
-      const spent = spentMap.get(budget.category) ?? 0
+      const currency = budget.currency ?? primary
+      const spent = spentMap.get(`${currency}|${budget.category}`) ?? 0
       const pct = budget.limit > 0 ? (spent / budget.limit) * 100 : 0
       if (pct < BUDGET_NEAR_LIMIT_PCT) continue
 
@@ -80,8 +81,8 @@ export async function GET() {
         title: pct >= 100 ? `${budget.category} is over` : `${budget.category} is close to its limit`,
         body:
           pct >= 100
-            ? `${formatAmount(spent, primary)} spent on a ${formatAmount(budget.limit, primary)} ceiling - ${formatAmount(over, primary)} over.`
-            : `${formatAmount(spent, primary)} of ${formatAmount(budget.limit, primary)} spent this month.`,
+            ? `${formatAmount(spent, currency)} spent on a ${formatAmount(budget.limit, currency)} ceiling - ${formatAmount(over, currency)} over.`
+            : `${formatAmount(spent, currency)} of ${formatAmount(budget.limit, currency)} spent this month.`,
         href: '/budgets',
       })
     }

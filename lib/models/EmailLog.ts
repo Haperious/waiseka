@@ -17,6 +17,8 @@ export interface IEmailLog {
   type: EmailLogType
   /** Populated for spending_alert- enables per-category dedup within a month */
   category?: string
+  /** Populated for spending_alert - dedup is per (category, currency, month). Missing on alerts sent before multi-currency = primary. */
+  currency?: string
   sentAt: Date
 }
 

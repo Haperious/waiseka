@@ -12,15 +12,24 @@
  *     - a QAR and a PHP expense on the same day (mobile day header shows two nets)
  *     - a QAR → QAR transfer
  *     - an unassigned row with no currency (counts as the primary, QAR)
+ * - Budgets (monthly): Food & Dining in QAR (500, already over: 505 spent) and in PHP
+ *   (3,000, with 1,500 spent), Shopping in PHP (1,000, already over: 1,200 spent).
+ *   One more ₱2,000 Food & Dining expense on BDO Savings pushes the PHP Food budget over
+ *   and should send exactly one alert, in ₱, without touching the QAR Food budget.
  *
  * SAFETY:
  * - Defaults to DRY RUN. Pass --execute to write.
  * - Refuses to create if the user already exists.
  * - --cleanup --execute deletes the user and everything it owns.
  * - The password is random per run and printed once.
+ * - The user is tagged `seedTag: 'multicurrency-test'`; cleanup finds it by the tag, so it
+ *   works whatever email was used.
+ * - --email=<address> uses a real inbox instead of the fake default - needed to receive the
+ *   spending alert, which is emailed regardless of notification settings. A Gmail
+ *   plus-address (you+mctest@gmail.com) keeps it separate from your real account.
  *
  * RUN:
- *   Create:  npx tsx --env-file=.env scripts/seed-multicurrency-user.ts --execute
+ *   Create:  npx tsx --env-file=.env scripts/seed-multicurrency-user.ts --execute [--email=you+mctest@gmail.com]
  *   Delete:  npx tsx --env-file=.env scripts/seed-multicurrency-user.ts --cleanup --execute
  */
 
@@ -32,13 +41,16 @@ import { CURRENCY_SYMBOL_MAP } from '../lib/models/User'
 import { DEFAULT_CATEGORIES, type ICategory } from '../lib/models/Category'
 import type { IAccount } from '../lib/models/Account'
 import type { ITransaction } from '../lib/models/Transaction'
+import type { IBudget } from '../lib/models/Budget'
 
-const TEST_EMAIL = 'multicurrency-test@waiseka.local'
+const DEFAULT_EMAIL = 'multicurrency-test@waiseka.local'
+const SEED_TAG = 'multicurrency-test'
 const OWNED_COLLECTIONS = ['accounts', 'categories', 'transactions', 'budgets', 'goals', 'plannedTransfers', 'notifications', 'email_logs']
 
 async function cleanup(execute: boolean) {
   const db = await getDb()
-  const user = await db.collection('users').findOne({ email: TEST_EMAIL })
+  // Untagged match on the default email covers users seeded before the tag existed
+  const user = await db.collection('users').findOne({ $or: [{ seedTag: SEED_TAG }, { email: DEFAULT_EMAIL }] })
   if (!user) {
     console.log('No test user found - nothing to clean up.')
     return
@@ -58,16 +70,16 @@ async function cleanup(execute: boolean) {
   console.log('Test user and all related data deleted.')
 }
 
-async function create(execute: boolean) {
+async function create(execute: boolean, email: string) {
   const db = await getDb()
 
-  const existing = await db.collection('users').findOne({ email: TEST_EMAIL })
+  const existing = await db.collection('users').findOne({ $or: [{ seedTag: SEED_TAG }, { email }, { email: DEFAULT_EMAIL }] })
   if (existing) {
-    console.log(`Test user already exists (${existing._id.toString()}). Run with --cleanup first to reset it.`)
+    console.log(`A test user already exists (${existing._id.toString()}). Run with --cleanup first.`)
     return
   }
 
-  console.log(`Will create test user "${TEST_EMAIL}" (primary QAR) with QAR + PHP accounts and transactions.`)
+  console.log(`Will create test user "${email}" (primary QAR) with QAR + PHP accounts, transactions and budgets.`)
   if (!execute) {
     console.log('\nDRY RUN - no writes performed. Re-run with --execute to create.')
     return
@@ -79,7 +91,8 @@ async function create(execute: boolean) {
 
   const userResult = await db.collection('users').insertOne({
     name: 'Multi-currency Test',
-    email: TEST_EMAIL,
+    email,
+    seedTag: SEED_TAG,
     password: await bcrypt.hash(password, 12),
     avatar: null,
     role: 'user',
@@ -117,10 +130,13 @@ async function create(execute: boolean) {
   ]
   await db.collection<IAccount>('accounts').insertMany(accounts)
 
+  // Clamped to the 1st of this month: monthly budgets only count this month's spending,
+  // so a row that slipped into last month would silently not count.
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   function daysAgo(n: number) {
     const d = new Date(now)
     d.setDate(d.getDate() - n)
-    return d
+    return d < monthStart ? monthStart : d
   }
   const tx = (
     amount: number, currency: ITransaction['currency'], type: ITransaction['type'], category: string,
@@ -139,6 +155,8 @@ async function create(execute: boolean) {
     // Same day, two currencies - the mobile day header should show two separate nets
     tx(85, 'QAR', 'expense', 'Food & Dining', 'Karak + lunch', 2, qarCashId),
     tx(1200, 'PHP', 'expense', 'Shopping', 'Pasalubong order', 2, phpBankId),
+    // Puts PHP Food at ₱1,500 of ₱3,000, so a ₱2,000 Food expense crosses the limit
+    tx(1500, 'PHP', 'expense', 'Food & Dining', 'Family dinner (PH)', 1, phpBankId),
     {
       ...tx(1000, 'QAR', 'transfer', 'Transfer', 'QNB Payroll → QAR Cash', 5, null),
       fromAccountId: qarBankId, toAccountId: qarCashId, countsAsSavings: false,
@@ -152,15 +170,23 @@ async function create(execute: boolean) {
     date: daysAgo(1), tags: [], isRecurring: false, accountId: null, isArchived: false, createdAt: now, updatedAt: now,
   })
 
-  console.log(`\nTest user created: ${TEST_EMAIL}`)
+  const budgetBase = { userId, period: 'monthly', spent: 0, createdAt: now, updatedAt: now }
+  await db.collection<IBudget>('budgets').insertMany([
+    { ...budgetBase, _id: new ObjectId(), category: 'Food & Dining', limit: 500, currency: 'QAR', color: '#f97316' },
+    { ...budgetBase, _id: new ObjectId(), category: 'Food & Dining', limit: 3000, currency: 'PHP', color: '#f59e0b' },
+    { ...budgetBase, _id: new ObjectId(), category: 'Shopping', limit: 1000, currency: 'PHP', color: '#ec4899' },
+  ] as IBudget[])
+
+  console.log(`\nTest user created: ${email}`)
   console.log(`Password (shown once): ${password}`)
   console.log('Run with --cleanup --execute when you are done testing.')
 }
 
 async function main() {
   const isExecute = process.argv.includes('--execute')
+  const email = process.argv.find((a) => a.startsWith('--email='))?.slice('--email='.length) || DEFAULT_EMAIL
   if (process.argv.includes('--cleanup')) await cleanup(isExecute)
-  else await create(isExecute)
+  else await create(isExecute, email)
 }
 
 main()

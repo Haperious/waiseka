@@ -6,7 +6,7 @@ import { FREE_BUDGET_LIMIT, PREMIUM_BUDGET_LIMIT } from '@/lib/constants'
 import { ObjectId } from 'mongodb'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
-import { currencyScope, primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -35,45 +35,35 @@ export async function GET(req: NextRequest) {
   weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
   weekEnd.setUTCHours(23, 59, 59, 999)
 
-  // Budgets carry no currency until Phase 4, so they're primary-currency budgets:
-  // only primary-currency spending counts toward them.
+  // Each budget only counts expenses in its own currency (a budget or transaction with
+  // no currency is in the primary). Spent is grouped by (currency, category) in one pass
+  // per period, with missing currencies folded into the primary - the same rule as currencyScope.
   const user = await db
     .collection<IUser>('users')
     .findOne({ _id: new ObjectId(session.user.id) as never }, { projection: { preferences: 1 } })
   const primary = primaryCurrencyOf(user)
 
-  const [monthlySpent, weeklySpent] = await Promise.all([
-    db.collection('transactions').aggregate([
-      {
-        $match: {
-          userId: session.user.id,
-          type: 'expense',
-          date: { $gte: monthStart, $lte: monthEnd },
-          ...currencyScope(primary, primary),
-        },
-      },
-      { $group: { _id: '$category', total: { $sum: '$amount' } } },
-    ]).toArray(),
-    db.collection('transactions').aggregate([
-      {
-        $match: {
-          userId: session.user.id,
-          type: 'expense',
-          date: { $gte: weekStart, $lte: weekEnd },
-          ...currencyScope(primary, primary),
-        },
-      },
-      { $group: { _id: '$category', total: { $sum: '$amount' } } },
-    ]).toArray(),
-  ])
+  const spentBy = (start: Date, end: Date) =>
+    db.collection('transactions').aggregate<{ _id: { category: string; currency: string }; total: number }>([
+      { $match: { userId: session.user.id, type: 'expense', date: { $gte: start, $lte: end } } },
+      { $group: { _id: { category: '$category', currency: { $ifNull: ['$currency', primary] } }, total: { $sum: '$amount' } } },
+    ]).toArray()
 
-  const monthlyMap = Object.fromEntries(monthlySpent.map((r) => [r._id, r.total]))
-  const weeklyMap = Object.fromEntries(weeklySpent.map((r) => [r._id, r.total]))
+  const [monthlySpent, weeklySpent] = await Promise.all([spentBy(monthStart, monthEnd), spentBy(weekStart, weekEnd)])
 
-  const budgetsWithSpent = budgets.map((b) => ({
-    ...b,
-    spent: b.period === 'weekly' ? (weeklyMap[b.category] ?? 0) : (monthlyMap[b.category] ?? 0),
-  }))
+  const key = (currency: string, category: string) => `${currency}|${category}`
+  const monthlyMap = new Map(monthlySpent.map((r) => [key(r._id.currency, r._id.category), r.total]))
+  const weeklyMap = new Map(weeklySpent.map((r) => [key(r._id.currency, r._id.category), r.total]))
+
+  const budgetsWithSpent = budgets.map((b) => {
+    const currency = b.currency ?? primary
+    const k = key(currency, b.category)
+    return {
+      ...b,
+      currency,
+      spent: (b.period === 'weekly' ? weeklyMap.get(k) : monthlyMap.get(k)) ?? 0,
+    }
+  })
 
   return NextResponse.json(budgetsWithSpent)
 }
@@ -83,16 +73,19 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { category, limit, period, color } = body
+  const { category, limit, period, color, currency } = body
 
   if (!category || !limit) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+  if (currency !== undefined && !isCurrencyCode(currency)) {
+    return NextResponse.json({ error: 'currency must be PHP, QAR, or USD' }, { status: 400 })
   }
 
   const now = new Date()
   const db = await getDb()
 
-  // -- Tier gate: free users capped at FREE_BUDGET_LIMIT, premium at PREMIUM_BUDGET_LIMIT
+  // -- Tier gate (PRD D6: budgets in every currency share one limit): free users capped at FREE_BUDGET_LIMIT, premium at PREMIUM_BUDGET_LIMIT
   const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
@@ -115,6 +108,7 @@ export async function POST(req: NextRequest) {
     category,
     limit,
     period: period ?? 'monthly',
+    currency: currency ?? primaryCurrencyOf(user),
     spent: 0,
     color,
     createdAt: now,
