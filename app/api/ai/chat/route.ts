@@ -6,6 +6,8 @@ import { getSettings } from '@/lib/models/GlobalSettings'
 import { aiGate } from '@/lib/ai-gate'
 import { buildFinancialProfile, buildChatMessages, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
+import { getUserCurrencies, primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { summarizeByCurrency, otherCurrencyBlock, MULTI_CURRENCY_RULE } from '@/lib/services/aiContext'
 
 export async function POST(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -31,8 +33,29 @@ export async function POST(req: NextRequest) {
   const gateError = aiGate(user, settings)
   if (gateError) return gateError
 
+  // Multi-currency users get this month's figures per currency, each labelled, so a
+  // question like "my PHP spending" is answered from PHP-only numbers. Single-currency
+  // users' prompt is unchanged.
+  const primary = primaryCurrencyOf(user)
+  const userId = user._id.toString()
+  const currencies = await getUserCurrencies(db, userId, primary)
+  let profileSummary = {}
+  let currencyContext: string[] = []
+  if (currencies.length > 1) {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const [primarySummary, ...others] = await summarizeByCurrency(db, userId, primary, monthStart)
+    profileSummary = {
+      totalIncome: primarySummary.income,
+      totalExpenses: primarySummary.expenses,
+      topCategories: primarySummary.topCategories,
+    }
+    currencyContext = [...others.map((s) => otherCurrencyBlock(s)), MULTI_CURRENCY_RULE]
+  }
+
   const systemPrompt = [
-    buildFinancialProfile(user, {}),
+    buildFinancialProfile(user, profileSummary),
+    ...currencyContext,
     "You are a helpful financial assistant. Answer questions based on the user's budget data.",
   ].join('\n\n')
 

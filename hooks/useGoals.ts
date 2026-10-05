@@ -9,6 +9,8 @@ export interface Goal {
   title: string
   targetAmount: number
   savedAmount: number
+  /** Missing = the user's primary currency. */
+  currency?: "PHP" | "QAR" | "USD"
   deadline: string
   priority: "low" | "medium" | "high"
   status: "active" | "completed" | "paused"

@@ -1,0 +1,131 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`single-currency email HTML > budget reminder 1`] = `
+"<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="color-scheme" content="light"><title>Your October budget check-in</title><style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,900;1,900&family=DM+Mono:wght@400;500&display=swap');
+  body{margin:0;padding:0;background:#F7F6F0;-webkit-text-size-adjust:100%}
+  a{color:#16A34A}
+  @media only screen and (max-width:600px){
+    .wk-outer{padding:16px 0 !important}
+    .wk-px{padding-left:16px !important;padding-right:16px !important}
+    .wk-h1{font-size:26px !important}
+    .wk-stats td.wk-stat{display:block !important;width:auto !important;margin-bottom:8px !important}
+    .wk-stats td.wk-gap{display:none !important}
+    .wk-cta{width:100% !important}
+    .wk-cta td{display:block !important;padding:0 !important}
+    .wk-cta td.wk-cap{padding-top:10px !important}
+    .wk-btn{display:block !important;text-align:center !important}
+  }
+</style></head>
+<body style="margin:0;padding:0;background:#F7F6F0">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F6F0"><tr>
+<td class="wk-outer" align="center" style="padding:28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#FAFAF5;border:1px solid #E8E8E3;border-radius:16px;overflow:hidden;border-collapse:separate">
+    <tr><td class="wk-px" style="background:#111C14;padding:16px 32px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="width:28px;padding-right:10px"><img src="http://localhost:3000/brand/wk-icon-dark.png" width="28" height="28" alt="WaiseKa" style="display:block;border:0;border-radius:7px"></td>
+      <td style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.02em;color:#ECF4EE">WaiseKa</td>
+      <td align="right" style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9EC4A6">Budget check-in</td>
+    </tr></table>
+  </td></tr>
+    <tr><td class="wk-px" style="padding:36px 36px 4px"><p style="margin:0 0 10px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#16A34A">October · 16 days left</p>
+  <h1 class="wk-h1" style="margin:0;font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:32px;line-height:1.1;letter-spacing:-0.02em;color:#1A1A17">You've used 42% of <em style="font-style:italic;color:#16A34A">your October budget.</em></h1></td></tr>
+    <tr><td class="wk-px" style="padding:20px 36px 32px"><div style=""><p style="margin:0;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.7;color:#5A6350">Hi Justin, here's where your money stands with 16 days to go.</p></div><div style="margin-top:22px"><table class="wk-stats" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr>
+      <td class="wk-stat" valign="top" style="width:33%;background:#F7F6F0;border:1px solid #E8E8E3;border-left:3px solid #166534;border-radius:14px;padding:13px 14px">
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F;margin-bottom:4px">Income</div>
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#166534">﷼12,000.00</div>
+      </td><td class="wk-gap" style="width:10px;font-size:0">&nbsp;</td>
+      <td class="wk-stat" valign="top" style="width:33%;background:#F7F6F0;border:1px solid #E8E8E3;border-left:3px solid #B91C1C;border-radius:14px;padding:13px 14px">
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F;margin-bottom:4px">Spent</div>
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#B91C1C">﷼4,200.00</div>
+      </td><td class="wk-gap" style="width:10px;font-size:0">&nbsp;</td>
+      <td class="wk-stat" valign="top" style="width:33%;background:#F7F6F0;border:1px solid #E8E8E3;border-left:3px solid #16A34A;border-radius:14px;padding:13px 14px">
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F;margin-bottom:4px">Remaining</div>
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#16A34A">﷼7,800.00</div>
+      </td></tr></table></div><div style="margin-top:22px"><p style="margin:0 0 10px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F">By category</p><div style=""><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:7px"><tr>
+      <td style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;color:#1A1A17">Food &amp; Dining</td>
+      <td align="right" style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#B45309;white-space:nowrap">﷼400.00 / ﷼500.00 · 80%</td>
+    </tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F0EDE4;border-radius:999px;height:8px;border-collapse:separate"><tr><td style="width:80%;background:#B45309;height:8px;border-radius:999px;font-size:0;line-height:0">&nbsp;</td><td style="font-size:0;line-height:0">&nbsp;</td></tr></table></div><div style="margin-top:14px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:7px"><tr>
+      <td style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;color:#1A1A17">Transportation</td>
+      <td align="right" style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#16A34A;white-space:nowrap">﷼60.00 / ﷼300.00 · 20%</td>
+    </tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F0EDE4;border-radius:999px;height:8px;border-collapse:separate"><tr><td style="width:20%;background:#16A34A;height:8px;border-radius:999px;font-size:0;line-height:0">&nbsp;</td><td style="font-size:0;line-height:0">&nbsp;</td></tr></table></div></div><div style="margin-top:22px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4EBE0;border-radius:10px;border-collapse:separate"><tr>
+    <td valign="top" style="width:30px;padding:14px 12px 14px 16px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" style="width:30px;height:30px;background:#FAFAF5;border-radius:9px"><img src="http://localhost:3000/email-icons/trending-up-warning.png" width="15" height="15" alt="" style="display:block;border:0;margin:0 auto"></td></tr></table></td>
+    <td valign="middle" style="padding:14px 16px 14px 0;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.6;color:#1A1A17"><strong>Heads up:</strong> at your current pace, Food &amp; Dining will go over its limit by about ﷼150.00 before month-end.</td>
+  </tr></table></div><div style="margin-top:22px"><table class="wk-cta" role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td><a class="wk-btn" href="http://localhost:3000/budgets" style="display:inline-block;background-color:#166534;background-image:linear-gradient(135deg,#166534,#16A34A);color:#FFFFFF;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:700;padding:13px 26px;border-radius:12px;text-decoration:none;box-shadow:0 4px 20px rgba(22,163,74,0.35)">View my budget</a></td><td class="wk-cap" style="padding-left:14px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:12px;color:#A3A39F">Log today's expenses while you're there</td></tr></table></div></td></tr>
+    <tr><td class="wk-px" style="background:#F7F6F0;border-top:1px solid #E8E8E3;padding:20px 36px">
+    <p style="margin:0 0 10px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:600"><a href="http://localhost:3000/settings" style="color:#16A34A;text-decoration:none;margin-right:16px">Manage alerts</a><a href="http://localhost:3000/settings" style="color:#16A34A;text-decoration:none;margin-right:16px">Unsubscribe</a></p>
+    <p style="margin:0;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:11px;line-height:1.6;color:#A3A39F">You're receiving this as part of your monthly budget check-in.<br>WaiseKa · waiseka.app</p>
+  </td></tr>
+  </table>
+</td></tr></table>
+</body></html>"
+`;
+
+exports[`single-currency email HTML > monthly report 1`] = `
+"<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="color-scheme" content="light"><title>Your September 2026 financial report</title><style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,900;1,900&family=DM+Mono:wght@400;500&display=swap');
+  body{margin:0;padding:0;background:#F7F6F0;-webkit-text-size-adjust:100%}
+  a{color:#16A34A}
+  @media only screen and (max-width:600px){
+    .wk-outer{padding:16px 0 !important}
+    .wk-px{padding-left:16px !important;padding-right:16px !important}
+    .wk-h1{font-size:26px !important}
+    .wk-stats td.wk-stat{display:block !important;width:auto !important;margin-bottom:8px !important}
+    .wk-stats td.wk-gap{display:none !important}
+    .wk-cta{width:100% !important}
+    .wk-cta td{display:block !important;padding:0 !important}
+    .wk-cta td.wk-cap{padding-top:10px !important}
+    .wk-btn{display:block !important;text-align:center !important}
+  }
+</style></head>
+<body style="margin:0;padding:0;background:#F7F6F0">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F6F0"><tr>
+<td class="wk-outer" align="center" style="padding:28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#FAFAF5;border:1px solid #E8E8E3;border-radius:16px;overflow:hidden;border-collapse:separate">
+    <tr><td class="wk-px" style="background:#111C14;padding:16px 32px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="width:28px;padding-right:10px"><img src="http://localhost:3000/brand/wk-icon-dark.png" width="28" height="28" alt="WaiseKa" style="display:block;border:0;border-radius:7px"></td>
+      <td style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.02em;color:#ECF4EE">WaiseKa</td>
+      <td align="right" style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9EC4A6">Monthly report</td>
+    </tr></table>
+  </td></tr>
+    <tr><td class="wk-px" style="padding:36px 36px 4px"><p style="margin:0 0 10px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#16A34A">September 2026 report</p>
+  <h1 class="wk-h1" style="margin:0;font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:32px;line-height:1.1;letter-spacing:-0.02em;color:#1A1A17">How was your money <em style="font-style:italic;color:#16A34A">this September?</em></h1></td></tr>
+    <tr><td class="wk-px" style="padding:20px 36px 32px"><div style=""><p style="margin:0;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.7;color:#5A6350">Hi Justin, in September you stayed within budget on 3 of 4 categories and saved ﷼4,000.00. Here's the breakdown.</p></div><div style="margin-top:22px"><table class="wk-stats" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr>
+      <td class="wk-stat" valign="top" style="width:33%;background:#F7F6F0;border:1px solid #E8E8E3;border-left:3px solid #166534;border-radius:14px;padding:13px 14px">
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F;margin-bottom:4px">Total income</div>
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#166534">﷼12,000.00</div>
+      </td><td class="wk-gap" style="width:10px;font-size:0">&nbsp;</td>
+      <td class="wk-stat" valign="top" style="width:33%;background:#F7F6F0;border:1px solid #E8E8E3;border-left:3px solid #B91C1C;border-radius:14px;padding:13px 14px">
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F;margin-bottom:4px">Total spent</div>
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#B91C1C">﷼8,000.00</div>
+      </td><td class="wk-gap" style="width:10px;font-size:0">&nbsp;</td>
+      <td class="wk-stat" valign="top" style="width:33%;background:#F7F6F0;border:1px solid #E8E8E3;border-left:3px solid #16A34A;border-radius:14px;padding:13px 14px">
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F;margin-bottom:4px">Saved</div>
+        <div style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#16A34A">﷼4,000.00</div>
+      </td></tr></table></div><div style="margin-top:22px"><p style="margin:0 0 10px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F">Top spending categories</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #E8E8E3;border-radius:14px;border-collapse:separate;overflow:hidden"><tr><td style="background:#F0EDE4;padding:10px 16px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A3A39F">Highest expenses in September</td></tr><tr><td style="padding:13px 16px;border-top:1px solid #E8E8E3"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="width:8px;padding-right:12px"><div style="width:8px;height:8px;border-radius:50%;background:#B91C1C;font-size:0;line-height:0">&nbsp;</div></td>
+      <td style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;color:#1A1A17">Housing</td>
+      <td style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;width:110px;font-size:12px;color:#A3A39F;white-space:nowrap;padding:0 12px">1 transaction</td>
+      <td align="right" style="width:96px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#B91C1C;white-space:nowrap">﷼3,500.00</td>
+    </tr></table></td></tr><tr><td style="padding:13px 16px;border-top:1px solid #E8E8E3"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="width:8px;padding-right:12px"><div style="width:8px;height:8px;border-radius:50%;background:#B45309;font-size:0;line-height:0">&nbsp;</div></td>
+      <td style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;color:#1A1A17">Food &amp; Dining</td>
+      <td style="font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;width:110px;font-size:12px;color:#A3A39F;white-space:nowrap;padding:0 12px">12 transactions</td>
+      <td align="right" style="width:96px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#B91C1C;white-space:nowrap">﷼1,200.00</td>
+    </tr></table></td></tr></table></div><div style="margin-top:22px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#E3EBE2;border-radius:10px;border-collapse:separate"><tr>
+    <td valign="top" style="width:30px;padding:14px 12px 14px 16px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" style="width:30px;height:30px;background:#FAFAF5;border-radius:9px"><img src="http://localhost:3000/email-icons/lightbulb-accent.png" width="15" height="15" alt="" style="display:block;border:0;margin:0 auto"></td></tr></table></td>
+    <td valign="middle" style="padding:14px 16px 14px 0;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.6;color:#1A1A17"><strong>WaiseKa insight:</strong> your Housing spending dropped 5% compared with August. Keep that up and you free up about ﷼175.00 a month for savings.</td>
+  </tr></table></div><div style="margin-top:22px"><table class="wk-cta" role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td><a class="wk-btn" href="http://localhost:3000/reports" style="display:inline-block;background-color:#166534;background-image:linear-gradient(135deg,#166534,#16A34A);color:#FFFFFF;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:700;padding:13px 26px;border-radius:12px;text-decoration:none;box-shadow:0 4px 20px rgba(22,163,74,0.35)">View my September report</a></td><td class="wk-cap" style="padding-left:14px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:12px;color:#A3A39F">Set your October budget while you're there</td></tr></table></div></td></tr>
+    <tr><td class="wk-px" style="background:#F7F6F0;border-top:1px solid #E8E8E3;padding:20px 36px">
+    <p style="margin:0 0 10px;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:600"><a href="http://localhost:3000/settings" style="color:#16A34A;text-decoration:none;margin-right:16px">Manage reports</a><a href="http://localhost:3000/settings" style="color:#16A34A;text-decoration:none;margin-right:16px">Unsubscribe</a></p>
+    <p style="margin:0;font-family:'Geist',-apple-system,'Segoe UI',Arial,sans-serif;font-size:11px;line-height:1.6;color:#A3A39F">Your monthly report is generated on the 1st of each month.<br>WaiseKa · waiseka.app</p>
+  </td></tr>
+  </table>
+</td></tr></table>
+</body></html>"
+`;

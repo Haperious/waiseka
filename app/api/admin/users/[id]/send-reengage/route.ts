@@ -8,6 +8,8 @@ import type { IGoal } from '@/lib/models/Goal'
 import { logEmail } from '@/lib/models/EmailLog'
 import { MONTH_NAMES } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
+import { getCurrencySymbol } from '@/lib/currency'
+import { primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
@@ -26,7 +28,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
   const daysRemaining = monthEnd.getUTCDate() - now.getUTCDate()
   const monthName = MONTH_NAMES[now.getUTCMonth()]
-  const sym = user.preferences?.currencySymbol ?? '₱'
 
   const lastSeen = user.notifications?.lastSeen ? new Date(user.notifications.lastSeen) : null
   const daysSinceLogin = lastSeen
@@ -45,6 +46,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const goalPercent = topGoal && topGoal.targetAmount > 0
     ? Math.round((topGoal.savedAmount / topGoal.targetAmount) * 100)
     : 0
+  // The goal's own currency (missing = primary)
+  const sym = getCurrencySymbol(topGoal?.currency ?? primaryCurrencyOf(user))
   const goalTarget = formatCurrency(topGoal?.targetAmount ?? 0, sym)
 
   try {

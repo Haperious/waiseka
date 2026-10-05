@@ -6,7 +6,8 @@ import { getSettings } from '@/lib/models/GlobalSettings'
 import { aiGate } from '@/lib/ai-gate'
 import { buildFinancialProfile, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
-import type { ITransaction } from '@/lib/models/Transaction'
+import { primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { summarizeByCurrency, otherCurrencyBlock, MULTI_CURRENCY_RULE } from '@/lib/services/aiContext'
 
 export async function POST() {
   const session = await requireVerifiedSession()
@@ -27,30 +28,16 @@ export async function POST() {
 
   const threeMonthsAgo = new Date()
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-  const col = db.collection<ITransaction>('transactions')
-
-  const [[totals], topCategories] = await Promise.all([
-    col.aggregate([
-      { $match: { userId: session.user.id, date: { $gte: threeMonthsAgo } } },
-      {
-        $group: {
-          _id: null,
-          totalIncome: { $sum: { $cond: [{ $eq: ['$type', 'income'] }, '$amount', 0] } },
-          totalExpenses: { $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] } },
-        },
-      },
-    ]).toArray(),
-    col.aggregate([
-      { $match: { userId: session.user.id, type: 'expense', date: { $gte: threeMonthsAgo } } },
-      { $group: { _id: '$category', total: { $sum: '$amount' } } },
-      { $sort: { total: -1 } },
-      { $limit: 5 },
-    ]).toArray(),
-  ])
+  // Per currency, primary first - the primary's figures fill the usual prompt; any
+  // other currency gets its own labelled block (never added to the primary's)
+  const [primarySummary, ...others] = await summarizeByCurrency(
+    db, session.user.id, primaryCurrencyOf(user), threeMonthsAgo,
+  )
+  const topCategories = primarySummary.topCategories.map((c) => ({ _id: c.category, total: c.amount }))
 
   const symbol = user.preferences.currencySymbol
-  const avgIncome = totals ? totals.totalIncome / 3 : 0
-  const avgExpenses = totals ? totals.totalExpenses / 3 : 0
+  const avgIncome = primarySummary.income / 3
+  const avgExpenses = primarySummary.expenses / 3
   const savingsRate = avgIncome > 0 ? ((avgIncome - avgExpenses) / avgIncome) * 100 : 0
 
   const recentSummary = {
@@ -69,8 +56,10 @@ export async function POST() {
   const systemPrompt = [
     buildFinancialProfile(user, recentSummary),
     categorySummary,
+    ...others.map((s) => otherCurrencyBlock(s, 3, '3-month average')),
+    others.length ? MULTI_CURRENCY_RULE : '',
     'Suggest 3 specific, actionable ways this user can increase their savings based on their spending patterns.',
-  ].join('\n\n')
+  ].filter(Boolean).join('\n\n')
 
   const result = await callAnthropic({
     systemPrompt,

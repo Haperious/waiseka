@@ -7,6 +7,8 @@ import Select from '@/components/ui/Select'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Goal } from '@/hooks/useGoals'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
+import { getAllCurrencies, type CurrencyCode } from '@/lib/currency'
 
 const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low' },
@@ -30,8 +32,10 @@ interface GoalFormProps {
 
 export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFormProps) {
   const { toast } = useToast()
+  const { viewCurrency, currencies, isMultiCurrency } = useViewCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
+    currency: (goal?.currency ?? viewCurrency) as CurrencyCode,
     title: goal?.title ?? '',
     targetAmount: goal?.targetAmount ? String(goal.targetAmount) : '',
     savedAmount: goal?.savedAmount != null ? String(goal.savedAmount) : '',
@@ -66,6 +70,8 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
         status: form.status,
         deadline: form.deadline,
       }
+      // Single-currency users never pick one: the server defaults new goals to the primary
+      if (isMultiCurrency) payload.currency = form.currency
       if (goal && form.savedAmount !== '') {
         payload.savedAmount = Number(form.savedAmount)
       }
@@ -95,6 +101,17 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {isMultiCurrency && (
+        <Select
+          label="Currency"
+          value={form.currency}
+          onValueChange={(v) => setForm({ ...form, currency: v as CurrencyCode })}
+          options={currencies.map((code) => {
+            const info = getAllCurrencies().find((c) => c.code === code)
+            return { value: code, label: `${info?.flag ?? ''} ${code} (${info?.symbol ?? ''})` }
+          })}
+        />
+      )}
       <Input
         label="Goal Title"
         placeholder="e.g. Emergency Fund"

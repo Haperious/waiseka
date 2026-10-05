@@ -5,6 +5,8 @@ import { getDb } from "@/lib/mongodb"
 import type { IGoal } from "@/lib/models/Goal"
 import type { IUser } from "@/lib/models/User"
 import { sendSavingsMilestoneEmail } from "@/lib/email"
+import { getCurrencySymbol } from "@/lib/currency"
+import { isCurrencyCode, primaryCurrencyOf } from "@/lib/services/currencyScope"
 import { formatCurrency } from "@/lib/utils"
 import { computeGoalProjection } from "@/lib/utils/goalProjection"
 
@@ -33,6 +35,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     update.savedAmount = body.savedAmount
   }
   if (body.deadline !== undefined) update.deadline = new Date(body.deadline)
+  if (body.currency !== undefined) {
+    if (!isCurrencyCode(body.currency)) {
+      return NextResponse.json({ error: "currency must be PHP, QAR, or USD" }, { status: 400 })
+    }
+    update.currency = body.currency
+  }
   if (body.priority !== undefined) {
     if (!["low", "medium", "high"].includes(body.priority)) {
       return NextResponse.json({ error: "priority must be low, medium, or high" }, { status: 400 })
@@ -116,7 +124,8 @@ async function checkMilestone(userId: string, goal: IGoal, reachedPercent: numbe
     .findOne({ _id: userId } as never, { projection: { name: 1, email: 1, preferences: 1 } })
   if (!user) return
 
-  const sym = user.preferences?.currencySymbol ?? "₱"
+  // The goal's own currency (missing = primary)
+  const sym = getCurrencySymbol(goal.currency ?? primaryCurrencyOf(user))
   const fmt = (n: number) => formatCurrency(n, sym)
 
   const projection = computeGoalProjection(goal)

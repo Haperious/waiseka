@@ -13,9 +13,10 @@
  * Out of scope: Push/email notifications, historical anomaly log, per-transaction drill-down.
  */
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
+import { getRequestCurrencyScope } from '@/lib/services/requestCurrency'
 import { aggregateExpensesByCategoryAndMonth, averageAndDelta, monthMeta, monthsBack } from '@/lib/services/monthlyStats'
 
 const ANOMALY_THRESHOLD = 1.5   // flag when current > avg * 1.5
@@ -35,7 +36,8 @@ export interface AnomalyResponse {
   insufficientData: boolean
 }
 
-export async function GET(): Promise<NextResponse<AnomalyResponse>> {
+/** ?currency= picks which currency to check (default: primary) - spikes are never compared across currencies. */
+export async function GET(req: NextRequest): Promise<NextResponse<AnomalyResponse>> {
   const session = await requireVerifiedSession()
   if (!session) {
     return NextResponse.json({ anomalies: [], insufficientData: false }, { status: 401 })
@@ -43,6 +45,7 @@ export async function GET(): Promise<NextResponse<AnomalyResponse>> {
 
   const db = await getDb()
   const now = new Date()
+  const { scope } = await getRequestCurrencyScope(db, session.user.id, req)
 
   // ── Build month boundaries ────────────────────────────────────────────────
   const current = monthMeta(now.getUTCFullYear(), now.getUTCMonth() + 1)
@@ -51,14 +54,14 @@ export async function GET(): Promise<NextResponse<AnomalyResponse>> {
   const priorEnd = priorMonths[priorMonths.length - 1].end
 
   // ── Aggregate current month by category ──────────────────────────────────
-  const currentRaw = await aggregateExpensesByCategoryAndMonth(db, session.user.id, current.start, current.end)
+  const currentRaw = await aggregateExpensesByCategoryAndMonth(db, session.user.id, current.start, current.end, scope)
 
   if (currentRaw.length === 0) {
     return NextResponse.json({ anomalies: [], insufficientData: false })
   }
 
   // ── Aggregate prior months by category + month ────────────────────────────
-  const priorRaw = await aggregateExpensesByCategoryAndMonth(db, session.user.id, priorStart, priorEnd)
+  const priorRaw = await aggregateExpensesByCategoryAndMonth(db, session.user.id, priorStart, priorEnd, scope)
 
   // ── Check overall data sufficiency ────────────────────────────────────────
   const allPriorMonths = new Set(priorRaw.map((r) => `${r.year}-${r.month}`))

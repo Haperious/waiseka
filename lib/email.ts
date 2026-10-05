@@ -160,6 +160,12 @@ function sectionLabel(text: string) {
   return `<p style="margin:0 0 10px;font-family:${SANS};font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${C.muted}">${text}</p>`
 }
 
+// Heading that opens one currency's section in a multi-currency email (PRD D5).
+// Only used when there are 2+ sections - single-currency emails never render it.
+function currencyHeading(code: string) {
+  return `<p style="margin:0;padding-top:18px;border-top:1px solid ${C.hairline};font-family:${SERIF};font-size:20px;font-weight:900;letter-spacing:-0.01em;color:${C.text}">${esc(code)}</p>`
+}
+
 function iconImg(icon: Icon, tone: Tone, size = 15) {
   return `<img src="${APP_URL}/email-icons/${icon}-${tone}.png" width="${size}" height="${size}" alt="" style="display:block;border:0;margin:0 auto">`
 }
@@ -332,11 +338,10 @@ export interface BudgetReminderCategory {
   limit: string
 }
 
-export interface BudgetReminderEmailData {
-  firstName: string
-  email: string
-  monthName: string
-  daysRemaining: number
+/** One currency's figures. Amounts are pre-formatted in that currency. */
+export interface BudgetReminderSection {
+  /** Currency code shown as the section heading - only rendered when there are 2+ sections. */
+  currency?: string
   usedPercent: number
   totalIncome: string
   totalSpent: string
@@ -346,27 +351,53 @@ export interface BudgetReminderEmailData {
   projectedOverage?: string
 }
 
-export async function sendBudgetReminderEmail(data: BudgetReminderEmailData) {
-  const settingsUrl = `${APP_URL}/settings`
-  const categoryRows = data.categories.map((c, i) =>
+/**
+ * The top-level section fields are the primary currency's. A multi-currency user also
+ * gets `otherCurrencies`, one section each, in the same email (PRD D5). Without them
+ * the email is exactly the single-currency layout.
+ */
+export interface BudgetReminderEmailData extends BudgetReminderSection {
+  firstName: string
+  email: string
+  monthName: string
+  daysRemaining: number
+  otherCurrencies?: BudgetReminderSection[]
+}
+
+function budgetReminderBlocks(s: BudgetReminderSection): string[] {
+  const categoryRows = s.categories.map((c, i) =>
     `<div style="${i ? 'margin-top:14px' : ''}">${progressRow(esc(c.name), `${c.spent} / ${c.limit} · ${c.usedPercent}%`, c.usedPercent, pctColor(c.usedPercent))}</div>`,
   ).join('')
+  return [
+    stats([
+      { label: 'Income', value: s.totalIncome, color: C.income },
+      { label: 'Spent', value: s.totalSpent, color: C.expense },
+      { label: 'Remaining', value: s.totalRemaining, color: C.accent },
+    ]),
+    s.categories.length ? sectionLabel('By category') + categoryRows : '',
+    s.alertCategory && s.projectedOverage
+      ? callout('warning', 'trending-up', `<strong>Heads up:</strong> at your current pace, ${esc(s.alertCategory)} will go over its limit by about ${s.projectedOverage} before month-end.`)
+      : '',
+  ]
+}
+
+export async function sendBudgetReminderEmail(data: BudgetReminderEmailData) {
+  const settingsUrl = `${APP_URL}/settings`
+  const others = data.otherCurrencies ?? []
+  const isMulti = others.length > 0
 
   const html = shell({
     title: `Your ${data.monthName} budget check-in`,
     tag: 'Budget check-in',
-    hero: hero(`${data.monthName} · ${data.daysRemaining} days left`, `You've used ${data.usedPercent}% of`, `your ${data.monthName} budget.`),
+    // A percentage can't be combined across currencies, so the multi-currency hero names none
+    hero: isMulti
+      ? hero(`${data.monthName} · ${data.daysRemaining} days left`, 'Your budget check-in', `for ${data.monthName}.`)
+      : hero(`${data.monthName} · ${data.daysRemaining} days left`, `You've used ${data.usedPercent}% of`, `your ${data.monthName} budget.`),
     body: [
       p(`Hi ${esc(data.firstName)}, here's where your money stands with ${data.daysRemaining} days to go.`),
-      stats([
-        { label: 'Income', value: data.totalIncome, color: C.income },
-        { label: 'Spent', value: data.totalSpent, color: C.expense },
-        { label: 'Remaining', value: data.totalRemaining, color: C.accent },
-      ]),
-      data.categories.length ? sectionLabel('By category') + categoryRows : '',
-      data.alertCategory && data.projectedOverage
-        ? callout('warning', 'trending-up', `<strong>Heads up:</strong> at your current pace, ${esc(data.alertCategory)} will go over its limit by about ${data.projectedOverage} before month-end.`)
-        : '',
+      ...(isMulti
+        ? [data, ...others].flatMap((s) => [currencyHeading(s.currency ?? ''), ...budgetReminderBlocks(s)])
+        : budgetReminderBlocks(data)),
       cta(`${APP_URL}/budgets`, 'View my budget', "Log today's expenses while you're there"),
     ],
     footerLinks: [
@@ -435,12 +466,10 @@ export interface MonthlyReportInsight {
   monthlySavingsFree: string
 }
 
-export interface MonthlyReportEmailData {
-  firstName: string
-  email: string
-  monthName: string
-  year: string
-  nextMonthName: string
+/** One currency's figures. Amounts are pre-formatted in that currency. */
+export interface MonthlyReportSection {
+  /** Currency code shown as the section heading - only rendered when there are 2+ sections. */
+  currency?: string
   totalIncome: string
   totalSpent: string
   totalSaved: string
@@ -450,36 +479,69 @@ export interface MonthlyReportEmailData {
   insight: MonthlyReportInsight
 }
 
-export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
-  const settingsUrl = `${APP_URL}/settings`
-  const categoryRows = data.topCategories.map((c, i) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+/**
+ * The top-level section fields are the primary currency's. A multi-currency user also
+ * gets `otherCurrencies`, one section each, in the same email (PRD D5). Without them
+ * the email is exactly the single-currency layout.
+ */
+export interface MonthlyReportEmailData extends MonthlyReportSection {
+  firstName: string
+  email: string
+  monthName: string
+  year: string
+  nextMonthName: string
+  otherCurrencies?: MonthlyReportSection[]
+}
+
+function budgetLineFor(s: MonthlyReportSection): string {
+  return s.totalCategories > 0
+    ? `you stayed within budget on ${s.categoriesOnBudget} of ${s.totalCategories} categories and saved ${s.totalSaved}`
+    : `you saved ${s.totalSaved}`
+}
+
+function monthlyReportBlocks(s: MonthlyReportSection, monthName: string): string[] {
+  const categoryRows = s.topCategories.map((c, i) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td style="width:8px;padding-right:12px"><div style="width:8px;height:8px;border-radius:50%;background:${CATEGORY_DOT[c.name] ?? DOT_PALETTE[i % DOT_PALETTE.length]};font-size:0;line-height:0">&nbsp;</div></td>
       <td style="font-family:${SANS};font-size:13px;font-weight:600;color:${C.text}">${esc(c.name)}</td>
       <td style="font-family:${SANS};width:110px;font-size:12px;color:${C.muted};white-space:nowrap;padding:0 12px">${c.txnCount} transaction${c.txnCount === 1 ? '' : 's'}</td>
       <td align="right" style="width:96px;font-family:${SANS};font-size:13px;font-weight:700;${TNUM};color:${C.expense};white-space:nowrap">${c.totalSpent}</td>
     </tr></table>`)
-
-  const budgetLine = data.totalCategories > 0
-    ? `you stayed within budget on ${data.categoriesOnBudget} of ${data.totalCategories} categories and saved ${data.totalSaved}`
-    : `you saved ${data.totalSaved}`
-  const { insight } = data
+  const { insight } = s
   const insightFree = insight.changeDirection === 'dropped' && insight.changePercent > 0
     ? ` Keep that up and you free up about ${insight.monthlySavingsFree} a month for savings.`
     : ''
+  return [
+    stats([
+      { label: 'Total income', value: s.totalIncome, color: C.income },
+      { label: 'Total spent', value: s.totalSpent, color: C.expense },
+      { label: 'Saved', value: s.totalSaved, color: C.accent },
+    ]),
+    categoryRows.length ? sectionLabel('Top spending categories') + listBox(categoryRows, `Highest expenses in ${monthName}`) : '',
+    callout('accent', 'lightbulb', `<strong>WaiseKa insight:</strong> your ${esc(insight.comparedCategory)} spending ${insight.changeDirection} ${insight.changePercent}% compared with ${insight.comparedMonth}.${insightFree}`),
+  ]
+}
+
+export async function sendMonthlyReportEmail(data: MonthlyReportEmailData) {
+  const settingsUrl = `${APP_URL}/settings`
+  const others = data.otherCurrencies ?? []
+  const isMulti = others.length > 0
+  const sections = [data, ...others]
 
   const html = shell({
     title: `Your ${data.monthName} ${data.year} financial report`,
     tag: 'Monthly report',
     hero: hero(`${data.monthName} ${data.year} report`, 'How was your money', `this ${data.monthName}?`),
     body: [
-      p(`Hi ${esc(data.firstName)}, in ${data.monthName} ${budgetLine}. Here's the breakdown.`),
-      stats([
-        { label: 'Total income', value: data.totalIncome, color: C.income },
-        { label: 'Total spent', value: data.totalSpent, color: C.expense },
-        { label: 'Saved', value: data.totalSaved, color: C.accent },
-      ]),
-      categoryRows.length ? sectionLabel('Top spending categories') + listBox(categoryRows, `Highest expenses in ${data.monthName}`) : '',
-      callout('accent', 'lightbulb', `<strong>WaiseKa insight:</strong> your ${esc(insight.comparedCategory)} spending ${insight.changeDirection} ${insight.changePercent}% compared with ${insight.comparedMonth}.${insightFree}`),
+      isMulti
+        ? p(`Hi ${esc(data.firstName)}, here's your ${data.monthName} breakdown, one currency at a time.`)
+        : p(`Hi ${esc(data.firstName)}, in ${data.monthName} ${budgetLineFor(data)}. Here's the breakdown.`),
+      ...(isMulti
+        ? sections.flatMap((s) => [
+            currencyHeading(s.currency ?? ''),
+            p(`In ${esc(s.currency ?? '')}, ${budgetLineFor(s)}.`),
+            ...monthlyReportBlocks(s, data.monthName),
+          ])
+        : monthlyReportBlocks(data, data.monthName)),
       cta(`${APP_URL}/reports`, `View my ${data.monthName} report`, `Set your ${data.nextMonthName} budget while you're there`),
     ],
     footerLinks: [

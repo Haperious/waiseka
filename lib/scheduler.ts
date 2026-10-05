@@ -14,6 +14,9 @@ import type { ITransaction } from '@/lib/models/Transaction'
 import { logEmail } from '@/lib/models/EmailLog'
 import { MONTH_NAMES } from '@/lib/constants'
 import { formatCurrency as fmt } from '@/lib/utils'
+import { getCurrencySymbol, type CurrencyCode } from '@/lib/currency'
+import { currencyScope, getUserCurrencies, primaryCurrencyOf, sortCurrencies } from '@/lib/services/currencyScope'
+import type { BudgetReminderSection, MonthlyReportSection } from '@/lib/email'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,67 +71,88 @@ export async function sendBudgetReminders() {
       if (daysSinceEmail < (EMAIL_THRESHOLD[frequency] ?? 7)) continue
 
       const userId = user._id.toString()
-      const sym = user.preferences?.currencySymbol ?? '₱'
+      const primary = primaryCurrencyOf(user)
 
-      const budgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
-      if (budgets.length === 0) continue
+      const allBudgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
+      if (allBudgets.length === 0) continue
 
-      const [agg] = await db.collection<ITransaction>('transactions').aggregate<{
-        spent: CategoryTotal[]
-        income: { total: number }[]
-      }>([
-        { $match: { userId, type: { $in: ['income', 'expense'] }, date: { $gte: monthStart, $lte: monthEnd } } },
-        {
-          $facet: {
-            spent: [
-              { $match: { type: 'expense' } },
-              { $group: { _id: '$category', total: { $sum: '$amount' } } },
-            ],
-            income: [
-              { $match: { type: 'income' } },
-              { $group: { _id: null, total: { $sum: '$amount' } } },
-            ],
+      // One section per currency that has budgets (PRD D5), primary first. A budget
+      // with no currency is the primary's. Single-currency users get exactly one.
+      const budgetCurrencies = sortCurrencies(allBudgets.map((b) => b.currency ?? primary), primary)
+      const sections: BudgetReminderSection[] = []
+      for (const currency of budgetCurrencies) {
+        const sym = getCurrencySymbol(currency)
+        const budgets = allBudgets.filter((b) => (b.currency ?? primary) === currency)
+
+        const [agg] = await db.collection<ITransaction>('transactions').aggregate<{
+          spent: CategoryTotal[]
+          income: { total: number }[]
+        }>([
+          {
+            $match: {
+              userId, type: { $in: ['income', 'expense'] }, date: { $gte: monthStart, $lte: monthEnd },
+              ...currencyScope(currency, primary),
+            },
           },
-        },
-      ]).toArray()
+          {
+            $facet: {
+              spent: [
+                { $match: { type: 'expense' } },
+                { $group: { _id: '$category', total: { $sum: '$amount' } } },
+              ],
+              income: [
+                { $match: { type: 'income' } },
+                { $group: { _id: null, total: { $sum: '$amount' } } },
+              ],
+            },
+          },
+        ]).toArray()
 
-      const spentMap = toTotalMap(agg?.spent ?? [])
-      const totalIncome = agg?.income[0]?.total ?? 0
-      const totalSpent = Object.values(spentMap).reduce((a, b) => a + b, 0)
-      const totalLimit = budgets.reduce((a, b) => a + b.limit, 0)
-      const usedPercent = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
+        const spentMap = toTotalMap(agg?.spent ?? [])
+        const totalIncome = agg?.income[0]?.total ?? 0
+        const totalSpent = Object.values(spentMap).reduce((a, b) => a + b, 0)
+        const totalLimit = budgets.reduce((a, b) => a + b.limit, 0)
+        const usedPercent = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
 
-      const categories = budgets.map((b) => {
-        const spent = spentMap[b.category] ?? 0
-        const pct = b.limit > 0 ? Math.round((spent / b.limit) * 100) : 0
-        return { name: b.category, usedPercent: pct, spent: fmt(spent, sym), limit: fmt(b.limit, sym) }
-      }).sort((a, b) => b.usedPercent - a.usedPercent)
+        const categories = budgets.map((b) => {
+          const spent = spentMap[b.category] ?? 0
+          const pct = b.limit > 0 ? Math.round((spent / b.limit) * 100) : 0
+          return { name: b.category, usedPercent: pct, spent: fmt(spent, sym), limit: fmt(b.limit, sym) }
+        }).sort((a, b) => b.usedPercent - a.usedPercent)
 
-      // Worst category for the alert block
-      const worst = categories[0]
-      const projectedSpent = totalLimit > 0 ? (totalSpent / (daysInMonth - daysRemaining)) * daysInMonth : 0
-      const alertCategory = worst?.usedPercent >= 75 ? worst.name : undefined
-      const projectedOverage = alertCategory && projectedSpent > totalLimit
-        ? fmt(projectedSpent - totalLimit, sym)
-        : undefined
+        // Worst category for the alert block
+        const worst = categories[0]
+        const projectedSpent = totalLimit > 0 ? (totalSpent / (daysInMonth - daysRemaining)) * daysInMonth : 0
+        const alertCategory = worst?.usedPercent >= 75 ? worst.name : undefined
+        const projectedOverage = alertCategory && projectedSpent > totalLimit
+          ? fmt(projectedSpent - totalLimit, sym)
+          : undefined
+
+        sections.push({
+          currency,
+          usedPercent,
+          totalIncome: fmt(totalIncome, sym),
+          totalSpent: fmt(totalSpent, sym),
+          totalRemaining: fmt(Math.max(0, totalIncome - totalSpent), sym),
+          categories,
+          alertCategory,
+          projectedOverage,
+        })
+      }
 
       await db.collection<IUser>('users').updateOne(
         { _id: user._id },
         { $set: { 'notifications.email.lastSentBudget': new Date() } }
       )
 
+      const [first, ...otherCurrencies] = sections
       sendBudgetReminderEmail({
         firstName: user.name.split(' ')[0],
         email: user.email,
         monthName,
         daysRemaining,
-        usedPercent,
-        totalIncome: fmt(totalIncome, sym),
-        totalSpent: fmt(totalSpent, sym),
-        totalRemaining: fmt(Math.max(0, totalIncome - totalSpent), sym),
-        categories,
-        alertCategory,
-        projectedOverage,
+        ...first,
+        otherCurrencies,
       })
         .then(() => logEmail(db, { userId, type: 'budget_reminder' }))
         .catch((err) => console.error(`[scheduler] budget reminder error for user ${userId}:`, err))
@@ -164,7 +188,6 @@ export async function sendReEngageEmails() {
       if (daysSinceEmail < (EMAIL_THRESHOLD[frequency] ?? 7)) continue
 
       const userId = user._id.toString()
-      const sym = user.preferences?.currencySymbol ?? '₱'
       const daysSinceLogin = Math.floor(
         (now.getTime() - new Date(user.notifications.lastSeen).getTime()) / (1000 * 60 * 60 * 24)
       )
@@ -176,6 +199,8 @@ export async function sendReEngageEmails() {
         .next()
 
       if (!topGoal) continue
+      // The goal's own currency (missing = primary)
+      const sym = getCurrencySymbol(topGoal.currency ?? primaryCurrencyOf(user))
 
       const goalPercent = topGoal.targetAmount > 0
         ? Math.round((topGoal.savedAmount / topGoal.targetAmount) * 100)
@@ -219,107 +244,151 @@ export async function sendMonthlyReports() {
     const monthName = MONTH_NAMES[prevMonth]
     const nextMonthName = MONTH_NAMES[now.getUTCMonth()]
 
-    const DOT_COLORS = ['#f97316', '#3b82f6', '#8b5cf6', '#ec4899', '#22c55e']
-
     const users = await db.collection<IUser>('users')
       .find({ 'notifications.email.enabled': true }, { projection: { name: 1, email: 1, preferences: 1 } })
       .toArray()
 
     for (const user of users) {
       const userId = user._id.toString()
-      const sym = user.preferences?.currencySymbol ?? '₱'
+      const primary = primaryCurrencyOf(user)
+      const [currencies, allBudgets] = await Promise.all([
+        getUserCurrencies(db, userId, primary),
+        db.collection<IBudget>('budgets').find({ userId }).toArray(),
+      ])
 
-      // One aggregation over both months: totals and categories for the reported month,
-      // categories for the month before it.
-      const [agg] = await db.collection<ITransaction>('transactions').aggregate<{
-        totals: CategoryTotal[]
-        categories: Required<CategoryTotal>[]
-        prevCategories: CategoryTotal[]
-      }>([
-        { $match: { userId, type: { $in: ['income', 'expense'] }, date: { $gte: compareStart, $lte: monthEnd } } },
-        {
-          $facet: {
-            totals: [
-              { $match: { date: { $gte: monthStart } } },
-              { $group: { _id: '$type', total: { $sum: '$amount' } } },
-            ],
-            categories: [
-              { $match: { type: 'expense', date: { $gte: monthStart } } },
-              { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
-              { $sort: { total: -1 } },
-            ],
-            prevCategories: [
-              { $match: { type: 'expense', date: { $lt: monthStart } } },
-              { $group: { _id: '$category', total: { $sum: '$amount' } } },
-            ],
-          },
-        },
-      ]).toArray()
-
-      const totals = toTotalMap(agg?.totals ?? [])
-      const totalIncome = totals.income ?? 0
-      const totalSpent = totals.expense ?? 0
-      const totalSaved = Math.max(0, totalIncome - totalSpent)
-
-      if (totalIncome === 0 && totalSpent === 0) continue // Skip users with no activity
-
-      const budgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
-      const categories = agg?.categories ?? []
-      const topCategories = categories.slice(0, 5)
-      // Use every category here, not just the top 5 - otherwise an over-budget category
-      // outside the top 5 would be counted as on budget.
-      const spentMap = toTotalMap(categories)
-      const categoriesOnBudget = budgets.filter((b) => (spentMap[b.category] ?? 0) <= b.limit).length
-
-      // Build insight: compare top category vs previous month
-      const topCat = topCategories[0]
-      const prevSpentMap = toTotalMap(agg?.prevCategories ?? [])
-      const prevTopSpent = topCat ? (prevSpentMap[topCat._id] ?? 0) : 0
-      const currTopSpent = topCat?.total ?? 0
-      const changePercent = prevTopSpent > 0
-        ? Math.abs(Math.round(((currTopSpent - prevTopSpent) / prevTopSpent) * 100))
-        : 0
-      const changeDirection = currTopSpent <= prevTopSpent ? 'dropped' : 'increased'
-      const prevMonthName = MONTH_NAMES[prevMonth === 0 ? 11 : prevMonth - 1]
-      const monthlySavingsFree = changeDirection === 'dropped' && changePercent > 0
-        ? fmt(currTopSpent * (changePercent / 100), sym)
-        : fmt(0, sym)
+      // One section per currency with activity last month (PRD D5), primary first.
+      // Single-currency users get exactly one, identical to before.
+      const sections: MonthlyReportSection[] = []
+      for (const currency of currencies) {
+        const section = await buildMonthlyReportSection(db, userId, currency, primary, allBudgets, {
+          monthStart, monthEnd, compareStart, prevMonth,
+        })
+        if (section) sections.push(section)
+      }
+      if (sections.length === 0) continue // Skip users with no activity
 
       await db.collection<IUser>('users').updateOne(
         { _id: user._id },
         { $set: { 'notifications.email.lastSentMonthly': new Date() } }
       )
 
+      const [first, ...otherCurrencies] = sections
       sendMonthlyReportEmail({
         firstName: user.name.split(' ')[0],
         email: user.email,
         monthName,
         year: String(prevYear),
         nextMonthName,
-        totalIncome: fmt(totalIncome, sym),
-        totalSpent: fmt(totalSpent, sym),
-        totalSaved: fmt(totalSaved, sym),
-        categoriesOnBudget,
-        totalCategories: budgets.length,
-        topCategories: topCategories.map((c, i) => ({
-          name: c._id,
-          txnCount: c.count,
-          totalSpent: fmt(c.total, sym),
-          dotColor: DOT_COLORS[i % DOT_COLORS.length],
-        })),
-        insight: {
-          comparedCategory: topCat?._id ?? 'spending',
-          changePercent,
-          changeDirection,
-          comparedMonth: prevMonthName,
-          monthlySavingsFree,
-        },
+        ...first,
+        otherCurrencies,
       })
         .then(() => logEmail(db, { userId, type: 'monthly_report' }))
         .catch((err) => console.error(`[scheduler] monthly report error for user ${userId}:`, err))
     }
   } catch (err) {
     console.error('[scheduler] monthly report job error:', err)
+  }
+}
+
+const DOT_COLORS = ['#f97316', '#3b82f6', '#8b5cf6', '#ec4899', '#22c55e']
+
+/**
+ * One currency's monthly-report figures: transactions in that currency's scope, and
+ * that currency's budgets (missing currency = primary). Null when the currency had no
+ * income or expenses in the reported month.
+ */
+async function buildMonthlyReportSection(
+  db: Awaited<ReturnType<typeof getDb>>,
+  userId: string,
+  currency: CurrencyCode,
+  primary: CurrencyCode,
+  allBudgets: IBudget[],
+  range: { monthStart: Date; monthEnd: Date; compareStart: Date; prevMonth: number },
+): Promise<MonthlyReportSection | null> {
+  const { monthStart, monthEnd, compareStart, prevMonth } = range
+  const sym = getCurrencySymbol(currency)
+
+  // One aggregation over both months: totals and categories for the reported month,
+  // categories for the month before it.
+  const [agg] = await db.collection<ITransaction>('transactions').aggregate<{
+    totals: CategoryTotal[]
+    categories: Required<CategoryTotal>[]
+    prevCategories: CategoryTotal[]
+  }>([
+    {
+      $match: {
+        userId, type: { $in: ['income', 'expense'] }, date: { $gte: compareStart, $lte: monthEnd },
+        ...currencyScope(currency, primary),
+      },
+    },
+    {
+      $facet: {
+        totals: [
+          { $match: { date: { $gte: monthStart } } },
+          { $group: { _id: '$type', total: { $sum: '$amount' } } },
+        ],
+        categories: [
+          { $match: { type: 'expense', date: { $gte: monthStart } } },
+          { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+          { $sort: { total: -1 } },
+        ],
+        prevCategories: [
+          { $match: { type: 'expense', date: { $lt: monthStart } } },
+          { $group: { _id: '$category', total: { $sum: '$amount' } } },
+        ],
+      },
+    },
+  ]).toArray()
+
+  const totals = toTotalMap(agg?.totals ?? [])
+  const totalIncome = totals.income ?? 0
+  const totalSpent = totals.expense ?? 0
+  const totalSaved = Math.max(0, totalIncome - totalSpent)
+
+  if (totalIncome === 0 && totalSpent === 0) return null
+
+  const budgets = allBudgets.filter((b) => (b.currency ?? primary) === currency)
+  const categories = agg?.categories ?? []
+  const topCategories = categories.slice(0, 5)
+  // Use every category here, not just the top 5 - otherwise an over-budget category
+  // outside the top 5 would be counted as on budget.
+  const spentMap = toTotalMap(categories)
+  const categoriesOnBudget = budgets.filter((b) => (spentMap[b.category] ?? 0) <= b.limit).length
+
+  // Build insight: compare top category vs previous month
+  const topCat = topCategories[0]
+  const prevSpentMap = toTotalMap(agg?.prevCategories ?? [])
+  const prevTopSpent = topCat ? (prevSpentMap[topCat._id] ?? 0) : 0
+  const currTopSpent = topCat?.total ?? 0
+  const changePercent = prevTopSpent > 0
+    ? Math.abs(Math.round(((currTopSpent - prevTopSpent) / prevTopSpent) * 100))
+    : 0
+  const changeDirection = currTopSpent <= prevTopSpent ? 'dropped' : 'increased'
+  const prevMonthName = MONTH_NAMES[prevMonth === 0 ? 11 : prevMonth - 1]
+  const monthlySavingsFree = changeDirection === 'dropped' && changePercent > 0
+    ? fmt(currTopSpent * (changePercent / 100), sym)
+    : fmt(0, sym)
+
+  return {
+    currency,
+    totalIncome: fmt(totalIncome, sym),
+    totalSpent: fmt(totalSpent, sym),
+    totalSaved: fmt(totalSaved, sym),
+    categoriesOnBudget,
+    totalCategories: budgets.length,
+    topCategories: topCategories.map((c, i) => ({
+      name: c._id,
+      txnCount: c.count,
+      totalSpent: fmt(c.total, sym),
+      dotColor: DOT_COLORS[i % DOT_COLORS.length],
+    })),
+    insight: {
+      comparedCategory: topCat?._id ?? 'spending',
+      changePercent,
+      changeDirection,
+      comparedMonth: prevMonthName,
+      monthlySavingsFree,
+    },
   }
 }
 

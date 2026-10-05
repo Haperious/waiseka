@@ -6,6 +6,7 @@ import { FREE_GOAL_LIMIT } from '@/lib/constants'
 import { ObjectId } from 'mongodb'
 import type { IGoal } from '@/lib/models/Goal'
 import type { IUser } from '@/lib/models/User'
+import { isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 export async function GET() {
   const session = await requireVerifiedSession()
@@ -25,10 +26,13 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { title, targetAmount, deadline, priority } = body
+  const { title, targetAmount, deadline, priority, currency } = body
 
   if (!title || !targetAmount || !deadline) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+  if (currency !== undefined && !isCurrencyCode(currency)) {
+    return NextResponse.json({ error: 'currency must be PHP, QAR, or USD' }, { status: 400 })
   }
 
   const db = await getDb()
@@ -56,6 +60,7 @@ export async function POST(req: NextRequest) {
     title,
     targetAmount,
     savedAmount: 0,
+    currency: currency ?? primaryCurrencyOf(user),
     deadline: new Date(deadline),
     priority: priority ?? 'medium',
     status: 'active',

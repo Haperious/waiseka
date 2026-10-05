@@ -11,11 +11,14 @@ interface Goal {
   title: string
   targetAmount: number
   savedAmount: number
+  /** Missing = the user's primary currency. */
+  currency?: string
   deadline?: string
 }
 
 export default function AiGoalCheckPage() {
-  const { formatAmount } = useCurrency()
+  // Each goal in its own currency (missing = primary)
+  const { formatAmountIn } = useCurrency()
   const [goals, setGoals] = useState<Goal[]>([])
   const [selectedGoalId, setSelectedGoalId] = useState('')
   const [analysis, setAnalysis] = useState<string | null>(null)
@@ -81,7 +84,7 @@ export default function AiGoalCheckPage() {
               >
                 {goals.map((g) => (
                   <option key={g._id} value={g._id}>
-                    {g.title} - {formatAmount(g.savedAmount)} / {formatAmount(g.targetAmount)}
+                    {g.title} - {formatAmountIn(g.savedAmount, g.currency)} / {formatAmountIn(g.targetAmount, g.currency)}
                     {g.deadline ? ` (due ${new Date(g.deadline).toLocaleDateString()})` : ''}
                   </option>
                 ))}

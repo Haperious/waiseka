@@ -8,6 +8,8 @@ import { buildFinancialProfile, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IGoal } from '@/lib/models/Goal'
+import { getCurrencySymbol } from '@/lib/currency'
+import { currencyScope, primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 export async function POST(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -38,8 +40,12 @@ export async function POST(req: NextRequest) {
   const threeMonthsAgo = new Date()
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
 
+  // Savings pace in the goal's own currency (missing = primary) - another currency's
+  // income can't fund this goal without a conversion we don't do
+  const primary = primaryCurrencyOf(user)
+  const goalCurrency = goal.currency ?? primary
   const [monthlySavings] = await db.collection<ITransaction>('transactions').aggregate([
-    { $match: { userId: session.user.id, date: { $gte: threeMonthsAgo } } },
+    { $match: { userId: session.user.id, date: { $gte: threeMonthsAgo }, ...currencyScope(goalCurrency, primary) } },
     {
       $group: {
         _id: null,
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
     ? (monthlySavings.totalIncome - monthlySavings.totalExpenses) / 3
     : 0
 
-  const symbol = user.preferences.currencySymbol
+  const symbol = goalCurrency === primary ? user.preferences.currencySymbol : getCurrencySymbol(goalCurrency)
   const remaining = goal.targetAmount - goal.savedAmount
   const deadlineStr = goal.deadline
     ? new Date(goal.deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -73,7 +79,7 @@ export async function POST(req: NextRequest) {
     buildFinancialProfile(user, {
       totalIncome: monthlySavings ? monthlySavings.totalIncome / 3 : 0,
       totalExpenses: monthlySavings ? monthlySavings.totalExpenses / 3 : 0,
-    }),
+    }, goalCurrency),
     goalContext,
     'Assess whether this goal is feasible by its deadline based on current savings rate. Be specific about the timeline and any adjustments needed.',
   ].join('\n\n')

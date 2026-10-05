@@ -456,7 +456,8 @@ function GoalCard({
 const NO_PROJECTIONS: Record<string, GoalProjection> = {}
 
 export default function GoalsPage() {
-  const { formatAmount } = useCurrency()
+  // Each goal is shown in its own currency (missing = primary)
+  const { formatAmountIn } = useCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
   const { goals, loading, deleteGoal, addFunds, refetch } = useGoals()
@@ -507,7 +508,7 @@ export default function GoalsPage() {
     setFundsLoading(true)
     try {
       await addFunds(addFundsGoal._id, Number(fundsAmount))
-      toast(`${formatAmount(Number(fundsAmount))} added to "${addFundsGoal.title}"`, "success")
+      toast(`${formatAmountIn(Number(fundsAmount), addFundsGoal.currency)} added to "${addFundsGoal.title}"`, "success")
       setAddFundsGoal(null)
       setFundsAmount("")
     } catch {
@@ -615,7 +616,7 @@ export default function GoalsPage() {
             <GoalCard
               key={goal._id}
               goal={goal}
-              formatAmount={formatAmount}
+              formatAmount={(v) => formatAmountIn(v, goal.currency)}
               t={t}
               projection={projections[goal._id] ?? null}
               projectionLoading={projectionsLoading && !projections[goal._id]}
@@ -666,11 +667,11 @@ export default function GoalsPage() {
           <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", lineHeight: 1.5 }}>
             {t("goal.addFundsCurrent")}:{" "}
             <strong style={{ color: "var(--color-text-primary)" }}>
-              {formatAmount(addFundsGoal?.savedAmount ?? 0)}
+              {formatAmountIn(addFundsGoal?.savedAmount ?? 0, addFundsGoal?.currency)}
             </strong>
             {" / "}
             <strong style={{ color: "var(--color-text-primary)" }}>
-              {formatAmount(addFundsGoal?.targetAmount ?? 0)}
+              {formatAmountIn(addFundsGoal?.targetAmount ?? 0, addFundsGoal?.currency)}
             </strong>
           </p>
           <Input
