@@ -16,7 +16,9 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { goalId } = await req.json()
-  if (!goalId) return NextResponse.json({ error: 'goalId is required' }, { status: 400 })
+  if (typeof goalId !== 'string' || !ObjectId.isValid(goalId)) {
+    return NextResponse.json({ error: 'A valid goalId is required' }, { status: 400 })
+  }
 
   const db = await getDb()
   const [user, settings] = await Promise.all([

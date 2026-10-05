@@ -13,12 +13,14 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
-  const goals = await db
-    .collection<IGoal>('goals')
-    .find({ userId: session.user.id })
-    .sort({ createdAt: -1 })
-    .toArray()
-  return NextResponse.json(goals)
+  const [goals, user] = await Promise.all([
+    db.collection<IGoal>('goals').find({ userId: session.user.id }).sort({ createdAt: -1 }).toArray(),
+    db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never }, { projection: { preferences: 1 } }),
+  ])
+  // Goals created before multi-currency have no currency - they're the primary's. Filling it
+  // in here keeps GoalForm from defaulting an edit to the view currency and re-denominating it.
+  const primary = primaryCurrencyOf(user)
+  return NextResponse.json(goals.map((g) => ({ ...g, currency: g.currency ?? primary })))
 }
 
 export async function POST(req: NextRequest) {

@@ -14,6 +14,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (session instanceof NextResponse) return session
 
   const { id } = await params
+  if (!ObjectId.isValid(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   const body = await req.json()
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
