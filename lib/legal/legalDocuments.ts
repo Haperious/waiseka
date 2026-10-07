@@ -14,6 +14,13 @@ export const LEGAL_DOCUMENT_PATHS: Record<LegalDocumentSlug, string> = {
   security: '/security',
 }
 
+/** Short names for links (footer, Settings, cross-links). Page titles come from the content frontmatter. */
+export const LEGAL_DOCUMENT_LINK_LABELS: Record<LegalDocumentSlug, string> = {
+  privacy: 'Privacy Policy',
+  terms: 'Terms of Service',
+  security: 'Security',
+}
+
 export function isLegalDocumentSlug(value: string): value is LegalDocumentSlug {
   return (LEGAL_DOCUMENT_SLUGS as readonly string[]).includes(value)
 }
