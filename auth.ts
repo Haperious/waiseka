@@ -1,10 +1,18 @@
-import NextAuth from 'next-auth'
+import NextAuth, { CredentialsSignin } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import type { IUser } from '@/lib/models/User'
+import { checkLoginRateLimit } from '@/lib/auth-rate-limit'
+import { getClientIp } from '@/lib/rate-limit'
+import { LOGIN_RATE_LIMITED_CODE } from '@/lib/constants'
 import { authConfig } from './auth.config'
+
+/** Surfaces as `code` on the client's signIn() result so the login page can explain the lockout. */
+class LoginRateLimitedError extends CredentialsSignin {
+  code = LOGIN_RATE_LIMITED_CODE
+}
 
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig,
@@ -60,9 +68,14 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   },
   providers: [
     Credentials({
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const { email, password } = credentials as { email: string; password: string }
         if (!email || !password) return null
+
+        // Checked before the DB lookup and bcrypt compare so a locked-out
+        // attacker gets no timing signal and costs us no hashing work
+        const rateLimitResult = checkLoginRateLimit(email, getClientIp(request))
+        if (!rateLimitResult.allowed) throw new LoginRateLimitedError()
 
         const db = await getDb()
         const user = await db.collection<IUser>('users').findOne({ email: email.toLowerCase() })

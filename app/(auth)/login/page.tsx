@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input'
 import PasswordInput from '@/components/ui/PasswordInput'
 import { Card, CardContent } from '@/components/ui/Card'
 import { useTheme } from '@/context/ThemeContext'
+import { LOGIN_RATE_LIMITED_CODE } from '@/lib/constants'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,7 +33,9 @@ export default function LoginPage() {
 
     setLoading(false)
 
-    if (result?.error) {
+    if (result?.code === LOGIN_RATE_LIMITED_CODE) {
+      setError('Too many sign-in attempts. Please wait a few minutes and try again.')
+    } else if (result?.error) {
       setError('Invalid email or password')
     } else {
       // Check if MFA is enabled for this user before proceeding to dashboard

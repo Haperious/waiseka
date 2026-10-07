@@ -69,3 +69,10 @@ export const ANNOUNCEMENT_DESCRIPTION_MAX_LENGTH = 220
 
 /** Default lifetime of an announcement, in days, from publishedAt. */
 export const ANNOUNCEMENT_DEFAULT_TTL_DAYS = 30
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+/**
+ * `code` returned by next-auth signIn() when the credentials login is rate
+ * limited. Shared by auth.ts (server) and the login page (client).
+ */
+export const LOGIN_RATE_LIMITED_CODE = 'rate_limited'

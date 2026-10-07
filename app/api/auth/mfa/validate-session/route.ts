@@ -5,6 +5,8 @@ import { verify, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib'
 import { ObjectId } from 'mongodb'
 import crypto from 'crypto'
 import type { IUser } from '@/lib/models/User'
+import { checkMfaRateLimit } from '@/lib/auth-rate-limit'
+import { getClientIp } from '@/lib/rate-limit'
 
 const otpCrypto = new NobleCryptoPlugin()
 const otpBase32 = new ScureBase32Plugin()
@@ -25,6 +27,14 @@ async function verifyTotp(token: string, secret: string): Promise<boolean> {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rateLimitResult = checkMfaRateLimit(session.user.id, getClientIp(req))
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait a few minutes and try again.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) } }
+    )
+  }
 
   const body = await req.json()
   const { token } = body
