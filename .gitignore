@@ -34,6 +34,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -52,6 +53,8 @@ AGENTS.md
 # internal planning docs (PRDs, prompts, notes) - see note in README
 *.md
 !README.md
+# legal page content is read by the app at build time - must be committed
+!/content/legal/*.md
 
 # local test + tooling scripts, not part of the deployed app
 waiseka_tests.py

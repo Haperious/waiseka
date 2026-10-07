@@ -111,6 +111,14 @@ SMTP_PASS=
 EMAIL_FROM=
 ```
 
+#### Legal pages
+
+The Privacy Policy, Terms of Service and Security pages (`content/legal/*.md`) fill their contact details, regions and retention periods from `LEGAL_*` env vars. See `.env.example` for the full list.
+
+- Every `LEGAL_*` var is required. `next build` and `next dev` fail with a list of what is missing.
+- **Set them in the Netlify UI (Site configuration > Environment variables) before deploying**, or the Netlify build fails.
+- `NEXT_PUBLIC_LEGAL_PAGES_PUBLIC=false` keeps the pages reachable by URL but `noindex` and unlinked. Only set it to `true` once the lawyer has signed off.
+
 ### Run Locally
 
 ```bash
