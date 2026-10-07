@@ -21,6 +21,13 @@ export const LEGAL_DOCUMENT_LINK_LABELS: Record<LegalDocumentSlug, string> = {
   security: 'Security',
 }
 
+/** Meta descriptions for search results and link previews. */
+export const LEGAL_DOCUMENT_DESCRIPTIONS: Record<LegalDocumentSlug, string> = {
+  privacy: 'How WaiseKa collects, uses, shares and protects your personal and financial data under the Philippine Data Privacy Act.',
+  terms: 'The rules for using WaiseKa, the personal finance and budgeting app.',
+  security: 'How WaiseKa protects your account and your money data.',
+}
+
 export function isLegalDocumentSlug(value: string): value is LegalDocumentSlug {
   return (LEGAL_DOCUMENT_SLUGS as readonly string[]).includes(value)
 }

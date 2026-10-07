@@ -79,7 +79,7 @@
 @media (min-width: 64rem) {
   .layout {
     grid-template-columns: minmax(0, 72ch) 15rem;
-    justify-content: space-between;
+    column-gap: 4rem;
     align-items: start;
   }
 
