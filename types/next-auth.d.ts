@@ -18,6 +18,11 @@ declare module 'next-auth' {
       /** False while an MFA-enabled account has signed in but not yet completed the TOTP step. */
       mfaVerified: boolean
     }
+    /**
+     * Write-only: sent to `unstable_update()` by /api/auth/mfa/validate-session and
+     * consumed in the jwt callback (see lib/mfa-ticket.ts). Never present on a read session.
+     */
+    mfaTicket?: string
   }
 }
 

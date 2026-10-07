@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, unstable_update } from '@/auth'
 import { getDb } from '@/lib/mongodb'
 import { verify, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib'
-import { ObjectId } from 'mongodb'
+import { ObjectId, type Db } from 'mongodb'
 import crypto from 'crypto'
 import type { IUser } from '@/lib/models/User'
 import { checkMfaRateLimit } from '@/lib/auth-rate-limit'
 import { getClientIp } from '@/lib/rate-limit'
+import { issueMfaTicket } from '@/lib/mfa-ticket'
 
 const otpCrypto = new NobleCryptoPlugin()
 const otpBase32 = new ScureBase32Plugin()
@@ -22,6 +23,19 @@ async function verifyTotp(token: string, secret: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+const VERIFICATION_FAILED_MESSAGE = 'Could not complete verification. Please try again.'
+
+/**
+ * Flip the session's mfaVerified flag. The jwt callback only does so after
+ * consuming the one-time ticket issued here, so a browser-sent update can't.
+ * Returns false if the session did not end up verified.
+ */
+async function markSessionMfaVerified(db: Db, userId: string): Promise<boolean> {
+  const ticket = await issueMfaTicket(db, userId)
+  const updatedSession = await unstable_update({ mfaTicket: ticket })
+  return updatedSession?.user?.mfaVerified === true
 }
 
 export async function POST(req: NextRequest) {
@@ -61,7 +75,9 @@ export async function POST(req: NextRequest) {
   if (/^\d{6}$/.test(normalised)) {
     const totpValid = await verifyTotp(normalised, user.mfa.secret)
     if (totpValid) {
-      await unstable_update({ user: { mfaVerified: true } })
+      if (!(await markSessionMfaVerified(db, session.user.id))) {
+        return NextResponse.json({ error: VERIFICATION_FAILED_MESSAGE }, { status: 500 })
+      }
       return NextResponse.json({ success: true })
     }
   }
@@ -77,7 +93,9 @@ export async function POST(req: NextRequest) {
         { _id: user._id },
         { $set: { 'mfa.backupCodes': updatedCodes } }
       )
-      await unstable_update({ user: { mfaVerified: true } })
+      if (!(await markSessionMfaVerified(db, session.user.id))) {
+        return NextResponse.json({ error: VERIFICATION_FAILED_MESSAGE }, { status: 500 })
+      }
       return NextResponse.json({ success: true, usedBackupCode: true })
     }
   }

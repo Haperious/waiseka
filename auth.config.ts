@@ -7,7 +7,7 @@ export const authConfig: NextAuthConfig = {
     error: '/login',
   },
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user }) {
       if (user) {
         const u = user as typeof user & {
           id: string
@@ -30,13 +30,10 @@ export const authConfig: NextAuthConfig = {
         token.premiumOverride = u.premiumOverride
         token.isVerified = u.isVerified
         token.createdAt = u.createdAt
-        // MFA-enabled accounts start every new session unverified - only a successful
-        // TOTP check (via the `update` trigger below) flips this to true.
+        // MFA-enabled accounts start every new session unverified. Only the jwt callback
+        // in auth.ts flips this to true, after consuming a server-issued MFA ticket -
+        // never trust an `update` payload here, the browser can send one too.
         token.mfaVerified = !u.mfaEnabled
-      }
-
-      if (trigger === 'update' && session?.user?.mfaVerified) {
-        token.mfaVerified = true
       }
 
       return token

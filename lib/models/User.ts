@@ -84,6 +84,8 @@ export interface IUser {
     secret: string        // TOTP secret (base32)
     backupCodes: string[] // hashed backup codes
     enabledAt: Date
+    /** One-time proof of a passed MFA step - see lib/mfa-ticket.ts. */
+    pendingTicket?: { tokenHash: string; expiresAt: Date }
   }
   importUsage?: {
     count: number

@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
+import { checkMfaRateLimit } from '@/lib/auth-rate-limit'
+import { getClientIp } from '@/lib/rate-limit'
 import { getDb } from '@/lib/mongodb'
 import { verifySync, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib'
 import { ObjectId } from 'mongodb'
 import type { IUser } from '@/lib/models/User'
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  // A session that has only passed the password step must not be able to turn MFA off
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Shares the MFA attempt counter so this can't be used to guess codes around the login limit
+  const rateLimitResult = checkMfaRateLimit(session.user.id, getClientIp(req))
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait a few minutes and try again.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) } }
+    )
+  }
 
   const body = await req.json()
   const { token } = body

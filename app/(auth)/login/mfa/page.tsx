@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { WKIcon } from '@/components/ui/WKIcon'
 import Button from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -116,6 +117,16 @@ export default function MfaLoginPage() {
             style={{ color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {useBackup ? 'Use authenticator app instead' : 'Use a backup code instead'}
+          </button>
+
+          {/* Unverified sessions are confined to this page, so offer a way out */}
+          <button
+            type="button"
+            onClick={() => signOut({ redirectTo: '/login' })}
+            className="mt-2 w-full text-center text-xs hover:underline"
+            style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            Sign in with a different account
           </button>
         </CardContent>
       </Card>

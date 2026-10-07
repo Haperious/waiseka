@@ -6,6 +6,7 @@ const { auth } = NextAuth(authConfig)
 
 const protectedRoutes = ['/dashboard', '/transactions', '/budgets', '/goals', '/reports', '/settings', '/ai', '/admin']
 const publicRoutes = ['/login', '/register']
+const MFA_STEP_PATH = '/login/mfa'
 
 export default auth((req) => {
   const { nextUrl, auth: session } = req
@@ -16,6 +17,13 @@ export default auth((req) => {
 
   if (isProtected && !isLoggedIn) {
     return NextResponse.redirect(new URL('/login', nextUrl))
+  }
+
+  // Password passed but the MFA code step hasn't: keep the session on the MFA page.
+  // API routes enforce the same rule via requireVerifiedSession().
+  const awaitingMfa = isLoggedIn && session.user?.mfaVerified === false
+  if (awaitingMfa && (isProtected || isPublic)) {
+    return NextResponse.redirect(new URL(MFA_STEP_PATH, nextUrl))
   }
 
   if (isPublic && isLoggedIn) {

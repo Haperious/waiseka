@@ -7,6 +7,7 @@ import type { IUser } from '@/lib/models/User'
 import { checkLoginRateLimit } from '@/lib/auth-rate-limit'
 import { getClientIp } from '@/lib/rate-limit'
 import { LOGIN_RATE_LIMITED_CODE } from '@/lib/constants'
+import { consumeMfaTicket } from '@/lib/mfa-ticket'
 import { authConfig } from './auth.config'
 
 /** Surfaces as `code` on the client's signIn() result so the login page can explain the lockout. */
@@ -21,6 +22,23 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
     async jwt(params) {
       const token = await authConfig.callbacks!.jwt!(params)
       if (!token) return null
+
+      // Complete the MFA step. The update payload is client-controllable, so it only
+      // carries a ticket; the flag flips only if that ticket is consumed from the DB.
+      if (params.trigger === 'update' && token.mfaVerified === false && token.id) {
+        const ticket = (params.session as { mfaTicket?: unknown } | undefined)?.mfaTicket
+        if (typeof ticket === 'string') {
+          try {
+            const db = await getDb()
+            if (await consumeMfaTicket(db, token.id as string, ticket)) {
+              token.mfaVerified = true
+            }
+          } catch (error) {
+            // Fail closed: the session stays unverified and validate-session reports the failure
+            console.error('[auth] MFA ticket check failed', error)
+          }
+        }
+      }
 
       // Subsequent requests: verify the password hasn't changed since this token was issued
       // Also refresh lastLogin so the admin panel reflects active sessions
