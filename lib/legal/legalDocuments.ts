@@ -21,6 +21,13 @@ export const LEGAL_DOCUMENT_LINK_LABELS: Record<LegalDocumentSlug, string> = {
   security: 'Security',
 }
 
+/** Compact names for tight spaces like the site footer. */
+export const LEGAL_DOCUMENT_SHORT_LABELS: Record<LegalDocumentSlug, string> = {
+  privacy: 'Privacy',
+  terms: 'Terms',
+  security: 'Security',
+}
+
 /** Meta descriptions for search results and link previews. */
 export const LEGAL_DOCUMENT_DESCRIPTIONS: Record<LegalDocumentSlug, string> = {
   privacy: 'How WaiseKa collects, uses, shares and protects your personal and financial data under the Philippine Data Privacy Act.',

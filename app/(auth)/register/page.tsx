@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { LegalLinks } from '@/components/legal/LegalLinks'
 import { WKIcon } from '@/components/ui/WKIcon'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -125,6 +126,11 @@ export default function RegisterPage() {
           </p>
         </CardContent>
       </Card>
+      <LegalLinks
+        className="mt-6 flex justify-center gap-5 text-xs"
+        linkClassName="hover:underline"
+        linkStyle={{ color: 'var(--color-text-secondary)' }}
+      />
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { ArrowUpRight } from 'lucide-react'
 import Button from '@/components/ui/Button'
@@ -11,6 +12,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useResource } from '@/hooks/useFetch'
 import { isPremium } from '@/lib/tier'
 import { cn } from '@/lib/utils'
+import { LEGAL_DOCUMENT_DESCRIPTIONS, LEGAL_DOCUMENT_LINK_LABELS, LEGAL_DOCUMENT_PATHS, LEGAL_DOCUMENT_SLUGS } from '@/lib/legal/legalDocuments'
+import { isLegalPagesPublic } from '@/lib/legal/visibility'
 import type { SettingsTabProps } from './shared'
 import styles from './settings.module.css'
 
@@ -115,6 +118,33 @@ export default function AccountTab({ hidden }: SettingsTabProps) {
           </div>
         </div>
       </div>
+
+      <LegalSettingsGroup />
+    </div>
+  )
+}
+
+/** Links to the policy pages; hidden until NEXT_PUBLIC_LEGAL_PAGES_PUBLIC is 'true'. */
+function LegalSettingsGroup() {
+  if (!isLegalPagesPublic()) return null
+
+  return (
+    <div className={styles.fieldGroup}>
+      <p className={styles.groupLabel}>Legal</p>
+      {LEGAL_DOCUMENT_SLUGS.map((slug) => (
+        <Link
+          key={slug}
+          href={LEGAL_DOCUMENT_PATHS[slug]}
+          className={styles.row}
+          style={{ textDecoration: 'none' }}
+        >
+          <div>
+            <p className={styles.rowLabel}>{LEGAL_DOCUMENT_LINK_LABELS[slug]}</p>
+            <p className={styles.rowSub}>{LEGAL_DOCUMENT_DESCRIPTIONS[slug]}</p>
+          </div>
+          <ArrowUpRight size={16} aria-hidden="true" className={styles.rowControl} style={{ color: 'var(--color-text-secondary)' }} />
+        </Link>
+      ))}
     </div>
   )
 }

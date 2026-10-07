@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { WKIcon } from '@/components/ui/WKIcon'
+import { LegalLinks } from '@/components/legal/LegalLinks'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useCurrency } from '@/context/CurrencyContext'
@@ -407,7 +408,7 @@ export default function LandingPage() {
         <div className={styles.footerLinks}>
           <a href="#features" className={styles.footerLink}>{t('landing.footer.features')}</a>
           <a href="#tips" className={styles.footerLink}>{t('landing.footer.tips')}</a>
-          <Link href="/privacy" className={styles.footerLink}>{t('landing.footer.privacy')}</Link>
+          <LegalLinks className={styles.footerLegal} linkClassName={styles.footerLink} />
           <span className={styles.footerRights}>© {new Date().getFullYear()} WaiseKa, {t('landing.footer.rights')}</span>
         </div>
       </footer>

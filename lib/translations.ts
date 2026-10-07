@@ -404,7 +404,6 @@ export const translations = {
     "landing.footer.tagline": "Budgeting that speaks your language.",
     "landing.footer.features": "Features",
     "landing.footer.tips": "Tips & Gabay",
-    "landing.footer.privacy": "Privacy",
     "landing.footer.rights": "All rights reserved.",
 
     // ── Announcements ────────────────────────────────────────────────
@@ -880,7 +879,6 @@ export const translations = {
     "landing.footer.tagline": "Budgeting that speaks your language.",
     "landing.footer.features": "Features",
     "landing.footer.tips": "Tips & Gabay",
-    "landing.footer.privacy": "Privacy",
     "landing.footer.rights": "All rights reserved.",
 
     // ── Announcements ────────────────────────────────────────────────
