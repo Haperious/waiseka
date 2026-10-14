@@ -84,3 +84,4 @@ desktop.ini
 # one-off design/export artifacts not served by the app
 dashboard.html
 /docs
+/brag-output
