@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useAccounts } from '@/hooks/useAccounts'
 import { usePreferences } from '@/hooks/usePreferences'
+import { pickDefaultAccountId } from '@/lib/accountSelection'
 
 /**
  * The account new transactions pre-fill with: the saved default account, else the
@@ -18,13 +19,10 @@ export function useDefaultAccount() {
   const { preferences, loading: prefsLoading } = usePreferences()
   const ready = !accountsLoading && !prefsLoading
 
-  const defaultAccountId = useMemo(() => {
-    if (!ready) return ''
-    const active = accounts.filter((a) => !a.isArchived)
-    const preferred = preferences?.defaultAccountId
-    if (preferred && active.some((a) => a._id === preferred)) return preferred
-    return active.find((a) => a.type === 'debit')?._id ?? ''
-  }, [ready, accounts, preferences])
+  const defaultAccountId = useMemo(
+    () => (ready ? pickDefaultAccountId(accounts, preferences?.defaultAccountId) : ''),
+    [ready, accounts, preferences]
+  )
 
   return { defaultAccountId, ready }
 }

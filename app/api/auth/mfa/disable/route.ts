@@ -36,7 +36,13 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (!user.mfa?.enabled) return NextResponse.json({ error: 'MFA is not enabled' }, { status: 400 })
 
-  const isValid = verifySync({ token, secret: user.mfa.secret, strategy: 'totp', crypto: new NobleCryptoPlugin(), base32: new ScureBase32Plugin() })
+  // verifySync returns a result object (always truthy) - the verdict is `.valid`
+  let isValid = false
+  try {
+    isValid = verifySync({ token, secret: user.mfa.secret, strategy: 'totp', crypto: new NobleCryptoPlugin(), base32: new ScureBase32Plugin() }).valid
+  } catch {
+    // Malformed token (wrong length, non-digits) throws rather than returning invalid
+  }
   if (!isValid) {
     return NextResponse.json({ error: 'Invalid code. Please try again.' }, { status: 400 })
   }
