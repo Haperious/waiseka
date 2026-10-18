@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['lib/**/*.test.ts'],
+    // Route handler tests sit next to their route.ts (app/ colocation is not routable)
+    include: ['lib/**/*.test.ts', 'app/**/*.test.ts'],
   },
 })
