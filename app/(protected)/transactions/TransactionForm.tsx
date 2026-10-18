@@ -8,8 +8,9 @@ import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Transaction } from '@/hooks/useTransactions'
 import { useCategories } from '@/hooks/useCategories'
-import { usePreferences } from '@/hooks/usePreferences'
 import { useAccounts } from '@/hooks/useAccounts'
+import { useDefaultAccount } from '@/hooks/useDefaultAccount'
+import { accountIdForSubmit } from '@/lib/accountSelection'
 import MicrophoneButton from '@/components/MicrophoneButton'
 
 const UNASSIGNED = ''
@@ -23,7 +24,6 @@ interface TransactionFormProps {
 export default function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast()
   const { categories } = useCategories()
-  const { preferences, loading: prefsLoading } = usePreferences()
   const { accounts } = useAccounts()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -42,13 +42,10 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
 
   // Pre-fill the account dropdown with the user's default account (or first debit
   // account), but only for brand-new transactions the user hasn't picked one for.
-  const defaultAccountId = useMemo(() => {
-    if (prefsLoading) return UNASSIGNED
-    const preferred = preferences?.defaultAccountId
-    if (preferred && activeAccounts.some((a) => a._id === preferred)) return preferred
-    return activeAccounts.find((a) => a.type === 'debit')?._id ?? UNASSIGNED
-  }, [prefsLoading, preferences, activeAccounts])
+  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
   const accountId = form.accountId ?? defaultAccountId
+  // Still loading and untouched: the server will apply the default on save
+  const accountPending = form.accountId === null && !defaultReady
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -74,7 +71,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
         body: JSON.stringify({
           ...form,
           amount: Number(form.amount),
-          accountId: accountId || null,
+          accountId: accountIdForSubmit(form.accountId, defaultAccountId, defaultReady),
         }),
       })
       if (!res.ok) {
@@ -154,7 +151,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
         value={accountId}
         onValueChange={(v) => setForm({ ...form, accountId: v })}
         options={accountOptions}
-        placeholder="Unassigned"
+        placeholder={accountPending ? 'Default account' : 'Unassigned'}
       />
       <Input
         label="Description (optional)"

@@ -9,6 +9,7 @@ import type { IAccount } from '@/lib/models/Account'
 import { parseTransactionDate } from '@/lib/utils'
 import { checkSpendingAlert } from '@/lib/notifications'
 import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
+import { resolveDefaultAccount } from '@/lib/services/defaultAccount'
 
 interface BulkTransactionItem {
   amount: number
@@ -69,17 +70,20 @@ export async function POST(req: NextRequest) {
 
   const db = await getDb()
 
-  // Verify the shared account belongs to this user before linking it to every row
-  let account: IAccount | null = null
-  if (accountId) {
-    account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
-    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
-  }
-
   const user = await db.collection<IUser>('users').findOne(
     { _id: new ObjectId(session.user.id) as never },
     { projection: { name: 1, email: 1, preferences: 1, tier: 1, premiumOverride: 1 } }
   )
+
+  // Verify the shared account belongs to this user before linking it to every row.
+  // Omitted accountId (form submitted before accounts loaded) = default account; explicit null = unassigned.
+  let account: IAccount | null = null
+  if (accountId) {
+    account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
+    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+  } else if (accountId === undefined) {
+    account = await resolveDefaultAccount(db, session.user.id, user?.preferences?.defaultAccountId)
+  }
 
   const userIsPremium = user ? isPremium(user) : false
   const retentionWindowStart = historyWindowStart(userIsPremium)
@@ -101,7 +105,7 @@ export async function POST(req: NextRequest) {
       date: parseTransactionDate(t.date),
       tags: [] as string[],
       isRecurring: t.isRecurring ?? false,
-      accountId: accountId ? new ObjectId(accountId) : null,
+      accountId: account?._id ?? null,
       isArchived: false as const,
       createdAt: now,
       updatedAt: now,

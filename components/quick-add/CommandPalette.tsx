@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Search, CornerDownLeft } from "lucide-react"
 import { useAccounts } from "@/hooks/useAccounts"
+import { useDefaultAccount } from "@/hooks/useDefaultAccount"
+import { accountIdForSubmit } from "@/lib/accountSelection"
 import { useVoiceKeywords } from "@/hooks/useVoiceKeywords"
 import { useCurrency } from "@/context/CurrencyContext"
 import { parseSpeechToTransaction } from "@/lib/parseSpeechToTransaction"
@@ -32,6 +34,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { toast } = useToast()
   const { formatAmountIn } = useCurrency()
   const { accounts } = useAccounts()
+  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
   const { keywords } = useVoiceKeywords()
 
   const [query, setQuery] = useState("")
@@ -67,6 +70,9 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     return accounts.find((a) => lower.includes(a.name.toLowerCase())) ?? null
   }, [query, accounts])
 
+  // No account named in the query → the default account (server resolves it if still loading)
+  const targetAccount = matchedAccount ?? accounts.find((a) => a._id === defaultAccountId) ?? null
+
   const isCapture = Boolean(parsed?.amount && parsed?.type)
 
   // Debounced search - skip while the input reads as a capture command
@@ -97,7 +103,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           category: parsed.category ?? "Other",
           description: parsed.description,
           date: new Date().toISOString(),
-          accountId: matchedAccount?._id ?? null,
+          accountId: accountIdForSubmit(matchedAccount?._id ?? null, defaultAccountId, defaultReady),
         }),
       })
       if (!res.ok) throw new Error("Failed to add transaction")
@@ -218,11 +224,11 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       color: "var(--color-text-primary)",
                     }}
                   >
-                    {formatAmountIn(parsed.amount ?? 0, matchedAccount?.currency)}
+                    {formatAmountIn(parsed.amount ?? 0, targetAccount?.currency)}
                   </p>
                   <p style={{ fontSize: "0.78rem", color: "var(--color-text-secondary)" }}>
                     {parsed.type} · {parsed.category ?? "Other"}
-                    {matchedAccount ? ` · ${matchedAccount.name}` : ""}
+                    {targetAccount ? ` · ${targetAccount.name}` : defaultReady ? "" : " · Default account"}
                   </p>
                 </div>
                 <div

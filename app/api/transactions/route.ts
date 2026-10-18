@@ -9,6 +9,7 @@ import type { IAccount } from '@/lib/models/Account'
 import { parseTransactionDate } from '@/lib/utils'
 import { checkSpendingAlert } from '@/lib/notifications'
 import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
+import { resolveDefaultAccount } from '@/lib/services/defaultAccount'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -103,18 +104,22 @@ export async function POST(req: NextRequest) {
 
   const db = await getDb()
 
-  // Verify the account belongs to this user before linking it - never trust a client-supplied id blindly
-  let account: IAccount | null = null
-  if (accountId) {
-    account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
-    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
-  }
-
-  // Fetch user once - used both for currency resolution and spending alert below
+  // Fetch user once - used for the default account, currency resolution and spending alert below
   const postUser = await db.collection<IUser>('users').findOne(
     { _id: new ObjectId(session.user.id) as never },
     { projection: { name: 1, email: 1, preferences: 1 } }
   )
+
+  // Verify the account belongs to this user before linking it - never trust a client-supplied id blindly.
+  // Omitted accountId (form submitted before accounts loaded) = default account; explicit null = unassigned.
+  let account: IAccount | null = null
+  if (accountId) {
+    account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
+    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+  } else if (accountId === undefined) {
+    account = await resolveDefaultAccount(db, session.user.id, postUser?.preferences?.defaultAccountId)
+  }
+
   // Currency always comes from the account (or the primary currency when unassigned),
   // never from the client - a PHP account's expense must never be tagged QAR.
   const resolvedCurrency = resolveTransactionCurrency(account, primaryCurrencyOf(postUser))
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest) {
     date: parseTransactionDate(date),
     tags: tags ?? [],
     isRecurring: isRecurring ?? false,
-    accountId: accountId ? new ObjectId(accountId) : null,
+    accountId: account?._id ?? null,
     isArchived: false,
     createdAt: now,
     updatedAt: now,

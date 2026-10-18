@@ -9,6 +9,8 @@ import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useCategories } from '@/hooks/useCategories'
 import { useAccounts } from '@/hooks/useAccounts'
+import { useDefaultAccount } from '@/hooks/useDefaultAccount'
+import { accountIdForSubmit } from '@/lib/accountSelection'
 
 const UNASSIGNED = ''
 
@@ -23,6 +25,7 @@ interface TransactionRow {
   amount: string
   category: string
   description: string
+  isRecurring: boolean
 }
 
 type RowErrors = Record<string, string>
@@ -40,6 +43,7 @@ function createEmptyRow(): TransactionRow {
     amount: '',
     category: '',
     description: '',
+    isRecurring: false,
   }
 }
 
@@ -55,7 +59,11 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
   ]
 
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [accountId, setAccountId] = useState(UNASSIGNED)
+  // null = not picked yet, so the batch falls back to the default account
+  const [chosenAccountId, setAccountId] = useState<string | null>(null)
+  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
+  const accountId = chosenAccountId ?? defaultAccountId
+  const accountPending = chosenAccountId === null && !defaultReady
   const [rows, setRows] = useState<TransactionRow[]>([createEmptyRow(), createEmptyRow()])
   const [rowErrors, setRowErrors] = useState<Record<string, RowErrors>>({})
   const [loading, setLoading] = useState(false)
@@ -130,12 +138,13 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
         category: r.category,
         description: r.description,
         date,
+        isRecurring: r.isRecurring,
       }))
 
       const res = await fetch('/api/transactions/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions, accountId: accountId || null }),
+        body: JSON.stringify({ transactions, accountId: accountIdForSubmit(chosenAccountId, defaultAccountId, defaultReady) }),
       })
 
       const data = await res.json()
@@ -182,7 +191,7 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
           value={accountId}
           onValueChange={setAccountId}
           options={accountOptions}
-          placeholder="Unassigned"
+          placeholder={accountPending ? 'Default account' : 'Unassigned'}
         />
       </div>
 
@@ -249,6 +258,15 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
                   onChange={(e) => updateRow(row.id, { description: e.target.value })}
                 />
               </div>
+              <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={row.isRecurring}
+                  onChange={(e) => updateRow(row.id, { isRecurring: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                Recurring transaction
+              </label>
             </div>
           )
         })}

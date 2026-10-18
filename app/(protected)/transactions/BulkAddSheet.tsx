@@ -4,10 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import {
   X, CalendarDays, Wallet, ChevronDown, Trash2, Pencil, Plus,
-  CheckCircle, TrendingUp, TrendingDown, PiggyBank,
+  CheckCircle, TrendingUp, TrendingDown, PiggyBank, Repeat,
 } from 'lucide-react'
 import { useCategories } from '@/hooks/useCategories'
 import { useAccounts } from '@/hooks/useAccounts'
+import { useDefaultAccount } from '@/hooks/useDefaultAccount'
+import { accountIdForSubmit } from '@/lib/accountSelection'
 import { useCurrency } from '@/context/CurrencyContext'
 import { getCurrencySymbol } from '@/lib/currency'
 import { useToast } from '@/components/ui/Toast'
@@ -24,6 +26,7 @@ interface BulkLine {
   amount: number
   category: string
   description: string
+  isRecurring: boolean
 }
 
 interface BulkAddSheetProps {
@@ -62,7 +65,8 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
 
   const [visible, setVisible] = useState(false)
   const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
-  const [accountId, setAccountId] = useState('')
+  // null = not picked yet, so the batch falls back to the default account
+  const [chosenAccountId, setAccountId] = useState<string | null>(null)
   const [lines, setLines] = useState<BulkLine[]>([])
   const [lineErrors, setLineErrors] = useState<Record<string, Record<string, string>>>({})
 
@@ -70,6 +74,8 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
   const [amountStr, setAmountStr] = useState('')
   const [category, setCategory] = useState('')
   const [description, setDescription] = useState('')
+  // Sticky across lines: salary-day batches are often several recurring bills in a row
+  const [isRecurring, setIsRecurring] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [datePickerOpen, setDatePickerOpen] = useState(false)
@@ -80,8 +86,11 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
   const closeBtnRef = useRef<HTMLButtonElement>(null)
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
+  const accountId = chosenAccountId ?? defaultAccountId
+  const accountPending = chosenAccountId === null && !defaultReady
   const selectedAccount = accountId ? activeAccounts.find((a) => a._id === accountId) : undefined
-  const accountLabel = selectedAccount?.name ?? t('bulk.unassigned')
+  const accountLabel = selectedAccount?.name ?? t(accountPending ? 'common.defaultAccount' : 'bulk.unassigned')
   // Amounts are entered in the selected account's currency (unassigned → primary),
   // matching what the server will save.
   const entryCurrency = selectedAccount?.currency ?? primaryCurrency
@@ -101,6 +110,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
   const confirmDiscard = () => {
     setLines([])
     setLineErrors({})
+    setIsRecurring(false)
     setDiscardOpen(false)
     onCancel()
   }
@@ -148,6 +158,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
       amount: amountValue,
       category,
       description: description.trim(),
+      isRecurring,
     }
     setLines((prev) => [...prev, newLine])
     setAmountStr('')
@@ -183,8 +194,9 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
             category: l.category,
             description: l.description,
             date,
+            isRecurring: l.isRecurring,
           })),
-          accountId: accountId || null,
+          accountId: accountIdForSubmit(chosenAccountId, defaultAccountId, defaultReady),
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -208,6 +220,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
       emitTransactionSaved()
       setLines([])
       setLineErrors({})
+      setIsRecurring(false)
       onSuccess()
     } catch {
       toast(t('common.genericError'), 'error')
@@ -365,7 +378,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
                       fontSize: '0.68rem', color: 'var(--color-text-muted)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
-                      {line.description || t('bulk.noDescription')} · {accountLabel}
+                      {line.description || t('bulk.noDescription')} · {accountLabel}{line.isRecurring && ` · ↻ ${t('tx.recurring')}`}
                     </p>
                     {hasError && (
                       <p style={{ fontSize: '0.65rem', color: 'var(--color-expense)', marginTop: 2 }}>
@@ -469,23 +482,42 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
           />
         </div>
 
-        <div style={{ position: 'relative', marginBottom: 10 }}>
-          <Pencil style={{
-            position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-            width: 13, height: 13, color: 'var(--color-text-muted)',
-          }} />
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={t('bulk.descPlaceholder')}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <Pencil style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              width: 13, height: 13, color: 'var(--color-text-muted)',
+            }} />
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t('bulk.descPlaceholder')}
+              style={{
+                width: '100%', height: 38, borderRadius: 8, border: 'none',
+                paddingLeft: 34, paddingRight: 12,
+                backgroundColor: 'var(--color-elevated)', color: 'var(--color-text-primary)',
+                fontSize: '0.82rem', outline: 'none',
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsRecurring((v) => !v)}
+            aria-pressed={isRecurring}
             style={{
-              width: '100%', height: 38, borderRadius: 8, border: 'none',
-              paddingLeft: 34, paddingRight: 12,
-              backgroundColor: 'var(--color-elevated)', color: 'var(--color-text-primary)',
-              fontSize: '0.82rem', outline: 'none',
+              display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+              height: 38, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
+              border: isRecurring ? '1px solid var(--color-accent)' : '1px solid transparent',
+              backgroundColor: isRecurring ? 'var(--color-sage)' : 'var(--color-elevated)',
+              color: isRecurring ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              fontSize: '0.78rem', fontWeight: 600,
+              transition: 'all 0.2s',
             }}
-          />
+          >
+            <Repeat style={{ width: 13, height: 13 }} />
+            {t('tx.recurring')}
+          </button>
         </div>
 
         <Keypad
@@ -579,7 +611,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
         <PickerOverlay onClose={() => setAccountPickerOpen(false)} title={t('quickAdd.account')}>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
             {[{ _id: '', name: t('bulk.unassigned'), computedBalance: undefined as number | undefined, currency: undefined as string | undefined }, ...activeAccounts].map((a) => {
-              const isSelected = a._id === accountId
+              const isSelected = !accountPending && a._id === accountId
               return (
                 <li key={a._id || '__unassigned__'}>
                   <button

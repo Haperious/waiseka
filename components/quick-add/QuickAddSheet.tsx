@@ -5,6 +5,8 @@ import { format } from "date-fns"
 import { Camera, Mic, Square } from "lucide-react"
 import { useCategories } from "@/hooks/useCategories"
 import { useAccounts } from "@/hooks/useAccounts"
+import { useDefaultAccount } from "@/hooks/useDefaultAccount"
+import { accountIdForSubmit } from "@/lib/accountSelection"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getCurrencySymbol } from "@/lib/currency"
 import { useToast } from "@/components/ui/Toast"
@@ -18,6 +20,9 @@ import { cn } from "@/lib/utils"
 import Keypad from "@/components/quick-add/Keypad"
 
 type Mode = "keypad" | "voice" | "receipt"
+
+// Chip shown while accounts are still loading; saving then lets the server pick the default account
+const PENDING_DEFAULT = "__default__"
 type TxType = "expense" | "income" | "savings"
 
 const TYPE_COLOR_VAR: Record<TxType, string> = {
@@ -173,11 +178,15 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
   const [type, setType] = useState<TxType>("expense")
   const [amountStr, setAmountStr] = useState("")
   const [category, setCategory] = useState("")
-  const [accountId, setAccountId] = useState("")
+  // null = not picked yet, so the entry falls back to the default account
+  const [chosenAccountId, setAccountId] = useState<string | null>(null)
   const [description, setDescription] = useState("")
   const [saving, setSaving] = useState(false)
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
+  const accountId = chosenAccountId ?? defaultAccountId
+  const accountPending = chosenAccountId === null && !defaultReady
   // The symbol follows the selected account (unassigned → primary), matching what the server saves
   const currencySymbol = getCurrencySymbol(
     activeAccounts.find((a) => a._id === accountId)?.currency ?? primaryCurrency,
@@ -209,7 +218,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
           description: description.trim(),
           date: format(new Date(), "yyyy-MM-dd"),
           isRecurring: false,
-          accountId: accountId || null,
+          accountId: accountIdForSubmit(chosenAccountId, defaultAccountId, defaultReady),
         }),
       })
       if (!res.ok) {
@@ -265,11 +274,12 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
 
       <ChipScroller
         items={[
+          ...(accountPending ? [{ id: PENDING_DEFAULT, label: t("common.defaultAccount") }] : []),
           { id: "", label: t("quickAdd.unassigned") },
           ...activeAccounts.map((a) => ({ id: a._id, label: a.name })),
         ]}
-        selected={accountId}
-        onSelect={setAccountId}
+        selected={accountPending ? PENDING_DEFAULT : accountId}
+        onSelect={(id) => setAccountId(id === PENDING_DEFAULT ? null : id)}
       />
 
       <input
@@ -347,8 +357,12 @@ export function ChipScroller({
 function VoiceMode({ onDone }: { onDone: () => void }) {
   const { t } = useLanguage()
   const { toast } = useToast()
-  // Voice entries are saved unassigned, so they're in the primary currency
-  const { formatAmount } = useCurrency()
+  // Voice entries go to the default account (server resolves it if still loading),
+  // so amounts show in that account's currency (unassigned → primary)
+  const { formatAmountIn } = useCurrency()
+  const { accounts } = useAccounts()
+  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
+  const defaultCurrency = accounts.find((a) => a._id === defaultAccountId)?.currency
   const { categories } = useCategories()
   const { keywords } = useVoiceKeywords()
   const { transcript, isListening, isSupported, startListening, stopListening, clearTranscript } = useSpeechToText()
@@ -397,7 +411,7 @@ function VoiceMode({ onDone }: { onDone: () => void }) {
           description: parsed.description ?? "",
           date: format(new Date(), "yyyy-MM-dd"),
           isRecurring: false,
-          accountId: null,
+          accountId: accountIdForSubmit(null, defaultAccountId, defaultReady),
         }),
       })
       if (!res.ok) {
@@ -489,7 +503,7 @@ function VoiceMode({ onDone }: { onDone: () => void }) {
                 {parsed.type}
               </Badge>
             )}
-            {parsed.amount !== undefined && <Badge variant="default">{formatAmount(parsed.amount)}</Badge>}
+            {parsed.amount !== undefined && <Badge variant="default">{formatAmountIn(parsed.amount, defaultCurrency)}</Badge>}
             {resolvedCategory && <Badge variant="default">{resolvedCategory}</Badge>}
           </div>
           <button
