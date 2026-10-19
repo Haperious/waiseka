@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { Delete } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
+import styles from './quickAdd.module.css'
 
 const DEFAULT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del']
 
@@ -59,7 +60,7 @@ export default function Keypad({
   onChange,
   keys = DEFAULT_KEYS,
   columns = 3,
-  keyHeight = 52,
+  keyHeight = 48,
   actionKey,
   maxDecimals,
   maxDigits,
@@ -74,13 +75,8 @@ export default function Keypad({
           key={`${key}-${i}`}
           type="button"
           onClick={() => press(key)}
-          className="flex items-center justify-center font-semibold text-lg transition-colors active:opacity-70"
-          style={{
-            height: keyHeight,
-            borderRadius: 12,
-            backgroundColor: 'var(--color-elevated)',
-            color: 'var(--color-text-primary)',
-          }}
+          className={styles.key}
+          style={{ height: keyHeight }}
           aria-label={key === 'del' ? t('common.delete') : key}
         >
           {key === 'del' ? <Delete className="h-5 w-5" /> : key}

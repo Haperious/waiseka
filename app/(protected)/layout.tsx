@@ -7,6 +7,7 @@ import Navbar from '@/components/layout/Navbar'
 import BottomNav from '@/components/layout/BottomNav'
 import QuickAddSheet from '@/components/quick-add/QuickAddSheet'
 import CommandPalette from '@/components/quick-add/CommandPalette'
+import BulkAddSheet from './transactions/BulkAddSheet'
 import OnboardingProvider from '@/components/onboarding/OnboardingProvider'
 import { AccountsProvider } from '@/hooks/useAccounts'
 import { CategoriesProvider } from '@/hooks/useCategories'
@@ -16,6 +17,7 @@ import { ViewCurrencyProvider } from '@/context/ViewCurrencyContext'
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [bulkAddOpen, setBulkAddOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
 
   useEffect(() => {
@@ -44,7 +46,19 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                   </main>
                 </div>
                 <BottomNav onMoreClick={() => setSidebarOpen(true)} onAddClick={() => setQuickAddOpen(true)} />
-                <QuickAddSheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
+                <QuickAddSheet
+                  open={quickAddOpen}
+                  onClose={() => setQuickAddOpen(false)}
+                  onAddMultiple={() => setBulkAddOpen(true)}
+                />
+                {/* Opened from the quick-add sheet; saving emits transaction-saved so pages refetch */}
+                <div className="lg:hidden">
+                  <BulkAddSheet
+                    open={bulkAddOpen}
+                    onSuccess={() => setBulkAddOpen(false)}
+                    onCancel={() => setBulkAddOpen(false)}
+                  />
+                </div>
                 <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
               </div>
               {/* Onboarding checklist - renders for new users only, self-dismisses */}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { format } from "date-fns"
-import { Camera, Mic, Square } from "lucide-react"
+import { Calculator, CalendarDays, Camera, ChevronDown, Layers, Mic, PenLine, Receipt, Square, Wallet } from "lucide-react"
 import { useCategories } from "@/hooks/useCategories"
 import { useAccounts } from "@/hooks/useAccounts"
 import { useDefaultAccount } from "@/hooks/useDefaultAccount"
@@ -18,6 +18,8 @@ import { emitTransactionSaved } from "@/lib/transactionEvents"
 import Badge from "@/components/ui/Badge"
 import { cn } from "@/lib/utils"
 import Keypad from "@/components/quick-add/Keypad"
+import { orderCategoryChips } from "@/components/forms/categoryChips"
+import styles from "./quickAdd.module.css"
 
 type Mode = "keypad" | "voice" | "receipt"
 
@@ -34,11 +36,15 @@ const TYPE_COLOR_VAR: Record<TxType, string> = {
 interface QuickAddSheetProps {
   open: boolean
   onClose: () => void
+  /** Opens the Add Multiple sheet; the header link is hidden when not provided. */
+  onAddMultiple?: () => void
 }
+
+const MODE_ICONS = { keypad: Calculator, voice: Mic, receipt: Receipt } as const
 
 const SWIPE_CLOSE_THRESHOLD = 100
 
-export default function QuickAddSheet({ open, onClose }: QuickAddSheetProps) {
+export default function QuickAddSheet({ open, onClose, onAddMultiple }: QuickAddSheetProps) {
   const { t } = useLanguage()
   const [mode, setMode] = useState<Mode>("keypad")
   const [visible, setVisible] = useState(false)
@@ -108,59 +114,78 @@ export default function QuickAddSheet({ open, onClose }: QuickAddSheetProps) {
         }}
       />
       <div
-        className={cn(
-          "absolute bottom-0 inset-x-0 flex flex-col max-h-[88vh] ease-out",
-          isDragging ? "transition-none" : "transition-transform duration-300",
-        )}
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          paddingBottom: "env(safe-area-inset-bottom)",
-          transform: visible ? `translateY(${dragOffset}px)` : "translateY(100%)",
-          boxShadow: "0 -8px 30px rgba(0,0,0,0.25)",
-        }}
+        className={cn(styles.sheet, isDragging ? "transition-none" : "transition-transform duration-300 ease-out")}
+        style={{ transform: visible ? `translateY(${dragOffset}px)` : "translateY(100%)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("quickAdd.title")}
       >
         <div
-          className="flex justify-center pt-2.5 pb-1 shrink-0 touch-none"
+          className={styles.handleArea}
           onPointerDown={(e) => handleDragStart(e.clientY)}
           onPointerMove={(e) => isDragging && handleDragMove(e.clientY)}
           onPointerUp={handleDragEnd}
           onPointerCancel={handleDragEnd}
         >
-          <div style={{ width: 36, height: 4, borderRadius: 999, backgroundColor: "var(--color-border)" }} />
+          <div className={styles.handle} />
         </div>
 
         <div
-          className="px-4 pt-1 pb-3 shrink-0"
+          className={styles.top}
           onPointerDown={(e) => handleDragStart(e.clientY)}
           onPointerMove={(e) => isDragging && handleDragMove(e.clientY)}
           onPointerUp={handleDragEnd}
           onPointerCancel={handleDragEnd}
         >
-          <div className="grid grid-cols-3 gap-1 p-1 rounded-full" style={{ backgroundColor: "var(--color-elevated)" }}>
-            {(["keypad", "voice", "receipt"] as Mode[]).map((m) => (
+          <div className={styles.header}>
+            <h2 className={styles.title}>{t("quickAdd.title")}</h2>
+            {onAddMultiple && (
               <button
-                key={m}
-                onClick={() => setMode(m)}
-                className="py-1.5 rounded-full text-sm font-semibold transition-colors"
-                style={
-                  mode === m
-                    ? { backgroundColor: "var(--color-accent)", color: "#0C100E" }
-                    : { color: "var(--color-text-secondary)" }
-                }
+                type="button"
+                className={styles.multipleLink}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => {
+                  handleClosed()
+                  onAddMultiple()
+                }}
               >
-                {t(`quickAdd.mode.${m}` as const)}
+                <Layers size={14} />
+                {t("quickAdd.addMultiple")}
               </button>
-            ))}
+            )}
+          </div>
+          <div className={styles.modes} role="tablist">
+            {(["keypad", "voice", "receipt"] as Mode[]).map((m) => {
+              const Icon = MODE_ICONS[m]
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setMode(m)}
+                  className={cn(styles.mode, mode === m && styles.modeOn)}
+                >
+                  <Icon size={14} />
+                  {t(`quickAdd.mode.${m}` as const)}
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-6">
-          {mode === "keypad" && <KeypadMode onDone={handleClosed} />}
-          {mode === "voice" && <VoiceMode onDone={handleClosed} />}
-          {mode === "receipt" && <ReceiptMode />}
-        </div>
+        {mode === "keypad" && <KeypadMode onDone={handleClosed} />}
+        {mode === "voice" && (
+          <div className={styles.body}>
+            <VoiceMode onDone={handleClosed} />
+          </div>
+        )}
+        {mode === "receipt" && (
+          <div className={styles.body}>
+            <ReceiptMode />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -181,7 +206,9 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
   // null = not picked yet, so the entry falls back to the default account
   const [chosenAccountId, setAccountId] = useState<string | null>(null)
   const [description, setDescription] = useState("")
+  const [date, setDate] = useState(() => format(new Date(), "yyyy-MM-dd"))
   const [saving, setSaving] = useState(false)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
   const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
@@ -195,6 +222,8 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
     () => categories.filter((c) => c.type === type || c.type === "both" || type === "savings"),
     [categories, type],
   )
+  // Most used first. Ordered per type, not per selection, so chips don't jump when tapped.
+  const orderedCategories = useMemo(() => orderCategoryChips(categoryOptions, ""), [categoryOptions])
 
   const handleType = (next: TxType) => {
     setType(next)
@@ -203,6 +232,16 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
 
   const amountValue = Number(amountStr)
   const canSave = amountStr !== "" && amountValue > 0 && !!category
+
+  const accountLabel = accountPending
+    ? t("common.defaultAccount")
+    : activeAccounts.find((a) => a._id === accountId)?.name ?? t("quickAdd.unassigned")
+  const today = format(new Date(), "yyyy-MM-dd")
+  const dateLabel = date === today ? t("common.today") : format(new Date(`${date}T00:00:00`), "MMM d")
+  const amountLabel =
+    amountValue > 0
+      ? `${currencySymbol}${amountValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : ""
 
   const handleSave = async () => {
     if (!canSave || saving) return
@@ -216,7 +255,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
           amount: amountValue,
           category,
           description: description.trim(),
-          date: format(new Date(), "yyyy-MM-dd"),
+          date,
           isRecurring: false,
           accountId: accountIdForSubmit(chosenAccountId, defaultAccountId, defaultReady),
         }),
@@ -237,77 +276,104 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        {(["expense", "income", "savings"] as TxType[]).map((opt) => (
-          <button
-            key={opt}
-            onClick={() => handleType(opt)}
-            className="py-2 rounded-full text-sm font-semibold capitalize transition-colors"
-            style={
-              type === opt
-                ? { backgroundColor: `var(--color-${opt}-bg)`, color: `var(--color-${opt})` }
-                : { backgroundColor: "var(--color-elevated)", color: "var(--color-text-secondary)" }
-            }
-          >
-            {t(`common.${opt}` as const)}
-          </button>
-        ))}
+    <>
+      <div className={styles.body}>
+        <div className={styles.types}>
+          {(["expense", "income", "savings"] as TxType[]).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => handleType(opt)}
+              className={styles.typePill}
+              aria-pressed={type === opt}
+              style={type === opt ? { backgroundColor: `var(--color-${opt}-bg)`, color: TYPE_COLOR_VAR[opt] } : undefined}
+            >
+              {t(`common.${opt}` as const)}
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.amount} aria-live="polite">
+          <span className={styles.amountSymbol}>{currencySymbol}</span>
+          <span className={styles.amountValue} style={{ color: TYPE_COLOR_VAR[type] }}>
+            {amountStr || "0"}
+          </span>
+          <span className={styles.caret} aria-hidden="true" />
+        </div>
+
+        <ChipScroller
+          items={orderedCategories.map((c) => ({ id: c.name, label: c.name }))}
+          selected={category}
+          onSelect={setCategory}
+          emptyLabel={t("quickAdd.selectCategory")}
+          bleed={16}
+        />
+
+        <div className={styles.pills}>
+          <label className={styles.pill}>
+            <Wallet size={15} />
+            <span className={styles.pillLabel}>{accountLabel}</span>
+            <ChevronDown size={14} />
+            <select
+              className={styles.pillNative}
+              aria-label={t("quickAdd.account")}
+              value={accountPending ? PENDING_DEFAULT : accountId}
+              onChange={(e) => setAccountId(e.target.value === PENDING_DEFAULT ? null : e.target.value)}
+            >
+              {accountPending && <option value={PENDING_DEFAULT}>{t("common.defaultAccount")}</option>}
+              <option value="">{t("quickAdd.unassigned")}</option>
+              {activeAccounts.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.pill}>
+            <CalendarDays size={15} />
+            <span className={styles.pillLabel}>{dateLabel}</span>
+            <ChevronDown size={14} />
+            <input
+              ref={dateInputRef}
+              type="date"
+              className={styles.pillNative}
+              aria-label="Date"
+              value={date}
+              onClick={() => {
+                try {
+                  dateInputRef.current?.showPicker()
+                } catch {
+                  // showPicker() unsupported - the native control still opens on tap
+                }
+              }}
+              onChange={(e) => e.target.value && setDate(e.target.value)}
+            />
+          </label>
+        </div>
+
+        <label className={styles.pill}>
+          <PenLine size={15} />
+          <input
+            type="text"
+            className={styles.noteInput}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={t("quickAdd.notePlaceholder")}
+            enterKeyHint="done"
+          />
+        </label>
+
+        <Keypad value={amountStr} onChange={setAmountStr} keyHeight={48} />
       </div>
 
-      <div className="flex items-center justify-center py-2">
-        <span
-          className="tabular-nums font-extrabold"
-          style={{ fontSize: "2.6rem", color: TYPE_COLOR_VAR[type], lineHeight: 1 }}
-        >
-          {currencySymbol}
-          {amountStr || "0"}
-        </span>
+      <div className={styles.footer}>
+        <button type="button" onClick={handleSave} disabled={!canSave || saving} className={styles.cta}>
+          {saving
+            ? t("quickAdd.saving")
+            : `${t(`quickAdd.add.${type}` as const)}${amountLabel ? ` · ${amountLabel}` : ""}`}
+        </button>
       </div>
-
-      <ChipScroller
-        items={categoryOptions.map((c) => ({ id: c.name, label: c.name }))}
-        selected={category}
-        onSelect={setCategory}
-        emptyLabel={t("quickAdd.selectCategory")}
-      />
-
-      <ChipScroller
-        items={[
-          ...(accountPending ? [{ id: PENDING_DEFAULT, label: t("common.defaultAccount") }] : []),
-          { id: "", label: t("quickAdd.unassigned") },
-          ...activeAccounts.map((a) => ({ id: a._id, label: a.name })),
-        ]}
-        selected={accountPending ? PENDING_DEFAULT : accountId}
-        onSelect={(id) => setAccountId(id === PENDING_DEFAULT ? null : id)}
-      />
-
-      <input
-        type="text"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder={t("quickAdd.description")}
-        className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
-        style={{
-          backgroundColor: "var(--color-elevated)",
-          color: "var(--color-text-primary)",
-        }}
-      />
-
-      <Keypad value={amountStr} onChange={setAmountStr} />
-
-      <button
-        onClick={handleSave}
-        disabled={!canSave || saving}
-        className="w-full py-3.5 rounded-xl font-bold text-white transition-opacity disabled:opacity-40"
-        style={{
-          background: "linear-gradient(135deg, var(--color-primary), var(--color-accent))",
-          boxShadow: canSave ? "0 4px 20px rgba(22,163,74,.35)" : "none",
-        }}
-      >
-        {saving ? t("quickAdd.saving") : t("quickAdd.save")}
-      </button>
-    </div>
+    </>
   )
 }
 
@@ -316,33 +382,32 @@ export function ChipScroller({
   selected,
   onSelect,
   emptyLabel,
+  bleed = 0,
 }: {
   items: { id: string; label: string }[]
   selected: string
   onSelect: (id: string) => void
   emptyLabel?: string
+  /** Horizontal padding of the parent; the row extends into it so chips scroll edge to edge. */
+  bleed?: number
 }) {
   if (items.length === 0) {
-    return emptyLabel ? (
-      <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-        {emptyLabel}
-      </p>
-    ) : null
+    return emptyLabel ? <p className={styles.emptyHint}>{emptyLabel}</p> : null
   }
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+    <div
+      className={styles.chipRow}
+      style={bleed ? { marginLeft: -bleed, marginRight: -bleed, paddingLeft: bleed, paddingRight: bleed } : undefined}
+    >
       {items.map((item) => {
         const isSelected = item.id === selected
         return (
           <button
             key={item.id || "__unassigned__"}
+            type="button"
+            aria-pressed={isSelected}
             onClick={() => onSelect(item.id)}
-            className="shrink-0 px-3.5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors"
-            style={
-              isSelected
-                ? { backgroundColor: "var(--color-accent)", color: "#0C100E" }
-                : { backgroundColor: "var(--color-elevated)", color: "var(--color-text-secondary)" }
-            }
+            className={cn(styles.chip, isSelected && styles.chipOn)}
           >
             {item.label}
           </button>

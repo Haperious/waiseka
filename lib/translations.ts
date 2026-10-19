@@ -445,6 +445,11 @@ export const translations = {
     "quickAdd.saveFailedToast": "Failed to save transaction",
     "quickAdd.addedToast": "Transaction added",
     "quickAdd.voice.toggleAria": "Toggle voice input",
+    "quickAdd.addMultiple": "Add multiple",
+    "quickAdd.notePlaceholder": "What was this for? (optional)",
+    "quickAdd.add.expense": "Add expense",
+    "quickAdd.add.income": "Add income",
+    "quickAdd.add.savings": "Add savings",
 
     // ── Bulk add sheet (mobile) ─────────────────────────────────────
     "bulk.title": "Add Multiple",
@@ -923,6 +928,11 @@ export const translations = {
     "quickAdd.saveFailedToast": "Nabigong i-save ang transaksyon",
     "quickAdd.addedToast": "Naidagdag ang transaksyon",
     "quickAdd.voice.toggleAria": "I-toggle ang voice input",
+    "quickAdd.addMultiple": "Magdagdag ng marami",
+    "quickAdd.notePlaceholder": "Para saan ito? (opsyonal)",
+    "quickAdd.add.expense": "Idagdag ang gastos",
+    "quickAdd.add.income": "Idagdag ang kita",
+    "quickAdd.add.savings": "Idagdag ang ipon",
 
     // ── Bulk add sheet (mobile) ─────────────────────────────────────
     "bulk.title": "Magdagdag ng Marami",
