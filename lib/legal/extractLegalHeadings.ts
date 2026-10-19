@@ -3,7 +3,20 @@ import GithubSlugger from 'github-slugger'
 export interface LegalHeading {
   /** Same id rehype-slug gives the rendered heading, so `#id` links land on it. */
   id: string
+  /** Full heading text, e.g. "1. Who we are". */
   text: string
+  /** Section number when the heading starts with one, e.g. "1". */
+  number?: string
+  /** Heading text without the leading number, e.g. "Who we are". */
+  label: string
+}
+
+const NUMBERED_HEADING_PATTERN = /^(\d+)\.\s+(.*)$/
+
+/** Split "1. Who we are" into its number and label. Unnumbered text is all label. */
+export function splitHeadingNumber(text: string): { number?: string; label: string } {
+  const match = NUMBERED_HEADING_PATTERN.exec(text)
+  return match ? { number: match[1], label: match[2] } : { label: text }
 }
 
 /** Heading level listed in the "On this page" nav. The legal content uses H3 for its sections. */
@@ -46,7 +59,7 @@ export function extractLegalHeadings(markdown: string): LegalHeading[] {
 
     const text = toPlainText(match[2])
     const id = slugger.slug(text)
-    if (match[1].length === LEGAL_TOC_HEADING_LEVEL) headings.push({ id, text })
+    if (match[1].length === LEGAL_TOC_HEADING_LEVEL) headings.push({ id, text, ...splitHeadingNumber(text) })
   }
 
   return headings

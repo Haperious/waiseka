@@ -1,6 +1,22 @@
 ---
 title: Privacy Policy
 version: "1.0"
+hero:
+  title: "Your data,"
+  emphasis: "your rules."
+glance:
+  - icon: Ban
+    title: "No ads. No selling or renting your data."
+    section: 3
+  - icon: KeyRound
+    title: "We never ask for your bank or GCash password, OTP or PIN."
+    section: 2
+  - icon: FileX
+    title: "Uploaded statements are deleted right after parsing."
+    section: 5
+  - icon: BellRing
+    title: "Breach notice within 72 hours."
+    section: 10
 ---
 
 ### 1. Who we are
