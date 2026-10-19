@@ -1,21 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { WKIcon } from '@/components/ui/WKIcon'
+import { ArrowLeft, KeyRound, MailCheck } from 'lucide-react'
+import { AuthIconTile, AuthShell, BuiltForPill, LoginPanel } from '@/components/auth/AuthShell'
+import styles from '@/components/auth/auth.module.css'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { Card, CardContent } from '@/components/ui/Card'
+
+/** Seconds before "Resend link" unlocks after a send. */
+const RESEND_COOLDOWN_S = 60
+
+function formatCountdown(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+  const [cooldown, setCooldown] = useState(0)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email.trim()) { setError('Email is required'); return }
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown((s) => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
+
+  const sendLink = async () => {
     setLoading(true)
     setError('')
     try {
@@ -25,6 +38,7 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email }),
       })
       setSent(true)
+      setCooldown(RESEND_COOLDOWN_S)
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -32,55 +46,78 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[30rem] flex-col justify-center px-4 py-8">
-      <div className="flex flex-col items-center mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <WKIcon size={48} scope="light" className="rounded-xl" />
-          <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>WaiseKa</span>
-        </div>
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Reset your password</p>
-      </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) { setError('Email is required'); return }
+    await sendLink()
+  }
 
-      <Card>
-        <CardContent className="pt-6">
-          {sent ? (
-            <div className="text-center space-y-4">
-              <div className="text-4xl">📬</div>
-              <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Check your inbox</p>
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                If that email is registered, we&apos;ve sent a reset link valid for 30 minutes.
-              </p>
-              <Link href="/login" className="text-sm hover:underline font-medium" style={{ color: 'var(--color-accent)' }}>
-                Back to login
-              </Link>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                Enter the email address you registered with and we&apos;ll send you a reset link.
-              </p>
-              <Input
-                label="Email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={error}
-                autoComplete="email"
-              />
-              <Button type="submit" size="lg" loading={loading} className="w-full">
-                Send reset link
-              </Button>
-              <p className="text-center text-sm">
-                <Link href="/login" className="hover:underline font-medium" style={{ color: 'var(--color-accent)' }}>
-                  Back to login
-                </Link>
-              </p>
-            </form>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+  return (
+    <AuthShell
+      kicker={<BuiltForPill />}
+      headline={<>Your sweldo, <br className={styles.desktopOnly} /><em>sorted.</em></>}
+      panel={<LoginPanel />}
+    >
+      {sent ? (
+        <div className={styles.stack}>
+          <AuthIconTile icon={MailCheck} />
+          <div className={styles.titleBlock}>
+            <h2 className={styles.title}>Check your <em>inbox.</em></h2>
+            <p className={styles.sub}>
+              If <strong>{email}</strong> has a WaiseKa account, a reset link is on its way. It&apos;s valid for 30 minutes.
+            </p>
+          </div>
+          <p className={styles.tip}>
+            <strong>Wala pa rin?</strong> Check your Spam or Promotions folder before resending.
+          </p>
+          {error && <p className={styles.error} role="alert">{error}</p>}
+          <div className={styles.actionsPlain}>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              loading={loading}
+              disabled={cooldown > 0}
+              onClick={sendLink}
+              style={{ width: '100%', fontVariantNumeric: 'tabular-nums' }}
+            >
+              {cooldown > 0 ? `Resend link in ${formatCountdown(cooldown)}` : 'Resend link'}
+            </Button>
+            <Link href="/login" className={styles.link} style={{ fontSize: '0.88rem' }}>
+              Back to sign in
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className={styles.stack}>
+          <Link href="/login" className={styles.backLink}>
+            <ArrowLeft size={15} />
+            Back to sign in
+          </Link>
+          <AuthIconTile icon={KeyRound} />
+          <div className={styles.titleBlock}>
+            <h2 className={styles.title}>Forgot your <em>password?</em></h2>
+            <p className={styles.sub}>
+              Okay lang, nangyayari &apos;yan. Enter the email you registered with and WaiseKa will send you a reset link.
+            </p>
+          </div>
+          <Input
+            id="email"
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            error={error}
+            autoComplete="email"
+          />
+          <div className={styles.bottom}>
+            <Button type="submit" size="lg" loading={loading} style={{ width: '100%' }}>
+              Send reset link
+            </Button>
+          </div>
+        </form>
+      )}
+    </AuthShell>
   )
 }
