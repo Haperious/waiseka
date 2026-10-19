@@ -480,3 +480,54 @@
     display: inline;
   }
 }
+
+/* ── Password strength + match ──────────────────────────────────────────── */
+
+.meter {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.meterSeg {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-elevated);
+  transition: background 0.2s ease;
+}
+
+.meterLabel {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.match {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-income);
+}
+
+.legal {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.legal a {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+}
+
+@media (max-width: 860px) {
+  .meterLabel {
+    display: none;
+  }
+}

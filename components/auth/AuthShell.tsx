@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { CalendarDays } from 'lucide-react'
+import { Activity, CalendarDays, Users } from 'lucide-react'
 import { LegalLinks } from '@/components/legal/LegalLinks'
 import { WKIcon } from '@/components/ui/WKIcon'
 import styles from './auth.module.css'
@@ -93,5 +93,30 @@ export function LoginPanel() {
         </div>
       </div>
     </>
+  )
+}
+
+const REGISTER_PERKS = [
+  { Icon: CalendarDays, title: 'Built around cutoffs', body: 'Plan each sweldo on the 15th and 30th, not just the month.' },
+  { Icon: Users, title: 'Padala, tracked', body: 'See exactly how much goes home every cutoff.' },
+  { Icon: Activity, title: 'Pera Health Score', body: 'One number from 0 to 100 for how this month is going.' },
+]
+
+/** Register panel content: three perks. */
+export function RegisterPanel() {
+  return (
+    <ul className={styles.perks} style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
+      {REGISTER_PERKS.map(({ Icon, title, body }) => (
+        <li key={title} className={styles.perk}>
+          <span className={styles.perkIcon}>
+            <Icon size={16} />
+          </span>
+          <div>
+            <div className={styles.perkTitle}>{title}</div>
+            <div className={styles.perkBody}>{body}</div>
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
