@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/waiseka-design-system-657a18e8-3ac1-4435-a95c-38bb9527eeb5/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/waiseka-design-system-657a18e8-3ac1-4435-a95c-38bb9527eeb5/tokens/colors.css">
+<link rel="stylesheet" href="_ds/waiseka-design-system-657a18e8-3ac1-4435-a95c-38bb9527eeb5/tokens/typography.css">
+<link rel="stylesheet" href="_ds/waiseka-design-system-657a18e8-3ac1-4435-a95c-38bb9527eeb5/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/waiseka-design-system-657a18e8-3ac1-4435-a95c-38bb9527eeb5/tokens/shape.css">
+<link rel="stylesheet" href="_ds/waiseka-design-system-657a18e8-3ac1-4435-a95c-38bb9527eeb5/tokens/motion.css">
+<link rel="stylesheet" href="_ds/waiseka-design-system-657a18e8-3ac1-4435-a95c-38bb9527eeb5/styles.css">
+<script src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.js"></script>
+<script src="_ds/waiseka-design-system-657a18e8-3ac1-4435-a95c-38bb9527eeb5/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: #0C100E; font-family: var(--font-geist), "Geist", system-ui, sans-serif; }
+  a { color: var(--color-accent); text-decoration: none; }
+  a:hover { color: var(--color-accent); opacity: 0.8; }
+  .dv-turn { padding: 40px 44px 32px; border-bottom: 1px solid rgba(255,255,255,.08); scroll-margin-top: 16px; }
+  .dv-thd { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; }
+  .dv-tid { font: 600 10px ui-monospace, Menlo, monospace; padding: 3px 7px; background: #ECF4EE; color: #0C100E; border-radius: 4px; text-decoration: none; }
+  .dv-tname { font: 600 13px/1.2 var(--font-geist), system-ui, sans-serif; color: #ECF4EE; }
+  .dv-intro { margin: 0 0 24px; max-width: 900px; font: 400 12.5px/1.7 var(--font-geist), system-ui, sans-serif; color: rgba(236,244,238,.6); }
+  .dv-opts { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+  .dv-opt { flex: none; display: flex; flex-direction: column; gap: 9px; scroll-margin-top: 16px; }
+  .dv-oid { font: 600 10.5px ui-monospace, Menlo, monospace; padding: 3px 7px; background: rgba(236,244,238,.12); color: #ECF4EE; border-radius: 5px; text-decoration: none; }
+  .dv-olabel { display: flex; align-items: baseline; gap: 8px; font: 400 11.5px/1.4 var(--font-geist), system-ui, sans-serif; color: rgba(236,244,238,.55); max-width: 1280px; }
+  .dv-card { background: var(--color-bg); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.4); overflow: hidden; }
+  .dv-opt:target .dv-oid { background: #4ADE80; color: #0C100E; }
+  .dv-next { margin: 26px 0 0; font: 12px/1.6 var(--font-geist), system-ui, sans-serif; color: rgba(236,244,238,.5); }
+</style>
+</helmet>
+
+<div class="{{ themeClass }}">
+<section class="dv-turn" id="t2">
+  <div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Cutoff strip merged in, plus month-by-month reports</span></div>
+  <p class="dv-intro"><a class="dv-oid" href="#2a">2a</a> is <a class="dv-oid" href="#1a">1a</a> with the Left-to-spend card replaced by <a class="dv-oid" href="#1b">1b</a>'s cutoff strip, and a compact 3-month band added at the bottom that links into the new Reports page. <a class="dv-oid" href="#2b">2b</a> is the new Reports page — chart and table merged behind one working toggle in the header, no range selector, with the 3-month limit stated as a Premium line at the bottom.</p>
+  <div class="dv-opts">
+
+    <!-- ═══════════════════ 2a — DASHBOARD WITH CUTOFF STRIP ═══════════════════ -->
+    <div class="dv-opt" id="2a">
+      <div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Focus Dashboard v2 — cutoff strip where Left to spend was, and a 3-month band under the fold.</div>
+      <div class="dv-card" style="width: 1280px;">
+        <div style="display: flex; height: 1060px; background: var(--color-bg); color: var(--color-text-primary);">
+
+          <nav style="width: 64px; flex-shrink: 0; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 6px;">
+            <img src="assets/logo-dark.png" alt="WaiseKa" style="width: 30px; height: 30px; border-radius: 9px; object-fit: contain; margin-bottom: 10px;">
+            <div style="width: 40px; height: 40px; border-radius: 11px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="LayoutDashboard" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="ArrowLeftRight" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Wallet" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PieChart" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Target" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="CalendarDays" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 28px; height: 1px; background: var(--color-border); margin: 6px 0;"></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Bot" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="BookOpen" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="flex: 1;"></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Settings" size="19px" hint-size="19px,19px"></x-import></div>
+          </nav>
+
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <header style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 24px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-blur);">
+              <div style="flex: 1; max-width: 420px; height: 36px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-elevated); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--color-text-muted); font-size: 0.82rem; white-space: nowrap;">
+                <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Search" size="14px" hint-size="14px,14px"></x-import>
+                Search or add — try "grab 285 gcash"
+                <span style="margin-left: auto; font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 5px; background: var(--color-card); border: 1px solid var(--color-border);">⌘K</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+                <span style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; background: var(--color-elevated); border: 1px solid var(--color-border); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; color: var(--color-text-secondary);">SEP 2026 <span style="color: var(--color-text-muted);">⌄</span></span>
+                <span style="display: flex; align-items: center; gap: 2px; height: 30px; padding: 0 10px; border-radius: 8px; background: var(--color-elevated); border: 1px solid var(--color-border); font-size: 0.72rem; font-weight: 700;"><span style="color: var(--color-accent);">EN</span><span style="color: var(--color-text-muted);">·</span><span style="color: var(--color-text-muted);">TL</span></span>
+                <span style="width: 30px; height: 30px; border-radius: 999px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700;">J</span>
+              </div>
+            </header>
+
+            <main style="flex: 1; overflow: hidden; padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+
+              <div style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px;">
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; padding: 22px 24px; display: flex; flex-direction: column; gap: 18px;">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+                    <div>
+                      <p style="margin: 0 0 8px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--color-text-muted);">Total Money</p>
+                      <p style="margin: 0; font-size: 2.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;">₱182,430</p>
+                      <p style="margin: 8px 0 0; font-size: 0.78rem; color: var(--color-text-secondary);"><span style="color: var(--color-income); font-weight: 700;">+₱12,340</span> since last cutoff · 5 accounts</p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0;">
+                      <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.HealthRing" score="74" size="72px" label="PERA" hint-size="72px,90px"></x-import>
+                      <span style="font-size: 0.62rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--color-income-bg); color: var(--color-income);">Healthy</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <div style="flex: 1; border-radius: 12px; background: var(--color-elevated); border-left: 3px solid var(--color-accent); padding: 9px 11px;"><p style="margin: 0 0 3px; font-size: 0.68rem; color: var(--color-text-secondary); font-weight: 600;">BDO Payroll</p><p style="margin: 0; font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱64,200</p></div>
+                    <div style="flex: 1; border-radius: 12px; background: var(--color-elevated); border-left: 3px solid var(--color-accent); padding: 9px 11px;"><p style="margin: 0 0 3px; font-size: 0.68rem; color: var(--color-text-secondary); font-weight: 600;">SeaBank</p><p style="margin: 0; font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱98,000</p></div>
+                    <div style="flex: 1; border-radius: 12px; background: var(--color-elevated); border-left: 3px solid var(--color-accent); padding: 9px 11px;"><p style="margin: 0 0 3px; font-size: 0.68rem; color: var(--color-text-secondary); font-weight: 600;">GCash</p><p style="margin: 0; font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱12,480</p></div>
+                    <div style="flex: 1; border-radius: 12px; background: var(--color-elevated); border-left: 3px solid var(--color-warning); padding: 9px 11px;"><p style="margin: 0 0 3px; font-size: 0.68rem; color: var(--color-text-secondary); font-weight: 600;">BPI Card</p><p style="margin: 0; font-size: 0.82rem; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱18,740</p></div>
+                  </div>
+                </div>
+
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; padding: 20px 22px 18px; display: flex; flex-direction: column; gap: 15px;">
+                  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+                    <p style="margin: 0; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--color-text-muted);">Safe to spend per day</p>
+                    <span style="font-size: 0.7rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--color-elevated); border: 1px solid var(--color-border); color: var(--color-text-secondary); white-space: nowrap;">Cutoff 2 · 16–30 Sep</span>
+                  </div>
+                  <div style="display: flex; align-items: flex-end; gap: 14px;">
+                    <p style="margin: 0; font-size: 2.6rem; font-weight: 800; line-height: 0.95; letter-spacing: -0.025em; color: var(--color-accent); font-variant-numeric: tabular-nums;">₱1,180</p>
+                    <p style="margin: 0 0 4px; font-size: 0.78rem; line-height: 1.5; color: var(--color-text-secondary);">for the <strong style="color: var(--color-text-primary);">8 days</strong> left<br>₱9,440 unspent</p>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <div style="flex: 1; border-radius: 10px; background: var(--color-elevated); padding: 8px 10px;"><p style="margin: 0 0 3px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); font-weight: 700;">Came in</p><p style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--color-income); font-variant-numeric: tabular-nums;">₱36,000</p></div>
+                    <div style="flex: 1; border-radius: 10px; background: var(--color-elevated); padding: 8px 10px;"><p style="margin: 0 0 3px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); font-weight: 700;">Went out</p><p style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--color-expense); font-variant-numeric: tabular-nums;">₱21,560</p></div>
+                    <div style="flex: 1; border-radius: 10px; background: var(--color-elevated); padding: 8px 10px;"><p style="margin: 0 0 3px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); font-weight: 700;">To savings</p><p style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--color-savings); font-variant-numeric: tabular-nums;">₱5,000</p></div>
+                  </div>
+                  <div>
+                    <div style="display: flex; height: 26px; border-radius: 8px; overflow: hidden; border: 1px solid var(--color-border);">
+                      <div style="width: 26%; background: var(--color-expense); opacity: 0.85;"></div>
+                      <div style="width: 14%; background: var(--color-warning); opacity: 0.85;"></div>
+                      <div style="width: 14%; background: var(--color-savings); opacity: 0.8;"></div>
+                      <div style="flex: 1; background: var(--color-elevated); display: flex; align-items: center; justify-content: center; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em; color: var(--color-text-muted); white-space: nowrap;">UNSPENT ₱9,440</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 7px; font-size: 0.66rem; color: var(--color-text-muted);">
+                      <span>16 Sep · sweldo landed</span><span>Today · 23 Sep</span><span>30 Sep</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p style="margin: 0 0 10px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--color-text-muted);">Needs you today</p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-left: 3px solid var(--color-expense); border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-expense-bg); color: var(--color-expense); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="TrendingDown" size="15px" hint-size="15px,15px"></x-import></div>
+                    <div>
+                      <p style="margin: 0 0 2px; font-size: 0.83rem; font-weight: 700;">Pulutan &amp; Barkada is over</p>
+                      <p style="margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-secondary);">₱2,300 spent on a ₱2,000 ceiling. Two more Fridays this cutoff.</p>
+                    </div>
+                  </div>
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-left: 3px solid var(--color-warning); border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-warning-bg); color: var(--color-warning); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="CreditCard" size="15px" hint-size="15px,15px"></x-import></div>
+                    <div>
+                      <p style="margin: 0 0 2px; font-size: 0.83rem; font-weight: 700;">BPI card due in 3 days</p>
+                      <p style="margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-secondary);">₱18,740 outstanding. Paying from BDO keeps you at 0% utilisation.</p>
+                    </div>
+                  </div>
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent); border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PiggyBank" size="15px" hint-size="15px,15px"></x-import></div>
+                    <div>
+                      <p style="margin: 0 0 2px; font-size: 0.83rem; font-weight: 700;">₱5,000 not yet moved</p>
+                      <p style="margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-secondary);">Sweldo landed 16 Sep. Your emergency fund transfer is still pending.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px;">
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+                  <div style="padding: 14px 20px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+                    <h2 style="margin: 0; font-size: 0.9rem; font-weight: 700;">Recent activity</h2>
+                    <a href="#1c" style="font-size: 0.75rem; font-weight: 600;">All 248 →</a>
+                  </div>
+                  <div style="padding: 6px 20px 14px; display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border);">
+                      <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-income-bg); color: var(--color-income); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="TrendingUp" size="14px" hint-size="14px,14px"></x-import></span>
+                      <span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 0.82rem; font-weight: 600;">Sweldo — 2nd cutoff</span><span style="display: block; font-size: 0.72rem; color: var(--color-text-muted);">Salary · BDO Payroll · recurring</span></span>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">+₱36,000</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border);">
+                      <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-expense-bg); color: var(--color-expense); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="TrendingDown" size="14px" hint-size="14px,14px"></x-import></span>
+                      <span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 0.82rem; font-weight: 600;">Padala kay Nanay</span><span style="display: block; font-size: 0.72rem; color: var(--color-text-muted);">Padala sa Bahay · GCash</span></span>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱3,000</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border);">
+                      <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-expense-bg); color: var(--color-expense); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="TrendingDown" size="14px" hint-size="14px,14px"></x-import></span>
+                      <span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 0.82rem; font-weight: 600;">SM Hypermarket</span><span style="display: block; font-size: 0.72rem; color: var(--color-text-muted);">Groceries · BDO Payroll</span></span>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱2,840</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 0;">
+                      <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-savings-bg); color: var(--color-savings); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PiggyBank" size="14px" hint-size="14px,14px"></x-import></span>
+                      <span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 0.82rem; font-weight: 600;">Emergency fund top-up</span><span style="display: block; font-size: 0.72rem; color: var(--color-text-muted);">Savings · SeaBank</span></span>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-savings); font-variant-numeric: tabular-nums;">+₱5,000</span>
+                    </div>
+                    <div style="margin-top: 10px; height: 38px; border-radius: 10px; border: 1px dashed var(--color-border); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--color-text-muted); font-size: 0.8rem;">
+                      <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Plus" size="14px" hint-size="14px,14px"></x-import>Type here to log something — amount, category, account
+                    </div>
+                  </div>
+                </div>
+
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+                  <div style="padding: 14px 20px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+                    <h2 style="margin: 0; font-size: 0.9rem; font-weight: 700;">Budgets</h2>
+                    <span style="font-size: 0.72rem; color: var(--color-text-muted);">2 need attention</span>
+                  </div>
+                  <div style="padding: 14px 20px; display: flex; flex-direction: column; gap: 13px;">
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Pulutan &amp; Barkada" spent="2300" limit="2000" dot-color="#F87171" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Baon &amp; Lunch" spent="3900" limit="4000" dot-color="#FBBF24" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Transpo (Grab)" spent="5600" limit="6000" dot-color="#60A5FA" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Groceries" spent="8400" limit="10000" dot-color="#4ADE80" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Load &amp; Data" spent="780" limit="1000" dot-color="#A78BFA" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                  </div>
+                </div>
+              </div>
+
+              <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden;">
+                <div style="padding: 14px 20px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+                  <h2 style="margin: 0; font-size: 0.9rem; font-weight: 700;">Last 3 months</h2>
+                  <a href="#2b" style="font-size: 0.75rem; font-weight: 600;">Full month-by-month report →</a>
+                </div>
+                <div style="padding: 16px 20px; display: grid; grid-template-columns: 330px 1fr; gap: 24px;">
+                  <div style="display: flex; align-items: flex-end; gap: 20px; height: 132px;">
+                    <div style="display: flex; flex-direction: column; justify-content: space-between; height: 108px; font-size: 0.62rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; padding-bottom: 18px;"><span>75k</span><span>40k</span><span>0</span></div>
+                    <div style="flex: 1; display: flex; justify-content: space-around; align-items: flex-end; height: 132px;">
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                        <div style="display: flex; align-items: flex-end; gap: 3px; height: 108px;">
+                          <div style="width: 13px; height: 88%; border-radius: 3px 3px 0 0; background: var(--color-income);"></div>
+                          <div style="width: 13px; height: 62%; border-radius: 3px 3px 0 0; background: var(--color-expense);"></div>
+                          <div style="width: 13px; height: 17%; border-radius: 3px 3px 0 0; background: var(--color-savings);"></div>
+                        </div>
+                        <span style="font-size: 0.68rem; font-weight: 700; color: var(--color-text-muted);">JUL</span>
+                      </div>
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                        <div style="display: flex; align-items: flex-end; gap: 3px; height: 108px;">
+                          <div style="width: 13px; height: 88%; border-radius: 3px 3px 0 0; background: var(--color-income);"></div>
+                          <div style="width: 13px; height: 71%; border-radius: 3px 3px 0 0; background: var(--color-expense);"></div>
+                          <div style="width: 13px; height: 12%; border-radius: 3px 3px 0 0; background: var(--color-savings);"></div>
+                        </div>
+                        <span style="font-size: 0.68rem; font-weight: 700; color: var(--color-text-muted);">AUG</span>
+                      </div>
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                        <div style="display: flex; align-items: flex-end; gap: 3px; height: 108px;">
+                          <div style="width: 13px; height: 96%; border-radius: 3px 3px 0 0; background: var(--color-income);"></div>
+                          <div style="width: 13px; height: 59%; border-radius: 3px 3px 0 0; background: var(--color-expense);"></div>
+                          <div style="width: 13px; height: 21%; border-radius: 3px 3px 0 0; background: var(--color-savings);"></div>
+                        </div>
+                        <span style="font-size: 0.68rem; font-weight: 700; color: var(--color-accent);">SEP</span>
+                      </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 7px; padding-bottom: 22px;">
+                      <span style="display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--color-text-secondary);"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-income);"></span>Income</span>
+                      <span style="display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--color-text-secondary);"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-expense);"></span>Expenses</span>
+                      <span style="display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--color-text-secondary);"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-savings);"></span>Savings</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p style="margin: 0 0 10px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Biggest movers vs. your 3-month average</p>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 22px;">
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="flex: 1; font-size: 0.8rem; font-weight: 600;">Shopee &amp; Lazada</span>
+                        <span style="display: flex; align-items: flex-end; gap: 2px; height: 20px;"><span style="width: 6px; height: 55%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 6px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 6px; height: 35%; border-radius: 2px; background: var(--color-accent);"></span></span>
+                        <span style="width: 96px; text-align: right; font-size: 0.78rem; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">₱1,950 −52%</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="flex: 1; font-size: 0.8rem; font-weight: 600;">Pulutan &amp; Barkada</span>
+                        <span style="display: flex; align-items: flex-end; gap: 2px; height: 20px;"><span style="width: 6px; height: 62%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 6px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 6px; height: 79%; border-radius: 2px; background: var(--color-expense);"></span></span>
+                        <span style="width: 96px; text-align: right; font-size: 0.78rem; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">₱2,300 +12%</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="flex: 1; font-size: 0.8rem; font-weight: 600;">Groceries</span>
+                        <span style="display: flex; align-items: flex-end; gap: 2px; height: 20px;"><span style="width: 6px; height: 94%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 6px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 6px; height: 81%; border-radius: 2px; background: var(--color-accent);"></span></span>
+                        <span style="width: 96px; text-align: right; font-size: 0.78rem; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">₱8,400 −13%</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="flex: 1; font-size: 0.8rem; font-weight: 600;">Transpo (Grab)</span>
+                        <span style="display: flex; align-items: flex-end; gap: 2px; height: 20px;"><span style="width: 6px; height: 82%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 6px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 6px; height: 90%; border-radius: 2px; background: var(--color-warning);"></span></span>
+                        <span style="width: 96px; text-align: right; font-size: 0.78rem; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱5,600 +1%</span>
+                      </div>
+                    </div>
+                    <p style="margin: 12px 0 0; font-size: 0.76rem; line-height: 1.6; color: var(--color-text-secondary);">September is your best month of the three: ₱15,600 moved to savings on ₱72,300 in — a 21.6% rate, up from 13.6% in August.</p>
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ 2b — REPORTS, MERGED WITH CHART/TABLE TOGGLE ═══════════════════ -->
+    <div class="dv-opt" id="2b">
+      <div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Monthly Report — one page. The three-month band and month cards stay put; the Chart / Table toggle in the header swaps the lower half. Click it, it works.</div>
+      <div class="dv-card" style="width: 1280px;">
+        <div style="display: flex; min-height: 1000px; background: var(--color-bg); color: var(--color-text-primary);">
+
+          <nav style="width: 64px; flex-shrink: 0; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 6px;">
+            <img src="assets/logo-dark.png" alt="WaiseKa" style="width: 30px; height: 30px; border-radius: 9px; object-fit: contain; margin-bottom: 10px;">
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="LayoutDashboard" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="ArrowLeftRight" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Wallet" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PieChart" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Target" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="CalendarDays" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 28px; height: 1px; background: var(--color-border); margin: 6px 0;"></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Bot" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="flex: 1;"></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Settings" size="19px" hint-size="19px,19px"></x-import></div>
+          </nav>
+
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <header style="height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-blur);">
+              <div style="display: flex; align-items: baseline; gap: 12px;">
+                <h1 style="margin: 0; font-size: 1.25rem; font-weight: 900; font-family: var(--font-playfair), Georgia, serif;">Monthly Report</h1>
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted);">Jul – Sep 2026</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; border-radius: 8px; overflow: hidden; border: 1px solid var(--color-border); font-size: 0.74rem; font-weight: 600;">
+                  <span onClick="{{ showChart }}" style="padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; background: {{ chartTabBg }}; color: {{ chartTabFg }};"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PieChart" size="12px" hint-size="12px,12px"></x-import>Chart</span>
+                  <span onClick="{{ showTable }}" style="padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; border-left: 1px solid var(--color-border); background: {{ tableTabBg }}; color: {{ tableTabFg }};"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Tags" size="12px" hint-size="12px,12px"></x-import>Table</span>
+                </div>
+                <div style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--color-border); display: flex; align-items: center; gap: 7px; font-size: 0.76rem; color: var(--color-text-secondary);"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Download" size="13px" hint-size="13px,13px"></x-import>Export</div>
+                <span style="width: 30px; height: 30px; border-radius: 999px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700;">J</span>
+              </div>
+            </header>
+
+            <main style="flex: 1; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+
+              <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px;">
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; padding: 18px 22px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                    <h2 style="margin: 0; font-size: 0.9rem; font-weight: 700;">Income, expenses, savings</h2>
+                    <div style="display: flex; gap: 12px;">
+                      <span style="display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--color-text-secondary);"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-income);"></span>Income</span>
+                      <span style="display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--color-text-secondary);"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-expense);"></span>Expenses</span>
+                      <span style="display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--color-text-secondary);"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-savings);"></span>Savings</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 16px;">
+                    <div style="display: flex; flex-direction: column; justify-content: space-between; height: 210px; font-size: 0.65rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; padding-bottom: 24px;">
+                      <span>80k</span><span>60k</span><span>40k</span><span>20k</span><span>0</span>
+                    </div>
+                    <div style="flex: 1; display: flex; justify-content: space-around; align-items: flex-end; height: 210px; border-left: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: 0 10px 0 14px;">
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+                        <div style="display: flex; align-items: flex-end; gap: 6px; height: 176px;">
+                          <div style="width: 26px; height: 82.5%; border-radius: 4px 4px 0 0; background: var(--color-income); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;">66.0k</span></div>
+                          <div style="width: 26px; height: 58%; border-radius: 4px 4px 0 0; background: var(--color-expense); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;">46.4k</span></div>
+                          <div style="width: 26px; height: 15.5%; border-radius: 4px 4px 0 0; background: var(--color-savings); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;">12.4k</span></div>
+                        </div>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-text-muted);">JUL · 18.8%</span>
+                      </div>
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+                        <div style="display: flex; align-items: flex-end; gap: 6px; height: 176px;">
+                          <div style="width: 26px; height: 82.5%; border-radius: 4px 4px 0 0; background: var(--color-income); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;">66.0k</span></div>
+                          <div style="width: 26px; height: 66%; border-radius: 4px 4px 0 0; background: var(--color-expense); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;">53.0k</span></div>
+                          <div style="width: 26px; height: 11%; border-radius: 4px 4px 0 0; background: var(--color-savings); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;">9.0k</span></div>
+                        </div>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-warning);">AUG · 13.6%</span>
+                      </div>
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+                        <div style="display: flex; align-items: flex-end; gap: 6px; height: 176px;">
+                          <div style="width: 26px; height: 90%; border-radius: 4px 4px 0 0; background: var(--color-income); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-primary); font-variant-numeric: tabular-nums; white-space: nowrap;">72.3k</span></div>
+                          <div style="width: 26px; height: 55.5%; border-radius: 4px 4px 0 0; background: var(--color-expense); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-primary); font-variant-numeric: tabular-nums; white-space: nowrap;">44.6k</span></div>
+                          <div style="width: 26px; height: 19.5%; border-radius: 4px 4px 0 0; background: var(--color-savings); position: relative;"><span style="position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-size: 0.64rem; font-weight: 700; color: var(--color-text-primary); font-variant-numeric: tabular-nums; white-space: nowrap;">15.6k</span></div>
+                        </div>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-accent);">SEP · 21.6%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; padding: 18px 22px; display: flex; flex-direction: column; gap: 14px;">
+                  <h2 style="margin: 0; font-size: 0.9rem; font-weight: 700;">Where September went</h2>
+                  <div style="display: flex; height: 22px; border-radius: 999px; overflow: hidden;">
+                    <div style="width: 19%; background: var(--color-accent);"></div>
+                    <div style="width: 18%; background: #60A5FA;"></div>
+                    <div style="width: 17%; background: #FBBF24;"></div>
+                    <div style="width: 13%; background: #A78BFA;"></div>
+                    <div style="width: 13%; background: var(--color-expense);"></div>
+                    <div style="flex: 1; background: var(--color-elevated);"></div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 9px;">
+                    <div style="display: flex; align-items: center; gap: 9px; font-size: 0.79rem;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-accent);"></span><span style="flex: 1;">Groceries</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱8,400</span><span style="width: 34px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">19%</span></div>
+                    <div style="display: flex; align-items: center; gap: 9px; font-size: 0.79rem;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #60A5FA;"></span><span style="flex: 1;">Utang payments</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱8,000</span><span style="width: 34px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">18%</span></div>
+                    <div style="display: flex; align-items: center; gap: 9px; font-size: 0.79rem;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #FBBF24;"></span><span style="flex: 1;">Bills &amp; Utilities</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱7,650</span><span style="width: 34px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">17%</span></div>
+                    <div style="display: flex; align-items: center; gap: 9px; font-size: 0.79rem;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #A78BFA;"></span><span style="flex: 1;">Padala sa Bahay</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱6,000</span><span style="width: 34px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">13%</span></div>
+                    <div style="display: flex; align-items: center; gap: 9px; font-size: 0.79rem;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-expense);"></span><span style="flex: 1;">Transpo (Grab)</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱5,600</span><span style="width: 34px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">13%</span></div>
+                    <div style="display: flex; align-items: center; gap: 9px; font-size: 0.79rem; color: var(--color-text-secondary);"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--color-elevated);"></span><span style="flex: 1;">Everything else (4)</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱8,930</span><span style="width: 34px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">20%</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 14px; padding: 14px 16px;">
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px;">
+                      <p style="margin: 0; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; color: var(--color-text-muted);">July 2026</p>
+                      <span style="font-size: 0.7rem; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">18.8% saved</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 7px;">
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Income</span><span style="font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">₱66,000</span></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Expenses</span><span style="font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">₱46,400</span></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Savings moved</span><span style="font-weight: 700; color: var(--color-savings); font-variant-numeric: tabular-nums;">₱12,400</span></div>
+                      <div style="height: 1px; background: var(--color-border);"></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Left over</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱7,200</span></div>
+                    </div>
+                  </div>
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 14px; padding: 14px 16px;">
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px;">
+                      <p style="margin: 0; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; color: var(--color-text-muted);">August 2026</p>
+                      <span style="font-size: 0.7rem; font-weight: 700; color: var(--color-warning); font-variant-numeric: tabular-nums;">13.6% saved</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 7px;">
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Income</span><span style="font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">₱66,000</span></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Expenses</span><span style="font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">₱53,000</span></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Savings moved</span><span style="font-weight: 700; color: var(--color-savings); font-variant-numeric: tabular-nums;">₱9,000</span></div>
+                      <div style="height: 1px; background: var(--color-border);"></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Left over</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱4,000</span></div>
+                    </div>
+                  </div>
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent); border-radius: 14px; padding: 14px 16px;">
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px;">
+                      <p style="margin: 0; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; color: var(--color-accent);">September 2026</p>
+                      <span style="font-size: 0.7rem; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">21.6% saved</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 7px;">
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Income</span><span style="font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">₱72,300</span></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Expenses</span><span style="font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">₱44,580</span></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Savings moved</span><span style="font-weight: 700; color: var(--color-savings); font-variant-numeric: tabular-nums;">₱15,600</span></div>
+                      <div style="height: 1px; background: var(--color-border);"></div>
+                      <div style="display: flex; justify-content: space-between; font-size: 0.78rem;"><span style="color: var(--color-text-secondary);">Left over</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">₱12,120</span></div>
+                    </div>
+                  </div>
+              </div>
+
+              <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+                <div style="padding: 13px 20px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+                  <h2 style="margin: 0; font-size: 0.9rem; font-weight: 700;">{{ lowerTitle }}</h2>
+                  <span style="font-size: 0.72rem; color: var(--color-text-muted);">{{ lowerHint }}</span>
+                </div>
+
+                <sc-if value="{{ isTable }}" hint-placeholder-val="{{ true }}">
+                  <div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                      <thead>
+                        <tr style="background: var(--color-surface); border-bottom: 1px solid var(--color-border);">
+                          <th style="padding: 9px 20px; text-align: left; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Category</th>
+                          <th style="padding: 9px 14px; text-align: right; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Jul</th>
+                          <th style="padding: 9px 14px; text-align: right; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Aug</th>
+                          <th style="padding: 9px 14px; text-align: right; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-accent);">Sep</th>
+                          <th style="padding: 9px 14px; text-align: center; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Trend</th>
+                          <th style="padding: 9px 14px; text-align: right; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">3-mo avg</th>
+                          <th style="padding: 9px 20px; text-align: right; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Sep vs avg</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Groceries</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">9,800</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">10,400</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">8,400</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 94%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 81%; border-radius: 2px; background: var(--color-accent);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">9,533</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">−12%</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Utang payments</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">8,000</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">8,000</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">8,000</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-text-muted);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">8,000</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">flat</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Bills &amp; Utilities</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">7,400</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">8,100</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">7,650</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 91%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 94%; border-radius: 2px; background: var(--color-text-muted);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">7,717</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">−1%</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Padala sa Bahay</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">6,000</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">6,000</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">6,000</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-text-muted);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">6,000</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">flat</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Transpo (Grab)</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">5,100</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">6,200</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">5,600</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 82%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 90%; border-radius: 2px; background: var(--color-warning);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">5,633</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">−1%</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Baon &amp; Lunch</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">4,300</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">4,800</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">3,900</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 90%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 81%; border-radius: 2px; background: var(--color-accent);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">4,333</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">−10%</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Shopee &amp; Lazada</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">3,100</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">5,600</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">1,950</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 55%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 35%; border-radius: 2px; background: var(--color-accent);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">3,550</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">−45%</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Pulutan &amp; Barkada</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">1,800</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">2,900</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">2,300</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 62%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 79%; border-radius: 2px; background: var(--color-expense);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">2,333</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">−1%</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--color-border);">
+                          <td style="padding: 10px 20px; font-weight: 600;">Load &amp; Data</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">900</td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">1,000</td>
+                          <td style="padding: 10px 14px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">780</td>
+                          <td style="padding: 10px 14px;"><span style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 20px;"><span style="width: 7px; height: 90%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 100%; border-radius: 2px; background: var(--color-elevated);"></span><span style="width: 7px; height: 78%; border-radius: 2px; background: var(--color-accent);"></span></span></td>
+                          <td style="padding: 10px 14px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">893</td>
+                          <td style="padding: 10px 20px; text-align: right; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">−13%</td>
+                        </tr>
+                        <tr style="background: var(--color-elevated);">
+                          <td style="padding: 11px 20px; font-weight: 800;">Total expenses</td>
+                          <td style="padding: 11px 14px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums;">46,400</td>
+                          <td style="padding: 11px 14px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums;">53,000</td>
+                          <td style="padding: 11px 14px; text-align: right; font-weight: 800; color: var(--color-accent); font-variant-numeric: tabular-nums;">44,580</td>
+                          <td style="padding: 11px 14px;"></td>
+                          <td style="padding: 11px 14px; text-align: right; font-weight: 800; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">47,993</td>
+                          <td style="padding: 11px 20px; text-align: right; font-weight: 800; color: var(--color-income); font-variant-numeric: tabular-nums;">−7%</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ isChart }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding: 16px 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; align-content: start;">
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Groceries</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱8,400 · <span style="color: var(--color-income); font-weight: 700;">−12% vs avg</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 94%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 81%; border-radius: 2px; background: var(--color-accent);"></span></span>
+                      </div>
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Utang payments</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱8,000 · <span style="color: var(--color-text-muted); font-weight: 700;">flat</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-text-muted);"></span></span>
+                      </div>
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Bills &amp; Utilities</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱7,650 · <span style="color: var(--color-text-muted); font-weight: 700;">−1% vs avg</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 91%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 94%; border-radius: 2px; background: var(--color-text-muted);"></span></span>
+                      </div>
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Padala sa Bahay</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱6,000 · <span style="color: var(--color-text-muted); font-weight: 700;">flat</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-text-muted);"></span></span>
+                      </div>
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Transpo (Grab)</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱5,600 · <span style="color: var(--color-text-muted); font-weight: 700;">−1% vs avg</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 82%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 90%; border-radius: 2px; background: var(--color-warning);"></span></span>
+                      </div>
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Baon &amp; Lunch</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱3,900 · <span style="color: var(--color-income); font-weight: 700;">−10% vs avg</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 90%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 81%; border-radius: 2px; background: var(--color-accent);"></span></span>
+                      </div>
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Shopee &amp; Lazada</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱1,950 · <span style="color: var(--color-income); font-weight: 700;">−45% vs avg</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 55%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 35%; border-radius: 2px; background: var(--color-accent);"></span></span>
+                      </div>
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Pulutan &amp; Barkada</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱2,300 · <span style="color: var(--color-expense); font-weight: 700;">over budget</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 62%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 79%; border-radius: 2px; background: var(--color-expense);"></span></span>
+                      </div>
+                      <div style="border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-elevated); padding: 13px 15px; display: flex; align-items: center; gap: 14px;">
+                        <div style="flex: 1; min-width: 0;">
+                          <p style="margin: 0 0 4px; font-size: 0.82rem; font-weight: 700;">Load &amp; Data</p>
+                          <p style="margin: 0; font-size: 0.74rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">₱780 · <span style="color: var(--color-income); font-weight: 700;">−13% vs avg</span></p>
+                        </div>
+                        <span style="display: flex; align-items: flex-end; gap: 4px; height: 44px;"><span style="width: 10px; height: 90%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 100%; border-radius: 2px; background: var(--color-card);"></span><span style="width: 10px; height: 78%; border-radius: 2px; background: var(--color-accent);"></span></span>
+                      </div>
+                  </div>
+                </sc-if>
+
+                <div style="padding: 12px 20px; border-top: 1px solid var(--color-border); display: flex; align-items: center; gap: 10px;">
+                  <span style="color: var(--color-accent); display: flex;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Lightbulb" size="15px" hint-size="15px,15px"></x-import></span>
+                  <p style="margin: 0; font-size: 0.78rem; line-height: 1.55; color: var(--color-text-secondary);">Utang, padala and bills are ₱21,650 a month you can't move. Everything you can actually cut sits in the other six categories.</p>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-radius: 14px; background: var(--color-card); border: 1px solid var(--color-border); border-left: 3px solid var(--color-premium);">
+                <span style="width: 28px; height: 28px; border-radius: 9px; background: var(--color-premium-bg); color: var(--color-premium); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Crown" size="14px" hint-size="14px,14px"></x-import></span>
+                <p style="margin: 0; flex: 1; font-size: 0.79rem; line-height: 1.55; color: var(--color-text-secondary);">Your plan keeps the last <strong style="color: var(--color-text-primary);">3 months</strong>. Premium keeps 5 years and adds full-year and year-on-year views.</p>
+                <span style="padding: 7px 14px; border-radius: 8px; background: var(--color-premium-bg); color: var(--color-premium); font-size: 0.76rem; font-weight: 700; white-space: nowrap;">See Premium</span>
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "drop the trend column from the table" · "add income and savings rows to the table" · "mobile version of the report" · "design the Premium year view"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Three desktop directions</span></div>
+  <p class="dv-intro">All three keep the sage palette, Playfair titles, tabular money and Lucide set exactly as they are — what changes is the shell, the hierarchy and how you get work done. <a class="dv-oid" href="#1a">1a</a> reorganises the dashboard you have. <a class="dv-oid" href="#1b">1b</a> replaces the month with the <em>sweldo cutoff</em> as the unit of time. <a class="dv-oid" href="#1c">1c</a> makes the ledger the home screen and drives it from the keyboard.</p>
+  <div class="dv-opts">
+
+    <!-- ═══════════════════ 1a — FOCUS DASHBOARD ═══════════════════ -->
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Focus Dashboard — same parts, new order. Icon rail buys back 190px, one balance leads, and the four identical stat tiles become three things that actually need you today.</div>
+      <div class="dv-card" style="width: 1280px;">
+        <div style="display: flex; height: 800px; background: var(--color-bg); color: var(--color-text-primary);">
+
+          <nav style="width: 64px; flex-shrink: 0; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 6px;">
+            <img src="assets/logo-dark.png" alt="WaiseKa" style="width: 30px; height: 30px; border-radius: 9px; object-fit: contain; margin-bottom: 10px;">
+            <div style="width: 40px; height: 40px; border-radius: 11px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="LayoutDashboard" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="ArrowLeftRight" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Wallet" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PieChart" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Target" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 28px; height: 1px; background: var(--color-border); margin: 6px 0;"></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Bot" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="BookOpen" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="flex: 1;"></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Settings" size="19px" hint-size="19px,19px"></x-import></div>
+          </nav>
+
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <header style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 24px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-blur);">
+              <div style="flex: 1; max-width: 420px; height: 36px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-elevated); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--color-text-muted); font-size: 0.82rem; white-space: nowrap;">
+                <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Search" size="14px" hint-size="14px,14px"></x-import>
+                Search or add — try "grab 285 gcash"
+                <span style="margin-left: auto; font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 5px; background: var(--color-card); border: 1px solid var(--color-border);">⌘K</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+                <span style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; background: var(--color-elevated); border: 1px solid var(--color-border); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; color: var(--color-text-secondary);">SEP 2026 <span style="color: var(--color-text-muted);">⌄</span></span>
+                <span style="display: flex; align-items: center; gap: 2px; height: 30px; padding: 0 10px; border-radius: 8px; background: var(--color-elevated); border: 1px solid var(--color-border); font-size: 0.72rem; font-weight: 700;"><span style="color: var(--color-accent);">EN</span><span style="color: var(--color-text-muted);">·</span><span style="color: var(--color-text-muted);">TL</span></span>
+                <span style="width: 30px; height: 30px; border-radius: 999px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700;">J</span>
+              </div>
+            </header>
+
+            <main style="flex: 1; overflow: hidden; padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+
+              <div style="display: grid; grid-template-columns: 1.35fr 1fr; gap: 18px;">
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; padding: 22px 24px; display: flex; flex-direction: column; gap: 18px;">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+                    <div>
+                      <p style="margin: 0 0 8px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--color-text-muted);">Total Money</p>
+                      <p style="margin: 0; font-size: 2.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;">₱182,430</p>
+                      <p style="margin: 8px 0 0; font-size: 0.78rem; color: var(--color-text-secondary);"><span style="color: var(--color-income); font-weight: 700;">+₱12,340</span> since last cutoff · 5 accounts</p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0;">
+                      <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.HealthRing" score="74" size="72px" label="PERA" hint-size="72px,90px"></x-import>
+                      <span style="font-size: 0.62rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--color-income-bg); color: var(--color-income);">Healthy</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <div style="flex: 1; border-radius: 12px; background: var(--color-elevated); border-left: 3px solid var(--color-accent); padding: 9px 11px;"><p style="margin: 0 0 3px; font-size: 0.68rem; color: var(--color-text-secondary); font-weight: 600;">BDO Payroll</p><p style="margin: 0; font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱64,200</p></div>
+                    <div style="flex: 1; border-radius: 12px; background: var(--color-elevated); border-left: 3px solid var(--color-accent); padding: 9px 11px;"><p style="margin: 0 0 3px; font-size: 0.68rem; color: var(--color-text-secondary); font-weight: 600;">SeaBank</p><p style="margin: 0; font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱98,000</p></div>
+                    <div style="flex: 1; border-radius: 12px; background: var(--color-elevated); border-left: 3px solid var(--color-accent); padding: 9px 11px;"><p style="margin: 0 0 3px; font-size: 0.68rem; color: var(--color-text-secondary); font-weight: 600;">GCash</p><p style="margin: 0; font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱12,480</p></div>
+                    <div style="flex: 1; border-radius: 12px; background: var(--color-elevated); border-left: 3px solid var(--color-warning); padding: 9px 11px;"><p style="margin: 0 0 3px; font-size: 0.68rem; color: var(--color-text-secondary); font-weight: 600;">BPI Card</p><p style="margin: 0; font-size: 0.82rem; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱18,740</p></div>
+                  </div>
+                </div>
+
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px;">
+                  <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                    <p style="margin: 0; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--color-text-muted);">Left to spend</p>
+                    <span style="font-size: 0.72rem; color: var(--color-text-muted);">Day 15 of 30</span>
+                  </div>
+                  <p style="margin: 0; font-size: 2rem; font-weight: 800; line-height: 1; color: var(--color-income); font-variant-numeric: tabular-nums;">₱9,020</p>
+                  <div style="position: relative; height: 10px; border-radius: 999px; background: var(--color-elevated); overflow: visible;">
+                    <div style="height: 100%; width: 71%; border-radius: 999px; background: var(--color-warning);"></div>
+                    <div style="position: absolute; top: -5px; left: 50%; width: 2px; height: 20px; background: var(--color-text-primary); opacity: 0.6; border-radius: 2px;"></div>
+                  </div>
+                  <p style="margin: 0; font-size: 0.75rem; line-height: 1.6; color: var(--color-text-secondary);">₱22,980 of ₱32,000 budgeted. You are <strong style="color: var(--color-warning);">21% ahead of pace</strong> — the marker is where you should be today.</p>
+                  <div style="margin-top: auto; display: flex; gap: 8px;">
+                    <div style="flex: 1; height: 34px; border-radius: 8px; background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.78rem; font-weight: 600;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Plus" size="14px" hint-size="14px,14px"></x-import>Add expense</div>
+                    <div style="flex: 1; height: 34px; border-radius: 8px; border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.78rem; font-weight: 600; color: var(--color-text-secondary);"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="ArrowLeftRight" size="14px" hint-size="14px,14px"></x-import>Transfer</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p style="margin: 0 0 10px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--color-text-muted);">Needs you today</p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-left: 3px solid var(--color-expense); border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-expense-bg); color: var(--color-expense); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="TrendingDown" size="15px" hint-size="15px,15px"></x-import></div>
+                    <div>
+                      <p style="margin: 0 0 2px; font-size: 0.83rem; font-weight: 700;">Pulutan &amp; Barkada is over</p>
+                      <p style="margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-secondary);">₱2,300 spent on a ₱2,000 ceiling. Two more Fridays this cutoff.</p>
+                    </div>
+                  </div>
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-left: 3px solid var(--color-warning); border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-warning-bg); color: var(--color-warning); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="CreditCard" size="15px" hint-size="15px,15px"></x-import></div>
+                    <div>
+                      <p style="margin: 0 0 2px; font-size: 0.83rem; font-weight: 700;">BPI card due in 3 days</p>
+                      <p style="margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-secondary);">₱18,740 outstanding. Paying from BDO keeps you at 0% utilisation.</p>
+                    </div>
+                  </div>
+                  <div style="background: var(--color-card); border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent); border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PiggyBank" size="15px" hint-size="15px,15px"></x-import></div>
+                    <div>
+                      <p style="margin: 0 0 2px; font-size: 0.83rem; font-weight: 700;">₱5,000 not yet moved</p>
+                      <p style="margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-secondary);">Sweldo landed 15 Sep. Your emergency fund transfer is still pending.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px;">
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+                  <div style="padding: 14px 20px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+                    <h2 style="margin: 0; font-size: 0.9rem; font-weight: 700;">Recent activity</h2>
+                    <a href="#1c" style="font-size: 0.75rem; font-weight: 600;">All 248 →</a>
+                  </div>
+                  <div style="padding: 6px 20px 14px; display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border);">
+                      <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-income-bg); color: var(--color-income); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="TrendingUp" size="14px" hint-size="14px,14px"></x-import></span>
+                      <span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 0.82rem; font-weight: 600;">Sweldo — 2nd cutoff</span><span style="display: block; font-size: 0.72rem; color: var(--color-text-muted);">Salary · BDO Payroll · recurring</span></span>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">+₱36,000</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border);">
+                      <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-expense-bg); color: var(--color-expense); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="TrendingDown" size="14px" hint-size="14px,14px"></x-import></span>
+                      <span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 0.82rem; font-weight: 600;">Padala kay Nanay</span><span style="display: block; font-size: 0.72rem; color: var(--color-text-muted);">Padala sa Bahay · GCash</span></span>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱3,000</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border);">
+                      <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-expense-bg); color: var(--color-expense); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="TrendingDown" size="14px" hint-size="14px,14px"></x-import></span>
+                      <span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 0.82rem; font-weight: 600;">SM Hypermarket</span><span style="display: block; font-size: 0.72rem; color: var(--color-text-muted);">Groceries · BDO Payroll</span></span>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱2,840</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 0;">
+                      <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--color-savings-bg); color: var(--color-savings); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PiggyBank" size="14px" hint-size="14px,14px"></x-import></span>
+                      <span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 0.82rem; font-weight: 600;">Emergency fund top-up</span><span style="display: block; font-size: 0.72rem; color: var(--color-text-muted);">Savings · SeaBank</span></span>
+                      <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-savings); font-variant-numeric: tabular-nums;">+₱5,000</span>
+                    </div>
+                    <div style="margin-top: 10px; height: 38px; border-radius: 10px; border: 1px dashed var(--color-border); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--color-text-muted); font-size: 0.8rem;">
+                      <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Plus" size="14px" hint-size="14px,14px"></x-import>Type here to log something — amount, category, account
+                    </div>
+                  </div>
+                </div>
+
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+                  <div style="padding: 14px 20px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+                    <h2 style="margin: 0; font-size: 0.9rem; font-weight: 700;">Budgets</h2>
+                    <span style="font-size: 0.72rem; color: var(--color-text-muted);">2 need attention</span>
+                  </div>
+                  <div style="padding: 14px 20px; display: flex; flex-direction: column; gap: 13px;">
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Pulutan &amp; Barkada" spent="2300" limit="2000" dot-color="#F87171" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Baon &amp; Lunch" spent="3900" limit="4000" dot-color="#FBBF24" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Transpo (Grab)" spent="5600" limit="6000" dot-color="#60A5FA" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Groceries" spent="8400" limit="10000" dot-color="#4ADE80" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Load &amp; Data" spent="780" limit="1000" dot-color="#A78BFA" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ 1b — CUTOFF COCKPIT ═══════════════════ -->
+    <div class="dv-opt" id="1b">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Cutoff Cockpit — the month is the wrong unit. Everything is framed by the semi-monthly cutoff you actually live on: days left, safe-to-spend per day, and pace markers on every budget.</div>
+      <div class="dv-card" style="width: 1280px;">
+        <div style="display: flex; height: 800px; background: var(--color-bg); color: var(--color-text-primary);">
+
+          <nav style="width: 216px; flex-shrink: 0; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column;">
+            <div style="height: 64px; display: flex; align-items: center; gap: 9px; padding: 0 18px; border-bottom: 1px solid var(--color-border);">
+              <img src="assets/logo-dark.png" alt="WaiseKa" style="width: 30px; height: 30px; border-radius: 9px; object-fit: contain;">
+              <span style="font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em;">WaiseKa</span>
+            </div>
+            <div style="padding: 16px 10px; display: flex; flex-direction: column; gap: 18px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <p style="margin: 0 0 5px; padding: 0 10px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">Money now</p>
+                <div style="display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 9px; background: var(--color-sage); border-left: 2px solid var(--color-accent); color: var(--color-accent); font-size: 0.85rem; font-weight: 600;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="LayoutDashboard" size="17px" hint-size="17px,17px"></x-import>This cutoff</div>
+                <div style="display: flex; align-items: center; gap: 11px; padding: 9px 12px; color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="ArrowLeftRight" size="17px" hint-size="17px,17px"></x-import>Transactions</div>
+                <div style="display: flex; align-items: center; gap: 11px; padding: 9px 12px; color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Wallet" size="17px" hint-size="17px,17px"></x-import>Accounts</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <p style="margin: 0 0 5px; padding: 0 10px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">Plan ahead</p>
+                <div style="display: flex; align-items: center; gap: 11px; padding: 9px 12px; color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PieChart" size="17px" hint-size="17px,17px"></x-import>Budgets</div>
+                <div style="display: flex; align-items: center; gap: 11px; padding: 9px 12px; color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Target" size="17px" hint-size="17px,17px"></x-import>Goals</div>
+                <div style="display: flex; align-items: center; gap: 11px; padding: 9px 12px; color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Tags" size="17px" hint-size="17px,17px"></x-import>Categories</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <p style="margin: 0 0 5px; padding: 0 10px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">Learn</p>
+                <div style="display: flex; align-items: center; gap: 11px; padding: 9px 12px; color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Bot" size="17px" hint-size="17px,17px"></x-import>Ask WaiseKa</div>
+                <div style="display: flex; align-items: center; gap: 11px; padding: 9px 12px; color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 500;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="BookOpen" size="17px" hint-size="17px,17px"></x-import>Tips &amp; Gabay</div>
+              </div>
+            </div>
+            <div style="margin-top: auto; padding: 14px; border-top: 1px solid var(--color-border);">
+              <div style="border-radius: 12px; background: var(--color-elevated); padding: 12px; display: flex; flex-direction: column; gap: 7px;">
+                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; color: var(--color-premium);"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Crown" size="11px" hint-size="11px,11px"></x-import>PREMIUM</span>
+                <p style="margin: 0; font-size: 0.74rem; line-height: 1.5; color: var(--color-text-secondary);">Full history and unlimited budgets for ₱149/mo.</p>
+              </div>
+            </div>
+          </nav>
+
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <header style="height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-blur);">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <h1 style="margin: 0; font-size: 1.25rem; font-weight: 900; font-family: var(--font-playfair), Georgia, serif;">Cutoff 2 <span style="font-family: var(--font-geist); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); letter-spacing: 0;">· 16–30 September</span></h1>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-elevated); display: flex; align-items: center; gap: 7px; font-size: 0.78rem; color: var(--color-text-muted);"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Search" size="14px" hint-size="14px,14px"></x-import>⌘K</div>
+                <div style="height: 32px; padding: 0 13px; border-radius: 8px; background: linear-gradient(135deg, #16A34A, #4ADE80); color: #06240F; display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700; box-shadow: 0 4px 20px rgba(22,163,74,0.35);"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Plus" size="14px" hint-size="14px,14px"></x-import>Log</div>
+                <span style="width: 30px; height: 30px; border-radius: 999px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700;">J</span>
+              </div>
+            </header>
+
+            <div style="flex: 1; display: flex; min-height: 0;">
+              <main style="flex: 1; min-width: 0; overflow: hidden; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+
+                <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 18px; padding: 20px 24px 18px; display: flex; flex-direction: column; gap: 16px;">
+                  <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;">
+                    <div>
+                      <p style="margin: 0 0 7px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--color-text-muted);">Safe to spend per day</p>
+                      <p style="margin: 0; font-size: 3.1rem; font-weight: 800; line-height: 0.95; letter-spacing: -0.025em; color: var(--color-accent); font-variant-numeric: tabular-nums;">₱1,180</p>
+                      <p style="margin: 9px 0 0; font-size: 0.8rem; color: var(--color-text-secondary); line-height: 1.5;">for the <strong style="color: var(--color-text-primary);">8 days</strong> left in this cutoff · ₱9,440 unspent</p>
+                    </div>
+                    <div style="display: flex; gap: 26px; padding-bottom: 4px;">
+                      <div><p style="margin: 0 0 4px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); font-weight: 600;">Came in</p><p style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--color-income); font-variant-numeric: tabular-nums;">₱36,000</p></div>
+                      <div><p style="margin: 0 0 4px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); font-weight: 600;">Went out</p><p style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--color-expense); font-variant-numeric: tabular-nums;">₱21,560</p></div>
+                      <div><p style="margin: 0 0 4px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); font-weight: 600;">Moved to savings</p><p style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--color-savings); font-variant-numeric: tabular-nums;">₱5,000</p></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="display: flex; height: 28px; border-radius: 8px; overflow: hidden; border: 1px solid var(--color-border);">
+                      <div style="width: 26%; background: var(--color-expense); opacity: 0.85;"></div>
+                      <div style="width: 14%; background: var(--color-warning); opacity: 0.85;"></div>
+                      <div style="width: 14%; background: var(--color-savings); opacity: 0.8;"></div>
+                      <div style="flex: 1; background: var(--color-elevated); display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; color: var(--color-text-muted);">UNSPENT ₱9,440</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 7px; font-size: 0.68rem; color: var(--color-text-muted);">
+                      <span>16 Sep · sweldo landed</span><span>Today · 23 Sep</span><span>30 Sep · next cutoff</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="flex: 1; min-height: 0; background: var(--color-card); border: 1px solid var(--color-border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;">
+                  <div style="padding: 15px 22px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+                    <h2 style="margin: 0; font-size: 0.92rem; font-weight: 700;">Budget pace</h2>
+                    <span style="font-size: 0.72rem; color: var(--color-text-muted);">Grey marker = where you should be on day 8 of 15</span>
+                  </div>
+                  <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 17px;">
+                    <div style="display: flex; flex-direction: column; gap: 7px;">
+                      <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 0.83rem; font-weight: 600;">Groceries</span><span style="font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱4,200 of ₱5,000 · <span style="color: var(--color-income); font-weight: 700;">on pace</span></span></div>
+                      <div style="position: relative; height: 8px; border-radius: 999px; background: var(--color-elevated);"><div style="height: 100%; width: 84%; border-radius: 999px; background: var(--color-income);"></div><div style="position: absolute; top: -4px; left: 53%; width: 2px; height: 16px; background: var(--color-text-secondary); opacity: 0.75;"></div></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 7px;">
+                      <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 0.83rem; font-weight: 600;">Baon &amp; Lunch</span><span style="font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱1,950 of ₱2,000 · <span style="color: var(--color-expense); font-weight: 700;">7 days early</span></span></div>
+                      <div style="position: relative; height: 8px; border-radius: 999px; background: var(--color-elevated);"><div style="height: 100%; width: 98%; border-radius: 999px; background: var(--color-expense);"></div><div style="position: absolute; top: -4px; left: 53%; width: 2px; height: 16px; background: var(--color-text-secondary); opacity: 0.75;"></div></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 7px;">
+                      <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 0.83rem; font-weight: 600;">Transpo (Grab)</span><span style="font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱2,800 of ₱3,000 · <span style="color: var(--color-warning); font-weight: 700;">tight</span></span></div>
+                      <div style="position: relative; height: 8px; border-radius: 999px; background: var(--color-elevated);"><div style="height: 100%; width: 93%; border-radius: 999px; background: var(--color-warning);"></div><div style="position: absolute; top: -4px; left: 53%; width: 2px; height: 16px; background: var(--color-text-secondary); opacity: 0.75;"></div></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 7px;">
+                      <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 0.83rem; font-weight: 600;">Padala sa Bahay</span><span style="font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱3,000 of ₱3,000 · <span style="color: var(--color-text-secondary); font-weight: 700;">sent</span></span></div>
+                      <div style="position: relative; height: 8px; border-radius: 999px; background: var(--color-elevated);"><div style="height: 100%; width: 100%; border-radius: 999px; background: var(--color-savings); opacity: 0.55;"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </main>
+
+              <aside style="width: 300px; flex-shrink: 0; border-left: 1px solid var(--color-border); background: var(--color-surface); padding: 22px 20px; display: flex; flex-direction: column; gap: 18px; overflow: hidden;">
+                <div>
+                  <p style="margin: 0 0 10px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">Total money</p>
+                  <p style="margin: 0 0 14px; font-size: 1.75rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">₱182,430</p>
+                  <div style="display: flex; flex-direction: column; gap: 11px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;"><span style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;"><span style="width: 24px; height: 24px; border-radius: 7px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Landmark" size="12px" hint-size="12px,12px"></x-import></span>BDO Payroll</span><span style="font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱64,200</span></div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;"><span style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;"><span style="width: 24px; height: 24px; border-radius: 7px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PiggyBank" size="12px" hint-size="12px,12px"></x-import></span>SeaBank</span><span style="font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱98,000</span></div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;"><span style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;"><span style="width: 24px; height: 24px; border-radius: 7px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Smartphone" size="12px" hint-size="12px,12px"></x-import></span>GCash</span><span style="font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums;">₱12,480</span></div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;"><span style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;"><span style="width: 24px; height: 24px; border-radius: 7px; background: var(--color-warning-bg); color: var(--color-warning); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="CreditCard" size="12px" hint-size="12px,12px"></x-import></span>BPI Card</span><span style="font-size: 0.8rem; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱18,740</span></div>
+                  </div>
+                </div>
+
+                <div style="height: 1px; background: var(--color-border);"></div>
+
+                <div style="display: flex; align-items: center; gap: 14px;">
+                  <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.HealthRing" score="74" size="64px" label="PERA" hint-size="64px,80px"></x-import>
+                  <p style="margin: 0; font-size: 0.78rem; line-height: 1.55; color: var(--color-text-secondary);">Healthy. You're saving 21% — push it to 25% and this reads 82.</p>
+                </div>
+
+                <div style="height: 1px; background: var(--color-border);"></div>
+
+                <div>
+                  <p style="margin: 0 0 10px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">Ask WaiseKa</p>
+                  <div style="display: flex; flex-direction: column; gap: 7px;">
+                    <div style="padding: 9px 12px; border-radius: 10px; background: var(--color-elevated); border: 1px solid var(--color-border); font-size: 0.78rem; color: var(--color-text-secondary);">Can I afford Boracay in December?</div>
+                    <div style="padding: 9px 12px; border-radius: 10px; background: var(--color-elevated); border: 1px solid var(--color-border); font-size: 0.78rem; color: var(--color-text-secondary);">Where did my ₱21,560 go?</div>
+                    <div style="padding: 9px 12px; border-radius: 10px; background: var(--color-elevated); border: 1px solid var(--color-border); font-size: 0.78rem; color: var(--color-text-secondary);">What should I cut first?</div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ 1c — LEDGER PRO ═══════════════════ -->
+    <div class="dv-opt" id="1c">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Ledger Pro — for the person logging five things a day. The table is the home screen, ⌘K parses plain language into a transaction, and the right rail shows what your entry does to the budget before you commit it.</div>
+      <div class="dv-card" style="width: 1280px;">
+        <div style="position: relative; display: flex; height: 800px; background: var(--color-bg); color: var(--color-text-primary);">
+
+          <nav style="width: 64px; flex-shrink: 0; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 6px;">
+            <img src="assets/logo-dark.png" alt="WaiseKa" style="width: 30px; height: 30px; border-radius: 9px; object-fit: contain; margin-bottom: 10px;">
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="LayoutDashboard" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; background: var(--color-sage); color: var(--color-accent); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="ArrowLeftRight" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Wallet" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="PieChart" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Target" size="19px" hint-size="19px,19px"></x-import></div>
+            <div style="flex: 1;"></div>
+            <div style="width: 40px; height: 40px; border-radius: 11px; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center;"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Settings" size="19px" hint-size="19px,19px"></x-import></div>
+          </nav>
+
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <header style="height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-blur);">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <h1 style="margin: 0; font-size: 1.1rem; font-weight: 900; font-family: var(--font-playfair), Georgia, serif;">Ledger</h1>
+                <div style="display: flex; border-radius: 8px; overflow: hidden; border: 1px solid var(--color-border);">
+                  <span style="padding: 5px 11px; font-size: 0.74rem; color: var(--color-text-muted);">Jul</span>
+                  <span style="padding: 5px 11px; font-size: 0.74rem; color: var(--color-text-muted); border-left: 1px solid var(--color-border);">Aug</span>
+                  <span style="padding: 5px 11px; font-size: 0.74rem; font-weight: 700; background: var(--color-sage); color: var(--color-accent); border-left: 1px solid var(--color-border);">Sep</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                  <span style="padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; background: var(--color-sage); color: var(--color-accent); border: 1px solid var(--color-accent);">Expense</span>
+                  <span style="padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; background: var(--color-elevated); color: var(--color-text-secondary); border: 1px solid var(--color-border);">GCash</span>
+                  <span style="padding: 4px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; background: var(--color-elevated); color: var(--color-text-muted); border: 1px dashed var(--color-border);">+ filter</span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.74rem; color: var(--color-text-muted);">248 records</span>
+                <div style="height: 30px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--color-border); display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--color-text-secondary);"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Download" size="13px" hint-size="13px,13px"></x-import>Export</div>
+                <div style="height: 30px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--color-border); display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--color-text-secondary);"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Upload" size="13px" hint-size="13px,13px"></x-import>Import</div>
+              </div>
+            </header>
+
+            <div style="flex: 1; display: flex; min-height: 0;">
+              <div style="flex: 1; min-width: 0; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                  <thead>
+                    <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-surface);">
+                      <th style="padding: 8px 16px; text-align: left; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Date</th>
+                      <th style="padding: 8px 16px; text-align: left; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Description</th>
+                      <th style="padding: 8px 16px; text-align: left; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Category</th>
+                      <th style="padding: 8px 16px; text-align: left; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Account</th>
+                      <th style="padding: 8px 16px; text-align: right; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Amount</th>
+                      <th style="padding: 8px 16px; text-align: right; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-text-muted);">Running</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="background: var(--color-surface);"><td colspan="6" style="padding: 7px 16px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border);">TUE, SEP 15 <span style="float: right; color: var(--color-income); font-variant-numeric: tabular-nums;">+₱33,000</span></td></tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 9px 16px; color: var(--color-text-muted); white-space: nowrap;">15 Sep</td><td style="padding: 9px 16px; font-weight: 500;">Sweldo — 2nd cutoff <span style="margin-left: 6px; font-size: 0.62rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--color-sage); color: var(--color-accent);">↻</span></td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Salary</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">BDO Payroll</td><td style="padding: 9px 16px; text-align: right; font-weight: 700; color: var(--color-income); font-variant-numeric: tabular-nums;">+₱36,000</td><td style="padding: 9px 16px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱182,430</td></tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 9px 16px; color: var(--color-text-muted); white-space: nowrap;">15 Sep</td><td style="padding: 9px 16px; font-weight: 500;">Padala kay Nanay <span style="margin-left: 6px; font-size: 0.62rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--color-sage); color: var(--color-accent);">↻</span></td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Padala sa Bahay</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">GCash</td><td style="padding: 9px 16px; text-align: right; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱3,000</td><td style="padding: 9px 16px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱146,430</td></tr>
+                    <tr style="background: var(--color-surface);"><td colspan="6" style="padding: 7px 16px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border);">MON, SEP 14 <span style="float: right; color: var(--color-expense); font-variant-numeric: tabular-nums;">−₱2,840</span></td></tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 9px 16px; color: var(--color-text-muted); white-space: nowrap;">14 Sep</td><td style="padding: 9px 16px; font-weight: 500;">SM Hypermarket — grocery run</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Groceries</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">BDO Payroll</td><td style="padding: 9px 16px; text-align: right; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱2,840</td><td style="padding: 9px 16px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱149,430</td></tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 9px 16px; color: var(--color-text-muted); white-space: nowrap;">14 Sep</td><td style="padding: 9px 16px; font-weight: 500;">BDO Payroll → SeaBank Savings</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Transfer</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Both</td><td style="padding: 9px 16px; text-align: right; font-weight: 700; color: var(--color-text-secondary); font-variant-numeric: tabular-nums;">⇄ ₱10,000</td><td style="padding: 9px 16px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱152,270</td></tr>
+                    <tr style="background: var(--color-surface);"><td colspan="6" style="padding: 7px 16px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border);">SUN, SEP 13 <span style="float: right; color: var(--color-expense); font-variant-numeric: tabular-nums;">−₱1,525</span></td></tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 9px 16px; color: var(--color-text-muted); white-space: nowrap;">13 Sep</td><td style="padding: 9px 16px; font-weight: 500;">Grab to office</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Transpo</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">GCash</td><td style="padding: 9px 16px; text-align: right; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱285</td><td style="padding: 9px 16px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱152,270</td></tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 9px 16px; color: var(--color-text-muted); white-space: nowrap;">13 Sep</td><td style="padding: 9px 16px; font-weight: 500;">Jollibee — family size</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Baon &amp; Lunch</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Cash on hand</td><td style="padding: 9px 16px; text-align: right; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱940</td><td style="padding: 9px 16px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱152,555</td></tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 9px 16px; color: var(--color-text-muted); white-space: nowrap;">13 Sep</td><td style="padding: 9px 16px; font-weight: 500;">Globe load</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Load &amp; Data</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Maya</td><td style="padding: 9px 16px; text-align: right; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱300</td><td style="padding: 9px 16px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱153,495</td></tr>
+                    <tr style="background: var(--color-surface);"><td colspan="6" style="padding: 7px 16px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border);">FRI, SEP 11 <span style="float: right; color: var(--color-expense); font-variant-numeric: tabular-nums;">−₱1,240</span></td></tr>
+                    <tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 9px 16px; color: var(--color-text-muted); white-space: nowrap;">11 Sep</td><td style="padding: 9px 16px; font-weight: 500;">Pulutan — Friday with barkada</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Pulutan &amp; Barkada</td><td style="padding: 9px 16px; color: var(--color-text-secondary);">Cash on hand</td><td style="padding: 9px 16px; text-align: right; font-weight: 700; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱1,240</td><td style="padding: 9px 16px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums;">₱153,795</td></tr>
+                  </tbody>
+                </table>
+                <div style="padding: 10px 16px; display: flex; align-items: center; gap: 9px; border-bottom: 1px solid var(--color-border); background: var(--color-elevated); color: var(--color-text-muted); font-size: 0.8rem;">
+                  <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Plus" size="14px" hint-size="14px,14px"></x-import>
+                  New row — tab through date, description, category, account, amount
+                  <span style="margin-left: auto; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 5px; background: var(--color-card); border: 1px solid var(--color-border);">⏎ to save</span>
+                </div>
+              </div>
+
+              <aside style="width: 296px; flex-shrink: 0; border-left: 1px solid var(--color-border); background: var(--color-surface); padding: 20px; display: flex; flex-direction: column; gap: 18px;">
+                <div>
+                  <p style="margin: 0 0 9px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">Filtered total</p>
+                  <p style="margin: 0; font-size: 1.6rem; font-weight: 800; line-height: 1; color: var(--color-expense); font-variant-numeric: tabular-nums;">−₱8,605</p>
+                  <p style="margin: 6px 0 0; font-size: 0.75rem; color: var(--color-text-muted);">7 expenses · 1–15 September</p>
+                </div>
+                <div style="height: 1px; background: var(--color-border);"></div>
+                <div>
+                  <p style="margin: 0 0 11px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">Impact on budgets</p>
+                  <div style="display: flex; flex-direction: column; gap: 13px;">
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Baon &amp; Lunch" spent="3900" limit="4000" dot-color="#FBBF24" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Transpo (Grab)" spent="5600" limit="6000" dot-color="#60A5FA" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                    <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.BudgetBar" category="Groceries" spent="8400" limit="10000" dot-color="#4ADE80" format-amount="{{ peso }}" hint-size="100%,28px"></x-import>
+                  </div>
+                </div>
+                <div style="height: 1px; background: var(--color-border);"></div>
+                <div style="border-radius: 12px; background: var(--color-sage); border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent); padding: 12px 14px;">
+                  <p style="margin: 0 0 5px; font-size: 0.72rem; font-weight: 700; color: var(--color-accent); letter-spacing: 0.03em;">PATTERN SPOTTED</p>
+                  <p style="margin: 0; font-size: 0.78rem; line-height: 1.55; color: var(--color-text-primary);">Grab on Sundays is ₱285 every week. Want WaiseKa to log it automatically?</p>
+                </div>
+                <div style="margin-top: auto; display: flex; flex-direction: column; gap: 7px;">
+                  <p style="margin: 0; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">Shortcuts</p>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-secondary);"><span>Command bar</span><span style="font-family: var(--font-dm-mono), ui-monospace, monospace; color: var(--color-text-muted);">⌘K</span></div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-secondary);"><span>New row</span><span style="font-family: var(--font-dm-mono), ui-monospace, monospace; color: var(--color-text-muted);">N</span></div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-secondary);"><span>Duplicate last</span><span style="font-family: var(--font-dm-mono), ui-monospace, monospace; color: var(--color-text-muted);">⌘D</span></div>
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <div style="position: absolute; inset: 0; background: rgba(10,26,15,0.60); backdrop-filter: blur(4px); display: flex; justify-content: center; padding-top: 96px;">
+            <div style="width: 620px; height: fit-content; border-radius: 14px; background: var(--color-card); border: 1px solid var(--color-border); box-shadow: 0 32px 80px rgba(0,0,0,0.45); overflow: hidden;">
+              <div style="display: flex; align-items: center; gap: 11px; padding: 16px 18px; border-bottom: 1px solid var(--color-border);">
+                <span style="color: var(--color-accent);"><x-import component-from-global-scope="WaiseKaDesignSystem_657a18.Icon" name="Zap" size="17px" hint-size="17px,17px"></x-import></span>
+                <span style="font-size: 1rem; color: var(--color-text-primary); white-space: nowrap;">grab 285 gcash<span style="color: var(--color-accent);">|</span></span>
+                <span style="margin-left: auto; font-size: 0.68rem; font-weight: 700; padding: 3px 7px; border-radius: 5px; background: var(--color-elevated); border: 1px solid var(--color-border); color: var(--color-text-muted);">ESC</span>
+              </div>
+              <div style="padding: 14px 18px; display: flex; flex-direction: column; gap: 12px;">
+                <p style="margin: 0; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted);">WaiseKa read that as</p>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--color-elevated); border: 1px solid var(--color-accent);">
+                  <x-import component-from-global-scope="WaiseKaDesignSystem_657a18.TypeBadge" type="expense" hint-size="86px,20px"></x-import>
+                  <span style="font-size: 0.85rem; font-weight: 600;">Grab</span>
+                  <span style="font-size: 0.78rem; color: var(--color-text-muted);">Transpo · GCash · today</span>
+                  <span style="margin-left: auto; font-size: 1rem; font-weight: 800; color: var(--color-expense); font-variant-numeric: tabular-nums;">-₱285</span>
+                </div>
+                <p style="margin: 0; font-size: 0.78rem; line-height: 1.55; color: var(--color-text-secondary);">Leaves <strong style="color: var(--color-text-primary);">₱115</strong> in Transpo for the next 8 days. <span style="color: var(--color-warning);">That's tight.</span></p>
+                <div style="display: flex; gap: 8px; padding-top: 2px;">
+                  <div style="height: 34px; padding: 0 16px; border-radius: 8px; background: var(--color-primary); color: #fff; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;">Save <span style="font-size: 0.68rem; opacity: 0.75; font-family: var(--font-dm-mono), ui-monospace, monospace;">⏎</span></div>
+                  <div style="height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--color-border); display: flex; align-items: center; font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary);">Edit details</div>
+                  <div style="height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--color-border); display: flex; align-items: center; font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary);">Make recurring</div>
+                </div>
+              </div>
+              <div style="padding: 11px 18px; border-top: 1px solid var(--color-border); background: var(--color-surface); display: flex; gap: 16px; font-size: 0.72rem; color: var(--color-text-muted);">
+                <span>Also try: <span style="color: var(--color-text-secondary);">"sweldo 36000"</span></span>
+                <span><span style="color: var(--color-text-secondary);">"padala 3000 nanay"</span></span>
+                <span><span style="color: var(--color-text-secondary);">"go to budgets"</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "build <a class="dv-oid" href="#1b">1b</a>'s cutoff strip into <a class="dv-oid" href="#1a">1a</a>" · "show <a class="dv-oid" href="#1c">1c</a> in light theme" · "mobile versions of the winner" · "new directions — go weirder"</p>
+</section>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;}}">
+class Component extends DCLogic {
+  state = { reportView: 'chart' };
+  renderVals() {
+    const isChart = this.state.reportView === 'chart';
+    return {
+      themeClass: (this.props.theme ?? 'dark') === 'dark' ? 'dark' : '',
+      peso: (v) => '₱' + Number(v).toLocaleString('en-US'),
+      isChart,
+      isTable: !isChart,
+      showChart: () => this.setState({ reportView: 'chart' }),
+      showTable: () => this.setState({ reportView: 'table' }),
+      chartTabBg: isChart ? 'var(--color-sage)' : 'transparent',
+      chartTabFg: isChart ? 'var(--color-accent)' : 'var(--color-text-muted)',
+      tableTabBg: isChart ? 'transparent' : 'var(--color-sage)',
+      tableTabFg: isChart ? 'var(--color-text-muted)' : 'var(--color-accent)',
+      lowerTitle: isChart ? 'Category by category' : 'By category',
+      lowerHint: isChart ? 'Bars are Jul · Aug · Sep, scaled per category' : 'Amounts in ₱, Jul – Sep 2026',
+    };
+  }
+}
+
+</script>
+</body>
+</html>

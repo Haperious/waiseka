@@ -1,0 +1,342 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&display=block" rel="stylesheet">
+<style>
+:root{
+  --bg:#0C100E; --surface:#111C14; --card:#162018; --elevated:#1D2E20;
+  --border:rgba(255,255,255,.07); --accent:#4ADE80; --primary:#166534;
+  --text:#ECF4EE; --text2:#9EC4A6; --muted:rgba(255,255,255,.5);
+  --income:#4ADE80; --expense:#F87171; --warning:#FBBF24;
+  --sage:rgba(74,222,128,.12); --pale:rgba(74,222,128,.07);
+  --serif:'Playfair Display', Georgia, serif;
+  --sans:'Geist', 'Segoe UI', system-ui, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:var(--bg)}
+.abs{position:absolute}
+.scene{position:absolute;inset:0;opacity:0}
+.glow{position:absolute;border-radius:50%;pointer-events:none;filter:blur(10px)}
+.dots{position:absolute;inset:-40px;background-image:radial-gradient(rgba(158,196,166,.10) 1.4px,transparent 1.6px);background-size:44px 44px;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at center,#000 30%,transparent 75%)}
+.serif{font-family:var(--serif);font-weight:900;letter-spacing:-.025em;line-height:1.06}
+.em{font-style:italic;color:var(--accent)}
+.word{display:inline-block;will-change:transform,opacity}
+.tnum{font-variant-numeric:tabular-nums}
+.eyebrow{font-weight:800;font-size:22px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+
+/* notification */
+.notif{width:820px;left:550px;top:180px;border-radius:34px;padding:30px 36px;background:linear-gradient(145deg,#111C14,#162018);border:1px solid rgba(74,222,128,.22);box-shadow:0 40px 100px rgba(0,0,0,.55),inset 0 1px 0 rgba(74,222,128,.12);display:flex;align-items:center;gap:28px}
+.notif .meta{font-size:22px;color:var(--muted);font-weight:600}
+.notif .title{font-size:34px;font-weight:700;margin-top:4px}
+.notif .amt{margin-left:auto;font-size:56px;font-weight:800;color:var(--income);letter-spacing:-.02em}
+
+/* chips */
+.chip{position:absolute;display:flex;align-items:center;gap:14px;padding:16px 24px;border-radius:18px;background:var(--card);border:1px solid var(--border);box-shadow:0 20px 50px rgba(0,0,0,.45);white-space:nowrap}
+.chip .dot{width:14px;height:14px;border-radius:50%;background:var(--expense)}
+.chip .l{font-size:28px;font-weight:600}
+.chip .a{font-size:28px;font-weight:800;color:var(--expense);margin-left:10px}
+
+/* timeline card (from LandingPage.module.css, scaled) */
+.tl{width:780px;border-radius:40px;padding:44px;background:linear-gradient(145deg,#0C100E 0%,#111C14 55%,#162018 100%);border:1px solid rgba(74,222,128,.18);box-shadow:0 50px 120px rgba(0,0,0,.6),inset 0 1px 0 rgba(74,222,128,.1)}
+.tl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
+.tl-eyebrow{font-weight:800;font-size:20px;letter-spacing:.09em;text-transform:uppercase;color:rgba(235,244,238,.5)}
+.tl-day{font-size:22px;font-weight:700;color:var(--accent)}
+.tl-row{display:flex;gap:22px}
+.tl-dotcol{display:flex;flex-direction:column;align-items:center;width:18px;padding-top:10px}
+.tl-dot{width:16px;height:16px;border-radius:50%}
+.tl-line{width:2px;flex:1;background:rgba(255,255,255,.08);margin:8px 0 2px;min-height:44px}
+.tl-body{flex:1;display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:26px}
+.tl-label{font-size:28px;font-weight:700}
+.tl-meta{font-size:20px;color:rgba(235,244,238,.5);margin-top:4px}
+.tl-amt{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.tl-foot{background:var(--pale);border:1px solid rgba(74,222,128,.14);border-radius:26px;padding:28px 32px;margin-top:6px;display:flex;justify-content:space-between;align-items:center}
+.tl-footval{font-size:52px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;margin-top:4px}
+.bar{height:8px;border-radius:99px;background:rgba(255,255,255,.08);margin-top:12px;overflow:hidden;width:300px}
+.bar i{display:block;height:100%;background:var(--warning);border-radius:99px}
+
+/* quick add sheet */
+.sheet{width:640px;border-radius:44px;padding:40px;background:var(--surface);border:1px solid var(--border);box-shadow:0 50px 120px rgba(0,0,0,.6)}
+.grab{width:72px;height:8px;border-radius:99px;background:rgba(255,255,255,.15);margin:-14px auto 26px}
+.tabs{display:flex;background:var(--elevated);border-radius:18px;padding:6px;gap:6px}
+.tab{flex:1;text-align:center;padding:14px 0;border-radius:14px;font-size:24px;font-weight:600;color:var(--text2)}
+.tab.on{background:var(--card);color:var(--text);box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.mic{width:170px;height:170px;border-radius:50%;margin:44px auto 0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#16A34A,#4ADE80);box-shadow:0 10px 40px rgba(22,163,74,.45);position:relative}
+.ripple{position:absolute;inset:0;border-radius:50%;border:3px solid rgba(74,222,128,.6)}
+.heard{margin-top:36px;text-align:center}
+.heard .k{font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.heard .q{font-size:40px;font-weight:600;margin-top:10px;min-height:52px}
+.parsed{margin-top:30px;border-radius:24px;background:var(--card);border:1px solid var(--border);padding:24px 28px;display:flex;align-items:center;gap:20px}
+.badge{font-size:20px;font-weight:700;padding:6px 16px;border-radius:99px;background:rgba(248,113,113,.11);color:var(--expense)}
+.confirm{margin-top:24px;border-radius:20px;padding:22px;text-align:center;font-size:26px;font-weight:700;color:#06120A;background:linear-gradient(135deg,#16A34A,#4ADE80)}
+.toast{display:flex;align-items:center;gap:16px;padding:20px 30px;border-radius:20px;background:var(--elevated);border:1px solid rgba(74,222,128,.25);box-shadow:0 24px 60px rgba(0,0,0,.5);font-size:26px;font-weight:600}
+
+/* currency chips */
+.cur{display:inline-flex;align-items:center;gap:14px;padding:16px 26px;border-radius:20px;background:var(--card);border:1px solid var(--border);font-size:30px;font-weight:700;margin-right:16px}
+.cur b{font-size:38px;color:var(--accent);font-weight:800}
+
+.btn{display:inline-flex;align-items:center;gap:14px;padding:26px 50px;border-radius:22px;background:linear-gradient(135deg,#16A34A,#4ADE80);color:#06120A;font-size:34px;font-weight:800;box-shadow:0 10px 50px rgba(22,163,74,.45)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="dots" id="dots"></div>
+  <div class="glow" id="glowA" style="width:1100px;height:1100px;background:radial-gradient(circle,rgba(74,222,128,.13) 0%,transparent 65%)"></div>
+  <div class="glow" id="glowB" style="width:900px;height:900px;background:radial-gradient(circle,rgba(22,163,74,.12) 0%,transparent 65%)"></div>
+
+  <!-- 1 HOOK -->
+  <div class="scene" id="s1">
+    <div class="notif abs" id="notif">
+      <div id="icon1"></div>
+      <div>
+        <div class="meta">WaiseKa · now</div>
+        <div class="title">Sweldo in</div>
+        <div class="meta" style="font-weight:500;margin-top:2px">Sep 15 · BDO payroll</div>
+      </div>
+      <div class="amt tnum">+₱21,250</div>
+    </div>
+    <div class="abs serif" id="h1" style="left:0;right:0;top:560px;text-align:center;font-size:150px">
+      <span class="word">Sweldo</span> <span class="word">lands</span> <span class="word em">Friday.</span>
+    </div>
+  </div>
+
+  <!-- 2 DRAIN -->
+  <div class="scene" id="s2">
+    <div class="abs" style="left:0;right:0;top:330px;text-align:center">
+      <div class="eyebrow" style="color:var(--muted)" id="balLbl">Balance</div>
+      <div class="tnum" id="bal" style="font-size:200px;font-weight:800;letter-spacing:-.04em;line-height:1.05;margin-top:6px">₱21,250</div>
+    </div>
+    <div class="abs serif" id="h2" style="left:0;right:0;top:640px;text-align:center;font-size:120px">
+      <span class="em" style="color:var(--expense)">By Tuesday?</span>
+    </div>
+    <div id="chips"></div>
+  </div>
+
+  <!-- 3 REVEAL -->
+  <div class="scene" id="s3">
+    <div class="abs" id="brand3" style="left:0;right:0;top:250px;display:flex;justify-content:center;align-items:center;gap:40px">
+      <div id="icon3"></div>
+      <div id="wm3" style="font-size:150px;font-weight:800;letter-spacing:-.04em">WaiseKa</div>
+    </div>
+    <div class="abs serif em" id="h3" style="left:0;right:0;top:500px;text-align:center;font-size:136px">Know where it goes.</div>
+    <div class="abs" id="sub3" style="left:0;right:0;top:720px;text-align:center;font-size:44px;color:var(--text2);font-weight:500">Budgeting by cutoff, not by calendar month.</div>
+  </div>
+
+  <!-- 4 CUTOFF TIMELINE -->
+  <div class="scene" id="s4">
+    <div class="abs" id="cap4" style="left:150px;top:330px;width:840px">
+      <div class="eyebrow">Built for Filipino earners</div>
+      <div class="serif" style="font-size:110px;margin-top:26px">Every cutoff,<br><span class="em">accounted for.</span></div>
+      <div style="font-size:36px;color:var(--text2);margin-top:34px;line-height:1.4;width:840px">See what's left before the next sweldo lands.</div>
+    </div>
+    <div class="tl abs" id="tl" style="left:1010px;top:190px">
+      <div class="tl-head"><span class="tl-eyebrow">Sept 15 Cutoff</span><span class="tl-day">Day 9 of 15</span></div>
+      <div id="rows"></div>
+      <div class="tl-foot" id="foot">
+        <div><div class="tl-eyebrow">Left for this cutoff</div><div class="tl-footval" id="left">₱4,250</div></div>
+        <div style="text-align:right"><div style="font-size:26px;font-weight:600">6 days left</div><div style="font-size:22px;color:rgba(235,244,238,.5);margin-top:4px">≈ ₱708 / per day</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 VOICE -->
+  <div class="scene" id="s5">
+    <div class="abs" id="cap5" style="left:150px;top:350px;width:860px">
+      <div class="eyebrow">Voice quick-add</div>
+      <div class="serif" style="font-size:150px;margin-top:22px">Just <span class="em">say it.</span></div>
+      <div style="font-size:36px;color:var(--text2);margin-top:30px;line-height:1.4">In English or Tagalog.</div>
+    </div>
+    <div class="sheet abs" id="sheet" style="left:1130px;top:70px">
+      <div class="grab"></div>
+      <div class="tabs"><div class="tab">Keypad</div><div class="tab on">Voice</div><div class="tab">Receipt</div></div>
+      <div class="mic" id="mic">
+        <div class="ripple" id="rip1"></div><div class="ripple" id="rip2"></div>
+        <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#06120A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+      </div>
+      <div class="heard"><div class="k" id="heardK">Listening...</div><div class="q" id="quote"></div></div>
+      <div class="parsed" id="parsed">
+        <span class="badge">Expense</span>
+        <div><div style="font-size:28px;font-weight:700">Grab</div><div style="font-size:20px;color:var(--muted);margin-top:2px">Transportation · GCash</div></div>
+        <div style="margin-left:auto;font-size:40px;font-weight:800;color:var(--expense)" class="tnum">−₱320</div>
+      </div>
+      <div class="confirm" id="confirmBtn">Looks right, save it</div>
+    </div>
+    <div class="toast abs" id="toast" style="left:1250px;top:910px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+      Transaction added
+    </div>
+  </div>
+
+  <!-- 6 HEALTH SCORE -->
+  <div class="scene" id="s6">
+    <div class="abs" id="ring" style="left:200px;top:220px;width:640px;height:640px">
+      <svg viewBox="0 0 640 640" style="width:100%;height:100%;transform:rotate(-90deg)">
+        <circle cx="320" cy="320" r="280" fill="none" stroke="#1D2E20" stroke-width="44"/>
+        <circle id="arc" cx="320" cy="320" r="280" fill="none" stroke="#4ADE80" stroke-width="44" stroke-linecap="round"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div id="score" class="tnum" style="font-size:230px;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-.04em">0</div>
+        <div style="font-size:34px;letter-spacing:.2em;color:var(--muted);font-weight:700;margin-top:6px">PERA</div>
+      </div>
+    </div>
+    <div class="abs" id="cap6" style="left:960px;top:300px;width:900px">
+      <div class="eyebrow">Graded every month</div>
+      <div class="serif" style="font-size:112px;margin-top:22px">Pera Health<br><span class="em">Score.</span></div>
+      <div style="font-size:36px;color:var(--text2);margin-top:30px">Out of 100, with the one thing to fix next.</div>
+    </div>
+    <div class="abs" id="cur6" style="left:960px;top:820px">
+      <span class="cur"><b>₱</b>PHP</span><span class="cur"><b>﷼</b>QAR</span><span class="cur"><b>$</b>USD</span>
+      <span style="font-size:30px;color:var(--text2);font-weight:600;vertical-align:middle">Never converted.</span>
+    </div>
+  </div>
+
+  <!-- 7 OUTRO -->
+  <div class="scene" id="s7">
+    <div class="abs serif" id="h7" style="left:0;right:0;top:200px;text-align:center;font-size:118px">
+      <div id="h7a">Your next sweldo is</div>
+      <div id="h7b" class="em">the good one to start with.</div>
+    </div>
+    <div class="abs" id="cta7" style="left:0;right:0;top:600px;display:flex;justify-content:center;align-items:center;gap:60px">
+      <div style="display:flex;align-items:center;gap:26px"><div id="icon7"></div><div style="font-size:84px;font-weight:800;letter-spacing:-.04em">WaiseKa</div></div>
+      <div class="btn">Start free <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#06120A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+    </div>
+    <div class="abs" id="fine7" style="left:0;right:0;top:820px;text-align:center;font-size:32px;color:var(--text2);font-weight:500">✓ No card needed · Free tier stays free · English / Tagalog</div>
+  </div>
+</div>
+
+<script>
+// WK icon, from components/ui/WKIcon.tsx
+function wk(size, scope){
+  const bg = scope==='dark' ? '#1D2E20' : '#166534', k = scope==='dark' ? '#4ADE80' : '#86EFAC'
+  return `<svg width="${size}" height="${size}" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="${bg}"/><text x="262" y="256" text-anchor="middle" dominant-baseline="central" font-family="Geist, sans-serif" font-size="216" font-weight="800" letter-spacing="-13"><tspan fill="#F7F6F0">W</tspan><tspan fill="${k}">K</tspan></text></svg>`
+}
+icon1.innerHTML = wk(96,'dark'); icon3.innerHTML = wk(170,'dark'); icon7.innerHTML = wk(110,'dark')
+
+const CHIPS = [
+  { l:'Rent + Meralco', a:9800, x:120,  y:120, r:-4, t:3.15 },
+  { l:'Padala sa bahay', a:3000, x:1380, y:150, r:3,  t:3.40 },
+  { l:'Dining out',      a:4200, x:190,  y:820, r:3,  t:3.65 },
+  { l:'Load',            a:300,  x:1500, y:430, r:-3, t:3.85 },
+  { l:'Grab',            a:320,  x:1440, y:820, r:-2, t:4.02 },
+  { l:'Baon',            a:1500, x:90,   y:470, r:2,  t:4.18 },
+  { l:'Pulutan',         a:650,  x:780,  y:110, r:-2, t:4.32 },
+]
+chips.innerHTML = CHIPS.map((c,i)=>`<div class="chip" id="c${i}"><span class="dot"></span><span class="l">${c.l}</span><span class="a tnum">−₱${c.a.toLocaleString('en-US')}</span></div>`).join('')
+
+const ROWS = [
+  { l:'Sweldo in',       m:'Sep 15 · BDO payroll', a:'+₱21,250', c:'var(--income)' },
+  { l:'Rent + Meralco',  m:'Sep 16 · Recurring',   a:'−₱9,800',  c:'var(--expense)' },
+  { l:'Padala sa bahay', m:'Sep 17 · GCash',       a:'−₱3,000',  c:'var(--expense)' },
+  { l:'Dining out',      m:'WaiseKa flagged you before the ceiling', a:'₱4,200 / ₱5,000', c:'var(--warning)', bar:true },
+]
+rows.innerHTML = ROWS.map((r,i)=>`<div class="tl-row" id="r${i}"><div class="tl-dotcol"><span class="tl-dot" style="background:${r.c}"></span>${i<ROWS.length-1?'<span class="tl-line"></span>':''}</div><div class="tl-body"><div><div class="tl-label">${r.l}</div><div class="tl-meta" ${r.bar?'id="flag"':''}>${r.m}</div>${r.bar?'<div class="bar"><i id="barI"></i></div>':''}</div><span class="tl-amt" style="color:${r.c}">${r.a}</span></div></div>`).join('')
+
+// ── time helpers ──
+const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v))
+const p=(t,a,b)=>clamp((t-a)/(b-a))
+const oc=x=>1-Math.pow(1-x,3)
+const io=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2
+const ob=x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}
+const peso=n=>'₱'+Math.round(n).toLocaleString('en-US')
+function set(el,o,x=0,y=0,s=1,extra=''){el.style.opacity=o;el.style.transform=`translate(${x}px,${y}px) scale(${s}) ${extra}`}
+// rise-in helper: returns [opacity, yOffset]
+function rise(t,a,d=.45,dist=40){const k=oc(p(t,a,a+d));return [k,(1-k)*dist]}
+// scene envelope: fade + lift out over last `d` seconds
+function sceneOut(el,t,end,d=.28){const k=io(p(t,end-d,end));el.style.opacity=1-k;el.style.transform=`translateY(${-30*k}px)`}
+
+const SC=[ [s1,0,3],[s2,3,6],[s3,6,9],[s4,9,13],[s5,13,16],[s6,16,19],[s7,19,22.5] ]
+
+function render(t){
+  // background drift
+  glowA.style.transform=`translate(${-200+Math.sin(t*.35)*160}px,${-300+Math.cos(t*.27)*120}px)`
+  glowB.style.transform=`translate(${1300+Math.cos(t*.3)*140}px,${450+Math.sin(t*.22)*120}px)`
+  dots.style.transform=`translate(${(t*6)%44}px,${(t*4)%44}px)`
+  const drop = t>=6 ? Math.exp(-(t-6)*2.2) : 0   // beat-drop flash
+  glowA.style.opacity = .8 + drop*1.2
+
+  for(const [el,a,b] of SC){
+    if(t<a||t>=b){el.style.opacity=0;continue}
+    if(b<22) sceneOut(el,t,b); else {el.style.opacity=1;el.style.transform='none'}
+  }
+
+  // 1 HOOK
+  if(t<3){
+    const k=ob(p(t,.15,.7)); set(notif,p(t,.15,.4),0,(1-k)*-260,.96+.04*k)
+    ;[...h1.querySelectorAll('.word')].forEach((w,i)=>{const [o,y]=rise(t,.75+i*.16,.5,70);set(w,o,0,y)})
+  }
+  // 2 DRAIN
+  if(t>=3&&t<6){
+    let bal=21250
+    CHIPS.forEach((c,i)=>{
+      const el=document.getElementById('c'+i), k=ob(p(t,c.t,c.t+.35))
+      el.style.left=c.x+'px'; el.style.top=c.y+'px'
+      set(el,p(t,c.t,c.t+.12),0,(1-k)*60,.6+.4*k,`rotate(${c.r}deg)`)
+      bal-=c.a*oc(p(t,c.t+.05,c.t+.35))
+    })
+    bal_el.textContent=peso(bal)
+    const low = p(t,4.4,4.7)
+    bal_el.style.color = low>0 ? `color-mix(in srgb, var(--expense) ${low*100}%, var(--text))` : 'var(--text)'
+    const shake = t>4.45&&t<4.9 ? Math.sin(t*90)*10*(1-p(t,4.45,4.9)) : 0
+    bal_el.style.transform=`translateX(${shake}px)`
+    const [o,y]=rise(t,4.5,.45,60); set(h2,o,0,y)
+    const [o2,y2]=rise(t,3.0,.35,30); set(balLbl,o2,0,y2)
+  }
+  // 3 REVEAL
+  if(t>=6&&t<9){
+    const k=ob(p(t,6.0,6.45)); set(icon3,p(t,6,6.15),0,0,.4+.6*k,`rotate(${(1-k)*-12}deg)`)
+    const [o,y]=rise(t,6.12,.4,0); set(wm3,o,(1-o)*-40,0)
+    const [o3,y3]=rise(t,6.45,.5,60); set(h3,o3,0,y3)
+    const [o4,y4]=rise(t,6.85,.45,30); set(sub3,o4,0,y4)
+  }
+  // 4 TIMELINE
+  if(t>=9&&t<13){
+    const k=oc(p(t,9.0,9.6)); set(tl,p(t,9,9.3),(1-k)*220,0)
+    const [o,y]=rise(t,9.15,.5,50); set(cap4,o,0,y)
+    ROWS.forEach((r,i)=>{const [o,y]=rise(t,9.55+i*.22,.45,24); set(document.getElementById('r'+i),o,0,y)})
+    barI.style.width=(84*oc(p(t,10.3,11)))+'%'
+    const fl=p(t,10.9,11.1)-p(t,11.5,11.9)
+    flag.style.color = fl>0 ? `color-mix(in srgb, var(--warning) ${fl*100}%, rgba(235,244,238,.5))` : ''
+    const [of,yf]=rise(t,10.45,.45,24); set(foot,of,0,yf)
+    left.textContent=peso(4250*oc(p(t,10.6,11.5)))
+  }
+  // 5 VOICE
+  if(t>=13&&t<16){
+    const k=oc(p(t,13.0,13.6)); set(sheet,p(t,13,13.3),0,(1-k)*300)
+    const [o,y]=rise(t,13.15,.5,50); set(cap5,o,0,y)
+    const listening = t<14.55
+    ;[rip1,rip2].forEach((r,i)=>{const ph=((t-13.4+i*.45)%.9)/.9; const on=t>13.4&&listening; r.style.opacity=on?(1-ph)*.9:0; r.style.transform=`scale(${1+ph*.32})`})
+    mic.style.transform=`scale(${listening&&t>13.4?1+Math.sin((t-13.4)*14)*.03:1})`
+    const q='“grab, 320 pesos”', n=Math.floor(q.length*p(t,13.6,14.4))
+    quote.textContent=q.slice(0,n)
+    heardK.textContent = listening ? 'Listening...' : 'Heard'
+    const kp=ob(p(t,14.6,15.0)); set(parsed,p(t,14.6,14.75),0,(1-kp)*30,.94+.06*kp)
+    const [oc2,yc]=rise(t,14.85,.35,20); set(confirmBtn,oc2,0,yc,1-.04*(p(t,15.15,15.22)-p(t,15.22,15.32)))
+    const kt=ob(p(t,15.3,15.65)); set(toast,p(t,15.3,15.45),0,(1-kt)*80)
+  }
+  // 6 SCORE
+  if(t>=16&&t<19){
+    const kr=oc(p(t,16.0,16.5)); set(ring,p(t,16,16.25),0,0,.85+.15*kr)
+    const sc=78*io(p(t,16.25,17.5)), C=2*Math.PI*280
+    arc.setAttribute('stroke-dasharray',C); arc.setAttribute('stroke-dashoffset',C-(sc/100)*C)
+    arc.style.opacity = sc>0.3?1:0
+    score.textContent=Math.round(sc)
+    const [o,y]=rise(t,16.2,.5,50); set(cap6,o,0,y)
+    const [oc6,y6]=rise(t,16.9,.45,30); set(cur6,oc6,0,y6)
+  }
+  // 7 OUTRO
+  if(t>=19){
+    const [a,ya]=rise(t,19.1,.5,60); set(h7a,a,0,ya)
+    const [b,yb]=rise(t,19.3,.5,60); set(h7b,b,0,yb)
+    const kc=ob(p(t,19.9,20.35)); set(cta7,p(t,19.9,20.05),0,(1-kc)*50,.95+.05*kc)
+    const [f,yf]=rise(t,20.2,.45,20); set(fine7,f,0,yf)
+  }
+}
+const bal_el=document.getElementById('bal')
+window.render=render
+window.ready=document.fonts.ready.then(()=>Promise.all([document.fonts.load('900 100px "Playfair Display"'),document.fonts.load('italic 900 100px "Playfair Display"'),document.fonts.load('800 100px Geist'),document.fonts.load('600 100px Geist')])).then(()=>{render(0);return true})
+</script>
+</body>
+</html>

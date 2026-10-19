@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=DM+Mono:wght@400;500&display=swap">
+<script src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.js"></script>
+<style>
+:root{
+--font-geist:"Geist",ui-sans-serif,system-ui,-apple-system,sans-serif;
+--font-playfair:"Playfair Display",Georgia,serif;
+--font-mono:"DM Mono",ui-monospace,SFMono-Regular,monospace;
+--color-bg:#F7F6F0;--color-surface:#FAFAF5;--color-card:#FAFAF5;--color-elevated:#F0EDE4;
+--color-border:rgba(0,0,0,0.07);--color-primary:#166534;--color-active:#14532D;--color-accent:#16A34A;
+--color-sage:rgba(22,101,52,0.10);--color-pale:rgba(22,101,52,0.06);
+--color-text-primary:#1A1A17;--color-text-secondary:#5A6350;--color-text-muted:rgba(0,0,0,0.35);
+--color-income:#166534;--color-expense:#B91C1C;--color-warning:#B45309;
+--color-income-bg:rgba(22,101,52,0.09);--color-expense-bg:rgba(185,28,28,0.09);--color-warning-bg:rgba(180,83,9,0.09);
+--color-savings:#166534;--color-savings-bg:rgba(22,101,52,0.09);
+--color-surface-blur:rgba(250,250,245,0.88);--color-backdrop:rgba(13,61,31,0.35);
+}
+.dark{
+--color-bg:#0C100E;--color-surface:#111C14;--color-card:#162018;--color-elevated:#1D2E20;
+--color-border:rgba(255,255,255,0.07);--color-primary:#166534;--color-active:#4ADE80;--color-accent:#4ADE80;
+--color-sage:rgba(74,222,128,0.12);--color-pale:rgba(74,222,128,0.07);
+--color-text-primary:#ECF4EE;--color-text-secondary:#9EC4A6;--color-text-muted:rgba(255,255,255,0.50);
+--color-income:#4ADE80;--color-expense:#F87171;--color-warning:#FBBF24;
+--color-income-bg:rgba(74,222,128,0.11);--color-expense-bg:rgba(248,113,113,0.11);--color-warning-bg:rgba(251,191,36,0.11);
+--color-savings:#4ADE80;--color-savings-bg:rgba(74,222,128,0.11);
+--color-surface-blur:rgba(17,28,20,0.88);--color-backdrop:rgba(10,26,15,0.60);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#F7F6F0;font-family:var(--font-geist),ui-sans-serif,system-ui,sans-serif}
+a{color:#16A34A;text-decoration:none}
+a:hover{color:#166534}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
+.dv-tid{font:600 10px var(--font-mono),ui-monospace,monospace;padding:3px 7px;background:#0C100E;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tid:hover{color:#fff}
+.dv-tname{font:900 15px/1.2 var(--font-playfair),Georgia,serif;color:#1A1A17;letter-spacing:-.02em}
+.dv-tsub{margin:0 0 20px;font:400 12px/1.6 var(--font-geist),sans-serif;color:rgba(0,0,0,.45);max-width:70ch}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px var(--font-mono),ui-monospace,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1A1A17;border-radius:5px;text-decoration:none}
+.dv-oid:hover{color:#1A1A17}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-geist),sans-serif;color:rgba(0,0,0,.55)}
+.dv-card{max-width:100%;border-radius:22px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.10)}
+.dv-opt:target .dv-oid{background:#16A34A;color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.6 var(--font-geist),sans-serif;color:rgba(0,0,0,.5)}
+.wk-scroll::-webkit-scrollbar{width:0;height:0}
+.wk-scroll>*{flex-shrink:0}
+.wk-x::-webkit-scrollbar{height:0}
+</style></helmet>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Tightened for the phone</span></div>
+<p class="dv-tsub">Same components, same tokens, same 20px section rhythm — three things change. The 64px header and 6-cell bottom nav collapse into one 5-cell bar with a raised <strong>+</strong>, which frees the top of the screen for money instead of chrome. The 148px health ring stops being the hero and becomes a 44px inline read, because on a phone the first thing you want is the balance. And the transactions table becomes day-grouped rows, since a 4-column table at 390px is mostly ellipsis. <a class="dv-oid" href="#2a">2a</a> is live — tap the nav, tap the <strong>+</strong>, key in an amount and save it.</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Balance-led home · center-FAB nav · quick-add sheet — <strong style="color:var(--color-accent);font-weight:600">interactive</strong></div>
+<div class="dv-card">
+<div class="dark" style="width:390px;height:844px;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text-primary);overflow:hidden;position:relative">
+
+  <div style="height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--color-surface)">
+    <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">9:41</span>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:15px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:13px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:22px;height:10px;border-radius:3px;border:1px solid var(--color-text-secondary);opacity:.85"></div>
+    </div>
+  </div>
+
+  <header style="height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--color-border);background:var(--color-surface-blur);backdrop-filter:blur(12px)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <img src="assets/logo-dark.png" alt="WaiseKa" style="width:28px;height:28px;border-radius:8px;object-fit:contain">
+      <span style="font-size:15px;font-weight:800;letter-spacing:-.02em">WaiseKa</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px">
+      <div style="display:flex;align-items:center;gap:1px;padding:5px 9px;border-radius:8px;background:var(--color-elevated);border:1px solid var(--color-border);font-size:11px;font-weight:700;letter-spacing:.05em">
+        <span style="color:var(--color-accent)">EN</span><span style="color:var(--color-text-muted);margin:0 2px">·</span><span style="color:var(--color-text-muted)">TL</span>
+      </div>
+      <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--color-text-secondary);position:relative"><i data-lucide="bell" style="width:18px;height:18px"></i><span style="position:absolute;top:12px;right:12px;width:6px;height:6px;border-radius:50%;background:var(--color-accent)"></span></div>
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">JB</div>
+    </div>
+  </header>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <div class="wk-scroll" style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:16px 12px 96px;display:flex;flex-direction:column;gap:20px">
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);padding:20px 20px 16px">
+      <p style="margin:0 0 6px;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Total Money</p>
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-size:2.4rem;font-weight:800;line-height:1;letter-spacing:-.025em;font-variant-numeric:tabular-nums">₱71,480</span>
+        <span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-income-bg);color:var(--color-income);font-variant-numeric:tabular-nums">+₱3,210 this month</span>
+      </div>
+      <div class="wk-x" style="display:flex;gap:8px;overflow-x:auto;margin:16px -20px 0;padding:0 20px 2px;scrollbar-width:none">
+        <div style="flex-shrink:0;min-width:118px;border-radius:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);background:var(--color-elevated);padding:9px 11px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:5px;color:var(--color-text-muted)"><i data-lucide="landmark" style="width:12px;height:12px"></i><span style="font-size:.68rem;font-weight:600;color:var(--color-text-secondary);white-space:nowrap">BPI Payroll</span></div>
+          <span style="font-size:.9rem;font-weight:800;font-variant-numeric:tabular-nums">₱28,410</span>
+        </div>
+        <div style="flex-shrink:0;min-width:118px;border-radius:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);background:var(--color-elevated);padding:9px 11px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:5px;color:var(--color-text-muted)"><i data-lucide="smartphone" style="width:12px;height:12px"></i><span style="font-size:.68rem;font-weight:600;color:var(--color-text-secondary);white-space:nowrap">GCash</span></div>
+          <span style="font-size:.9rem;font-weight:800;font-variant-numeric:tabular-nums">₱4,265</span>
+        </div>
+        <div style="flex-shrink:0;min-width:118px;border-radius:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);background:var(--color-elevated);padding:9px 11px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:5px;color:var(--color-text-muted)"><i data-lucide="piggy-bank" style="width:12px;height:12px"></i><span style="font-size:.68rem;font-weight:600;color:var(--color-text-secondary);white-space:nowrap">GoTyme</span></div>
+          <span style="font-size:.9rem;font-weight:800;font-variant-numeric:tabular-nums">₱36,000</span>
+        </div>
+        <div style="flex-shrink:0;min-width:118px;border-radius:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-warning);background:var(--color-elevated);padding:9px 11px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:5px;color:var(--color-text-muted)"><i data-lucide="credit-card" style="width:12px;height:12px"></i><span style="font-size:.68rem;font-weight:600;color:var(--color-text-secondary);white-space:nowrap">Amore Card</span></div>
+          <span style="font-size:.9rem;font-weight:800;color:var(--color-expense);font-variant-numeric:tabular-nums">-₱7,940</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+        <div>
+          <p style="margin:0 0 4px;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Left to spend · September</p>
+          <span style="font-size:1.55rem;font-weight:800;line-height:1;color:var(--color-income);font-variant-numeric:tabular-nums">₱6,450</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px">
+          <div style="position:relative;width:44px;height:44px;flex-shrink:0">
+            <svg viewBox="0 0 44 44" style="width:44px;height:44px;transform:rotate(-90deg)">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="var(--color-elevated)" stroke-width="5"></circle>
+              <circle cx="22" cy="22" r="18" fill="none" stroke="var(--color-income)" stroke-width="5" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="26"></circle>
+            </svg>
+            <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:800;color:var(--color-income);font-variant-numeric:tabular-nums">77</span>
+          </div>
+          <div>
+            <p style="margin:0;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--color-text-muted)">Pera Score</p>
+            <span style="font-size:.72rem;font-weight:600;color:var(--color-income)">Healthy</span>
+          </div>
+        </div>
+      </div>
+      <div style="height:6px;border-radius:999px;background:var(--color-elevated);overflow:hidden;display:flex">
+        <div style="width:78%;background:var(--color-income)"></div>
+      </div>
+      <p style="margin:0;font-size:.72rem;color:var(--color-text-muted)">₱23,550 of ₱30,000 budgeted · 24 days in</p>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
+        <h2 style="margin:0;font-size:.88rem;font-weight:700">This month</h2>
+        <span style="font-size:.72rem;color:var(--color-text-muted)">Jul – Sep</span>
+      </div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:.78rem;color:var(--color-text-secondary)">Income</span><span style="font-size:.85rem;font-weight:700;color:var(--color-income);font-variant-numeric:tabular-nums">₱48,200</span></div>
+          <div style="height:8px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:100%;border-radius:999px;background:var(--color-income)"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:.78rem;color:var(--color-text-secondary)">Expenses</span><span style="font-size:.85rem;font-weight:700;color:var(--color-expense);font-variant-numeric:tabular-nums">₱33,540</span></div>
+          <div style="height:8px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:70%;border-radius:999px;background:var(--color-expense)"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:.78rem;color:var(--color-text-secondary)">Savings</span><span style="font-size:.85rem;font-weight:700;color:var(--color-savings);font-variant-numeric:tabular-nums">₱9,000</span></div>
+          <div style="height:8px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:19%;border-radius:999px;background:var(--color-savings)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-radius:12px;background:var(--color-sage);border:1px solid var(--color-border);border-left:4px solid var(--color-accent);padding:12px 16px;display:flex;align-items:flex-start;gap:10px">
+      <i data-lucide="lightbulb" style="width:16px;height:16px;color:var(--color-accent);flex-shrink:0;margin-top:1px"></i>
+      <p style="margin:0;font-size:.85rem;line-height:1.5">Load &amp; Data is at <strong style="color:var(--color-warning)">98%</strong> with 24 days to go. <span style="color:var(--color-text-secondary)">Move ₱500 from Pulutan and you stay under.</span></p>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
+        <h2 style="margin:0;font-size:.88rem;font-weight:700">Budget Overview</h2>
+        <span style="font-size:.78rem;font-weight:600;color:var(--color-accent)">View all →</span>
+      </div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#4ADE80"></div><span style="font-size:.83rem;font-weight:500">Groceries</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="font-size:.72rem;color:var(--color-text-muted)">₱8,420 / ₱10,000</span><span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--color-warning-bg);color:var(--color-warning)">84%</span></div>
+          </div>
+          <div style="height:5px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:84%;border-radius:999px;background:var(--color-warning)"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#F87171"></div><span style="font-size:.83rem;font-weight:500">Load &amp; Data</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="font-size:.72rem;color:var(--color-text-muted)">₱980 / ₱1,000</span><span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--color-expense-bg);color:var(--color-expense)">98%</span></div>
+          </div>
+          <div style="height:5px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:98%;border-radius:999px;background:var(--color-expense)"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#FBBF24"></div><span style="font-size:.83rem;font-weight:500">Transportation</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="font-size:.72rem;color:var(--color-text-muted)">₱2,150 / ₱4,000</span><span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--color-income-bg);color:var(--color-income)">54%</span></div>
+          </div>
+          <div style="height:5px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:54%;border-radius:999px;background:var(--color-income)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="width:34px;height:34px;border-radius:9px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-primary)"><i data-lucide="piggy-bank" style="width:18px;height:18px"></i></div>
+        <div style="flex:1;padding-top:1px">
+          <p style="margin:0 0 2px;font-size:.83rem;font-weight:700;line-height:1.3">Pay Yourself First</p>
+          <p style="margin:0;font-size:.72rem;color:var(--color-text-secondary);font-family:var(--font-playfair),Georgia,serif;font-style:italic">Sarili Mo Muna, Bago Iba</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:2px;font-size:.7rem;font-weight:600;color:var(--color-accent);flex-shrink:0">Next<i data-lucide="chevron-right" style="width:13px;height:13px"></i></div>
+      </div>
+      <p style="margin:0;font-size:.8rem;line-height:1.6;opacity:.88">Most people save whatever's left after rent, bills, Jollibee, and that 12.12 sale na hindi naman kailangan. Kadalasan, walang natitira.</p>
+      <span style="font-size:.75rem;font-weight:600;color:var(--color-accent)">Read full tip →</span>
+    </div>
+
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isTx }}" hint-placeholder-val="{{ false }}">
+  <div class="wk-scroll" style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:0 0 96px">
+    <div style="position:sticky;top:0;z-index:2;background:var(--color-bg);padding:14px 12px 10px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--color-border)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;position:relative">
+          <i data-lucide="search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--color-text-muted)"></i>
+          <div style="height:44px;border-radius:10px;border:1px solid var(--color-border);background:var(--color-elevated);font-size:.85rem;padding-left:38px;display:flex;align-items:center;color:var(--color-text-muted)">Search transactions</div>
+        </div>
+        <div style="width:44px;height:44px;border-radius:10px;border:1px solid var(--color-border);background:var(--color-elevated);color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="filter" style="width:16px;height:16px"></i></div>
+      </div>
+      <div class="wk-x" style="display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px">
+        <span style="flex-shrink:0;font-size:.75rem;font-weight:600;padding:7px 13px;border-radius:999px;background:var(--color-sage);color:var(--color-accent);border:1px solid var(--color-accent);white-space:nowrap">All</span>
+        <span style="flex-shrink:0;font-size:.75rem;font-weight:500;padding:7px 13px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary);border:1px solid var(--color-border);white-space:nowrap">Expense</span>
+        <span style="flex-shrink:0;font-size:.75rem;font-weight:500;padding:7px 13px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary);border:1px solid var(--color-border);white-space:nowrap">Income</span>
+        <span style="flex-shrink:0;font-size:.75rem;font-weight:500;padding:7px 13px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary);border:1px solid var(--color-border);white-space:nowrap">Savings</span>
+        <span style="flex-shrink:0;font-size:.75rem;font-weight:500;padding:7px 13px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary);border:1px solid var(--color-border);white-space:nowrap">Transfer</span>
+      </div>
+    </div>
+
+    <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+      <div style="padding:14px 16px 6px;display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+        <span style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted)">{{ g.day }}</span>
+        <span style="font-size:.72rem;font-weight:700;color:{{ g.netColor }};font-variant-numeric:tabular-nums">{{ g.netText }}</span>
+      </div>
+      <sc-for list="{{ g.items }}" as="tx" hint-placeholder-count="2">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--color-border)">
+          <div style="width:38px;height:38px;border-radius:11px;flex-shrink:0;background:{{ tx.tintBg }};color:{{ tx.amountColor }};display:flex;align-items:center;justify-content:center"><i data-lucide="{{ tx.icon }}" style="width:17px;height:17px"></i></div>
+          <div style="flex:1;min-width:0">
+            <p style="margin:0;font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tx.desc }}</p>
+            <p style="margin:2px 0 0;font-size:.72rem;color:var(--color-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tx.meta }}</p>
+          </div>
+          <span style="font-size:.92rem;font-weight:700;color:{{ tx.amountColor }};font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0">{{ tx.amountText }}</span>
+        </div>
+      </sc-for>
+    </sc-for>
+    <p style="margin:0;padding:18px 16px;text-align:center;font-size:.78rem;color:var(--color-text-muted)">412 records · scroll for more</p>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isBudgets }}" hint-placeholder-val="{{ false }}">
+  <div class="wk-scroll" style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:16px 12px 96px;display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <p style="margin:0 0 2px;font-size:.8rem;color:var(--color-text-muted)">September 2026</p>
+        <h1 style="margin:0;font-family:var(--font-playfair),Georgia,serif;font-size:1.6rem;font-weight:900;line-height:1.1">Budgets</h1>
+      </div>
+      <div style="height:44px;padding:0 16px;border-radius:8px;background:var(--color-primary);color:#fff;font-size:.85rem;font-weight:500;display:flex;align-items:center;gap:6px;flex-shrink:0"><i data-lucide="plus" style="width:16px;height:16px"></i>New</div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);padding:20px;display:flex;flex-direction:column;gap:12px">
+      <p style="margin:0;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Left to spend</p>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-size:2.1rem;font-weight:800;line-height:1;letter-spacing:-.025em;color:var(--color-income);font-variant-numeric:tabular-nums">₱6,450</span>
+        <span style="font-size:.78rem;color:var(--color-text-muted)">of ₱30,000</span>
+      </div>
+      <div style="height:6px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:78%;border-radius:999px;background:var(--color-income)"></div></div>
+      <p style="margin:0;font-size:.72rem;color:var(--color-text-muted)">6 days left in the cutoff · ₱1,075/day to stay under</p>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-border)"><h2 style="margin:0;font-size:.88rem;font-weight:700">6 categories</h2></div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:.85rem;font-weight:600">Load &amp; Data</span><span style="font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-expense-bg);color:var(--color-expense)">98%</span></div>
+          <div style="height:6px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:98%;border-radius:999px;background:var(--color-expense)"></div></div>
+          <span style="font-size:.72rem;color:var(--color-text-muted);font-variant-numeric:tabular-nums">₱980 spent · ₱20 left</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:.85rem;font-weight:600">Groceries</span><span style="font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-warning-bg);color:var(--color-warning)">84%</span></div>
+          <div style="height:6px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:84%;border-radius:999px;background:var(--color-warning)"></div></div>
+          <span style="font-size:.72rem;color:var(--color-text-muted);font-variant-numeric:tabular-nums">₱8,420 spent · ₱1,580 left</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:.85rem;font-weight:600">Pulutan</span><span style="font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-warning-bg);color:var(--color-warning)">71%</span></div>
+          <div style="height:6px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:71%;border-radius:999px;background:var(--color-warning)"></div></div>
+          <span style="font-size:.72rem;color:var(--color-text-muted);font-variant-numeric:tabular-nums">₱1,420 spent · ₱580 left</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:.85rem;font-weight:600">Transportation</span><span style="font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-income-bg);color:var(--color-income)">54%</span></div>
+          <div style="height:6px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:54%;border-radius:999px;background:var(--color-income)"></div></div>
+          <span style="font-size:.72rem;color:var(--color-text-muted);font-variant-numeric:tabular-nums">₱2,150 spent · ₱1,850 left</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:.85rem;font-weight:600">Baon</span><span style="font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-income-bg);color:var(--color-income)">42%</span></div>
+          <div style="height:6px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:42%;border-radius:999px;background:var(--color-income)"></div></div>
+          <span style="font-size:.72rem;color:var(--color-text-muted);font-variant-numeric:tabular-nums">₱1,260 spent · ₱1,740 left</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isMore }}" hint-placeholder-val="{{ false }}">
+  <div class="wk-scroll" style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:16px 12px 96px;display:flex;flex-direction:column;gap:8px">
+    <h1 style="margin:0 4px 8px;font-family:var(--font-playfair),Georgia,serif;font-size:1.6rem;font-weight:900;line-height:1.1">More</h1>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--color-card);border:1px solid var(--color-border)"><i data-lucide="wallet" style="width:20px;height:20px;color:var(--color-accent)"></i><span style="flex:1;font-size:.9rem;font-weight:500">Accounts</span><i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--color-text-muted)"></i></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--color-card);border:1px solid var(--color-border)"><i data-lucide="target" style="width:20px;height:20px;color:var(--color-accent)"></i><span style="flex:1;font-size:.9rem;font-weight:500">Goals</span><i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--color-text-muted)"></i></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--color-card);border:1px solid var(--color-border)"><i data-lucide="bot" style="width:20px;height:20px;color:var(--color-accent)"></i><span style="flex:1;font-size:.9rem;font-weight:500">AI Assistant</span><i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--color-text-muted)"></i></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--color-card);border:1px solid var(--color-border)"><i data-lucide="tags" style="width:20px;height:20px;color:var(--color-accent)"></i><span style="flex:1;font-size:.9rem;font-weight:500">Categories</span><i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--color-text-muted)"></i></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--color-card);border:1px solid var(--color-border)"><i data-lucide="book-open" style="width:20px;height:20px;color:var(--color-accent)"></i><span style="flex:1;font-size:.9rem;font-weight:500">Tips &amp; Gabay</span><i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--color-text-muted)"></i></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--color-card);border:1px solid var(--color-border)"><i data-lucide="settings" style="width:20px;height:20px;color:var(--color-accent)"></i><span style="flex:1;font-size:.9rem;font-weight:500">Settings</span><i data-lucide="chevron-right" style="width:16px;height:16px;color:var(--color-text-muted)"></i></div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:8;background:var(--color-backdrop);backdrop-filter:blur(4px)"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--color-surface);border-top:1px solid var(--color-border);border-radius:20px 20px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.4);padding:10px 16px 20px;display:flex;flex-direction:column;gap:14px">
+    <div style="width:38px;height:4px;border-radius:999px;background:var(--color-elevated);align-self:center"></div>
+
+    <div style="display:flex;gap:6px;padding:4px;border-radius:12px;background:var(--color-elevated)">
+      <div onClick="{{ modeNumpad }}" style="flex:1;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:.8rem;font-weight:600;cursor:pointer;background:{{ numpadBg }};color:{{ numpadFg }}"><i data-lucide="hash" style="width:15px;height:15px"></i>Keypad</div>
+      <div onClick="{{ modeVoice }}" style="flex:1;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:.8rem;font-weight:600;cursor:pointer;background:{{ voiceBg }};color:{{ voiceFg }}"><i data-lucide="mic" style="width:15px;height:15px"></i>Voice</div>
+      <div onClick="{{ modeReceipt }}" style="flex:1;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:.8rem;font-weight:600;cursor:pointer;background:{{ receiptBg }};color:{{ receiptFg }}"><i data-lucide="receipt" style="width:15px;height:15px"></i>Receipt</div>
+    </div>
+
+    <sc-if value="{{ isNumpad }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;gap:6px">
+        <div onClick="{{ typeExpense }}" style="flex:1;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;cursor:pointer;background:{{ expenseSel }};color:{{ expenseFg }};border:1px solid var(--color-border)">Expense</div>
+        <div onClick="{{ typeIncome }}" style="flex:1;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;cursor:pointer;background:{{ incomeSel }};color:{{ incomeFg }};border:1px solid var(--color-border)">Income</div>
+        <div onClick="{{ typeSavings }}" style="flex:1;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;cursor:pointer;background:{{ savingsSel }};color:{{ savingsFg }};border:1px solid var(--color-border)">Savings</div>
+      </div>
+
+      <div style="text-align:center;padding:2px 0 4px">
+        <span style="font-size:2.6rem;font-weight:800;line-height:1;letter-spacing:-.025em;font-variant-numeric:tabular-nums;color:{{ amountColor }}">{{ amountText }}</span>
+      </div>
+
+      <div class="wk-x" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px 2px">
+        <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+          <span onClick="{{ c.pick }}" style="flex-shrink:0;font-size:.75rem;font-weight:600;padding:7px 13px;border-radius:999px;white-space:nowrap;cursor:pointer;background:{{ c.bg }};color:{{ c.fg }};border:1px solid {{ c.bd }}">{{ c.name }}</span>
+        </sc-for>
+      </div>
+
+      <div class="wk-x" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px 2px">
+        <sc-for list="{{ accts }}" as="a" hint-placeholder-count="4">
+          <span onClick="{{ a.pick }}" style="flex-shrink:0;font-size:.72rem;font-weight:600;padding:6px 12px;border-radius:999px;white-space:nowrap;cursor:pointer;background:{{ a.bg }};color:{{ a.fg }};border:1px solid {{ a.bd }}">{{ a.name }}</span>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div onClick="{{ k1 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">1</div>
+        <div onClick="{{ k2 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">2</div>
+        <div onClick="{{ k3 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">3</div>
+        <div onClick="{{ k4 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">4</div>
+        <div onClick="{{ k5 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">5</div>
+        <div onClick="{{ k6 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">6</div>
+        <div onClick="{{ k7 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">7</div>
+        <div onClick="{{ k8 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">8</div>
+        <div onClick="{{ k9 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">9</div>
+        <div onClick="{{ k00 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.05rem;font-weight:600;color:var(--color-text-secondary);cursor:pointer">00</div>
+        <div onClick="{{ k0 }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:600;cursor:pointer">0</div>
+        <div onClick="{{ kdel }}" style="height:52px;border-radius:12px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;color:var(--color-text-secondary);cursor:pointer"><i data-lucide="delete" style="width:20px;height:20px"></i></div>
+      </div>
+
+      <div onClick="{{ doSave }}" style="height:52px;border-radius:12px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:1rem;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(22,163,74,.35)"><i data-lucide="check" style="width:18px;height:18px"></i>Save transaction</div>
+    </sc-if>
+
+    <sc-if value="{{ isVoice }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:18px;padding:24px 0 8px">
+        <div style="width:96px;height:96px;border-radius:50%;background:var(--color-sage);border:1px solid var(--color-accent);display:flex;align-items:center;justify-content:center;color:var(--color-accent);box-shadow:0 4px 20px rgba(22,163,74,.35)"><i data-lucide="mic" style="width:34px;height:34px"></i></div>
+        <p style="margin:0;font-size:.85rem;color:var(--color-text-secondary);text-align:center">Hold and say it the way you'd say it out loud.</p>
+        <div style="width:100%;background:var(--color-card);border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:12px;padding:14px 16px">
+          <p style="margin:0 0 8px;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--color-text-muted);font-weight:600">Heard</p>
+          <p style="margin:0 0 12px;font-size:.95rem;line-height:1.5">"Nagbayad ako ng Meralco, two thousand eight seventy, GCash"</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span style="font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--color-expense-bg);color:var(--color-expense)">Expense</span>
+            <span style="font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary)">₱2,870</span>
+            <span style="font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary)">Utilities</span>
+            <span style="font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary)">GCash</span>
+          </div>
+        </div>
+        <div onClick="{{ doSave }}" style="width:100%;height:52px;border-radius:12px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:1rem;font-weight:600;cursor:pointer"><i data-lucide="check" style="width:18px;height:18px"></i>Looks right, save it</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isReceipt }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px;padding:4px 0 8px">
+        <div style="height:220px;border-radius:14px;border:1px dashed var(--color-border);background:var(--color-elevated);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--color-text-muted)">
+          <i data-lucide="camera" style="width:28px;height:28px"></i>
+          <p style="margin:0;font-family:var(--font-mono),ui-monospace,monospace;font-size:.7rem;letter-spacing:.04em;text-align:center;max-width:22ch">receipt photo — camera viewfinder goes here</p>
+        </div>
+        <div style="background:var(--color-card);border:1px solid var(--color-border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--color-text-muted);font-weight:600">Extracted</span><span style="font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-sage);color:var(--color-accent)">2 of 3 imports left</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:.85rem"><span style="color:var(--color-text-secondary)">Merchant</span><strong>SM Hypermarket</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:.85rem"><span style="color:var(--color-text-secondary)">Date</span><strong>6 Sep 2026</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:.85rem"><span style="color:var(--color-text-secondary)">Total</span><strong style="font-variant-numeric:tabular-nums">₱2,340.00</strong></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div style="flex:1;height:52px;border-radius:12px;border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:500;color:var(--color-text-secondary);cursor:pointer">Retake</div>
+          <div onClick="{{ doSave }}" style="flex:2;height:52px;border-radius:12px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:.95rem;font-weight:600;cursor:pointer"><i data-lucide="check" style="width:18px;height:18px"></i>Add transaction</div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <nav style="flex-shrink:0;position:relative;display:flex;align-items:stretch;border-top:1px solid var(--color-border);background:var(--color-surface);padding-bottom:8px;z-index:6">
+    <div onClick="{{ goHome }}" style="flex:1;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:{{ colHome }}"><i data-lucide="layout-dashboard" style="width:22px;height:22px"></i><span style="font-size:10px;font-weight:600;line-height:1">Home</span></div>
+    <div onClick="{{ goTx }}" style="flex:1;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:{{ colTx }}"><i data-lucide="arrow-left-right" style="width:22px;height:22px"></i><span style="font-size:10px;font-weight:600;line-height:1">Activity</span></div>
+    <div style="flex:1;min-height:56px;display:flex;align-items:flex-start;justify-content:center">
+      <div onClick="{{ openSheet }}" style="width:56px;height:56px;margin-top:-20px;border-radius:50%;background:linear-gradient(135deg,#16A34A,#4ADE80);color:#0C100E;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(22,163,74,.35);border:3px solid var(--color-surface)"><i data-lucide="plus" style="width:26px;height:26px"></i></div>
+    </div>
+    <div onClick="{{ goBudgets }}" style="flex:1;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:{{ colBudgets }}"><i data-lucide="pie-chart" style="width:22px;height:22px"></i><span style="font-size:10px;font-weight:600;line-height:1">Budgets</span></div>
+    <div onClick="{{ goMore }}" style="flex:1;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:{{ colMore }}"><i data-lucide="more-horizontal" style="width:22px;height:22px"></i><span style="font-size:10px;font-weight:600;line-height:1">More</span></div>
+  </nav>
+
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Cutoff-led home · donut treatment · keeps the 6-cell nav</div>
+<div class="dv-card">
+<div class="dark" style="width:390px;height:844px;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text-primary);overflow:hidden">
+
+  <div style="height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--color-surface)">
+    <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">9:41</span>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:15px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:13px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:22px;height:10px;border-radius:3px;border:1px solid var(--color-text-secondary);opacity:.85"></div>
+    </div>
+  </div>
+
+  <header style="height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--color-border);background:var(--color-surface-blur);backdrop-filter:blur(12px)">
+    <div>
+      <p style="margin:0;font-size:.68rem;color:var(--color-text-muted)">Sunday, 6 September</p>
+      <p style="margin:1px 0 0;font-size:.92rem;font-weight:700;letter-spacing:-.02em">Kumusta, Justin</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px">
+      <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--color-text-secondary)"><i data-lucide="bell" style="width:18px;height:18px"></i></div>
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">JB</div>
+    </div>
+  </header>
+
+  <div class="wk-scroll" style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:16px 12px 88px;display:flex;flex-direction:column;gap:20px">
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <p style="margin:0;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">2nd cutoff · until 15 Sep</p>
+        <span style="font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-sage);color:var(--color-accent)">9 days</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:18px">
+        <div style="position:relative;width:104px;height:104px;flex-shrink:0">
+          <svg viewBox="0 0 104 104" style="width:104px;height:104px;transform:rotate(-90deg)">
+            <circle cx="52" cy="52" r="44" fill="none" stroke="var(--color-elevated)" stroke-width="12"></circle>
+            <circle cx="52" cy="52" r="44" fill="none" stroke="var(--color-income)" stroke-width="12" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="60.8"></circle>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <span style="font-size:1.15rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">78%</span>
+            <span style="font-size:.55rem;text-transform:uppercase;letter-spacing:.1em;color:var(--color-text-muted);margin-top:2px">used</span>
+          </div>
+        </div>
+        <div style="min-width:0">
+          <p style="margin:0 0 3px;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Left to spend</p>
+          <p style="margin:0 0 10px;font-size:1.9rem;font-weight:800;line-height:1;letter-spacing:-.025em;color:var(--color-income);font-variant-numeric:tabular-nums">₱6,450</p>
+          <p style="margin:0;font-size:.75rem;color:var(--color-text-secondary);line-height:1.5">₱717 a day keeps you under. You've been averaging ₱982.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:var(--color-card);border-radius:14px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);padding:16px 18px">
+        <p style="margin:0 0 8px;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Total Money</p>
+        <p style="margin:0;font-size:1.35rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">₱71,480</p>
+      </div>
+      <div style="background:var(--color-card);border-radius:14px;border:1px solid var(--color-border);border-left:3px solid var(--color-savings);padding:16px 18px">
+        <p style="margin:0 0 8px;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Saved · Sep</p>
+        <p style="margin:0;font-size:1.35rem;font-weight:800;line-height:1;color:var(--color-savings);font-variant-numeric:tabular-nums">₱9,000</p>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-border)"><h2 style="margin:0;font-size:.88rem;font-weight:700">Where it went</h2></div>
+      <div style="padding:18px 20px;display:flex;align-items:center;gap:20px">
+        <div style="position:relative;width:112px;height:112px;flex-shrink:0">
+          <svg viewBox="0 0 42 42" style="width:112px;height:112px;transform:rotate(-90deg)">
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--color-elevated)" stroke-width="7"></circle>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#4ADE80" stroke-width="7" stroke-dasharray="31 69" stroke-dashoffset="0"></circle>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#FBBF24" stroke-width="7" stroke-dasharray="22 78" stroke-dashoffset="-31"></circle>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#F87171" stroke-width="7" stroke-dasharray="18 82" stroke-dashoffset="-53"></circle>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="#166534" stroke-width="7" stroke-dasharray="14 86" stroke-dashoffset="-71"></circle>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <span style="font-size:.95rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">₱33.5k</span>
+            <span style="font-size:.55rem;text-transform:uppercase;letter-spacing:.1em;color:var(--color-text-muted);margin-top:2px">spent</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#4ADE80;flex-shrink:0"></div><span style="flex:1;font-size:.78rem;color:var(--color-text-secondary)">Groceries</span><span style="font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums">31%</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#FBBF24;flex-shrink:0"></div><span style="flex:1;font-size:.78rem;color:var(--color-text-secondary)">Utilities</span><span style="font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums">22%</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#F87171;flex-shrink:0"></div><span style="flex:1;font-size:.78rem;color:var(--color-text-secondary)">Padala</span><span style="font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums">18%</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#166534;flex-shrink:0"></div><span style="flex:1;font-size:.78rem;color:var(--color-text-secondary)">Transport</span><span style="font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums">14%</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:var(--color-elevated);flex-shrink:0"></div><span style="flex:1;font-size:.78rem;color:var(--color-text-muted)">Everything else</span><span style="font-size:.78rem;font-weight:700;color:var(--color-text-muted);font-variant-numeric:tabular-nums">15%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
+        <h2 style="margin:0;font-size:.88rem;font-weight:700">Recent</h2>
+        <span style="font-size:.78rem;font-weight:600;color:var(--color-accent)">View all →</span>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--color-border)">
+          <div style="width:36px;height:36px;border-radius:11px;flex-shrink:0;background:var(--color-expense-bg);color:var(--color-expense);display:flex;align-items:center;justify-content:center"><i data-lucide="shopping-basket" style="width:16px;height:16px"></i></div>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:.85rem;font-weight:600">SM Hypermarket</p><p style="margin:2px 0 0;font-size:.72rem;color:var(--color-text-muted)">Groceries · Amore Card</p></div>
+          <span style="font-size:.88rem;font-weight:700;color:var(--color-expense);font-variant-numeric:tabular-nums">−₱2,340</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--color-border)">
+          <div style="width:36px;height:36px;border-radius:11px;flex-shrink:0;background:var(--color-income-bg);color:var(--color-income);display:flex;align-items:center;justify-content:center"><i data-lucide="trending-up" style="width:16px;height:16px"></i></div>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:.85rem;font-weight:600">Sweldo — 1st cutoff</p><p style="margin:2px 0 0;font-size:.72rem;color:var(--color-text-muted)">Salary · BPI Payroll</p></div>
+          <span style="font-size:.88rem;font-weight:700;color:var(--color-income);font-variant-numeric:tabular-nums">+₱24,100</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 20px">
+          <div style="width:36px;height:36px;border-radius:11px;flex-shrink:0;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center"><i data-lucide="arrow-left-right" style="width:16px;height:16px"></i></div>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:.85rem;font-weight:600">To GoTyme Savings</p><p style="margin:2px 0 0;font-size:.72rem;color:var(--color-text-muted)">Transfer · BPI → GoTyme</p></div>
+          <span style="font-size:.88rem;font-weight:700;color:var(--color-accent);font-variant-numeric:tabular-nums">⇄₱4,500</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav style="flex-shrink:0;display:flex;align-items:stretch;border-top:1px solid var(--color-border);background:var(--color-surface);padding-bottom:8px">
+    <div style="flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--color-accent)"><i data-lucide="layout-dashboard" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:600;line-height:1">Home</span></div>
+    <div style="flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--color-text-secondary)"><i data-lucide="arrow-left-right" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:600;line-height:1">Activity</span></div>
+    <div style="flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--color-text-secondary)"><i data-lucide="pie-chart" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:600;line-height:1">Budgets</span></div>
+    <div style="flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--color-text-secondary)"><i data-lucide="target" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:600;line-height:1">Goals</span></div>
+    <div style="flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--color-text-secondary)"><i data-lucide="bot" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:600;line-height:1">AI</span></div>
+    <div style="flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--color-text-secondary)"><i data-lucide="more-horizontal" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:600;line-height:1">More</span></div>
+  </nav>
+
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2c">
+<div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Hero block, three ways — mix into either home</div>
+<div style="width:366px;display:flex;flex-direction:column;gap:14px">
+
+  <div class="dark" style="background:var(--color-bg);padding:14px;border-radius:16px">
+    <p style="margin:0 0 8px;font-family:var(--font-mono),ui-monospace,monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)">i · balance first</p>
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);padding:20px">
+      <p style="margin:0 0 6px;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Total Money</p>
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-size:2.4rem;font-weight:800;line-height:1;letter-spacing:-.025em;color:var(--color-text-primary);font-variant-numeric:tabular-nums">₱71,480</span>
+        <span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-income-bg);color:var(--color-income)">+₱3,210</span>
+      </div>
+      <p style="margin:10px 0 0;font-size:.75rem;color:var(--color-text-secondary)">Across 4 accounts · PHP only, never converted</p>
+    </div>
+  </div>
+
+  <div class="dark" style="background:var(--color-bg);padding:14px;border-radius:16px">
+    <p style="margin:0 0 8px;font-family:var(--font-mono),ui-monospace,monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)">ii · budget remaining first</p>
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);padding:20px;display:flex;flex-direction:column;gap:12px">
+      <p style="margin:0;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Left to spend · September</p>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-size:2.4rem;font-weight:800;line-height:1;letter-spacing:-.025em;color:var(--color-income);font-variant-numeric:tabular-nums">₱6,450</span>
+        <span style="font-size:.78rem;color:var(--color-text-muted)">of ₱30,000</span>
+      </div>
+      <div style="height:6px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;width:78%;border-radius:999px;background:var(--color-income)"></div></div>
+      <p style="margin:0;font-size:.75rem;color:var(--color-text-secondary)">₱717/day for 9 days. You've been averaging ₱982.</p>
+    </div>
+  </div>
+
+  <div class="dark" style="background:var(--color-bg);padding:14px;border-radius:16px">
+    <p style="margin:0 0 8px;font-family:var(--font-mono),ui-monospace,monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)">iii · sweldo cutoff first</p>
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+        <p style="margin:0;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Until next sweldo</p>
+        <span style="font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-sage);color:var(--color-accent)">15 Sep</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:2.4rem;font-weight:800;line-height:1;letter-spacing:-.025em;font-variant-numeric:tabular-nums">9</span>
+        <span style="font-size:.9rem;font-weight:600;color:var(--color-text-secondary)">days · ₱6,450 to last them</span>
+      </div>
+      <div style="display:flex;gap:3px">
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income);opacity:.25"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income);opacity:.25"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income);opacity:.25"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income);opacity:.25"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income);opacity:.25"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income);opacity:.25"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income)"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income)"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-income)"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-warning)"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-elevated)"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-elevated)"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-elevated)"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-elevated)"></div>
+        <div style="flex:1;height:26px;border-radius:4px;background:var(--color-elevated)"></div>
+      </div>
+      <p style="margin:0;font-size:.75rem;color:var(--color-text-secondary)">Each block is a day. Amber is the day you'd go over at your current pace.</p>
+    </div>
+  </div>
+
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make <a class="dv-oid" href="#2a">2a</a> use the cutoff hero from <a class="dv-oid" href="#2c">2c</a> iii" · "show the light theme" · "design the AI chat and goals screens next" · "swipe-to-delete on the activity rows"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">The app today, on a phone</span></div>
+<p class="dv-sub dv-tsub">Recreated from the codebase at 390&times;844 — dark theme, since <code>&lt;html class="dark"&gt;</code> is the shipped default. Nothing here is new: the header, <code>BottomNav</code>, <code>AccountStrip</code>, the health ring and the transactions table are all rendered at the values they have in <code>app/(protected)/</code>. Read this as the baseline the mobile work has to improve on.</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Dashboard — <code>dashboard/page.tsx</code></div>
+<div class="dv-card">
+<div class="dark" style="width:390px;height:844px;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text-primary);position:relative;overflow:hidden">
+
+  <div style="height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--color-surface)">
+    <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">9:41</span>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:15px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:13px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:22px;height:10px;border-radius:3px;border:1px solid var(--color-text-secondary);opacity:.85"></div>
+    </div>
+  </div>
+
+  <header style="height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--color-border);background:var(--color-surface-blur);backdrop-filter:blur(12px)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <img src="assets/logo-dark.png" alt="WaiseKa" style="width:32px;height:32px;border-radius:8px;object-fit:contain">
+      <span style="font-size:16px;font-weight:800;letter-spacing:-.02em">WaiseKa</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:1px;padding:5px 9px;border-radius:8px;background:var(--color-elevated);border:1px solid var(--color-border);font-size:11px;font-weight:700;letter-spacing:.05em">
+        <span style="color:var(--color-accent)">EN</span><span style="color:var(--color-text-muted);margin:0 2px">·</span><span style="color:var(--color-text-muted)">TL</span>
+      </div>
+      <div style="padding:8px;border-radius:8px;color:var(--color-text-secondary);display:flex"><i data-lucide="sun" style="width:16px;height:16px"></i></div>
+      <div style="padding:8px;border-radius:8px;color:var(--color-text-secondary);display:flex;position:relative"><i data-lucide="bell" style="width:16px;height:16px"></i><span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--color-accent)"></span></div>
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">JB</div>
+    </div>
+  </header>
+
+  <div class="wk-scroll" style="flex:1;min-height:0;overflow-y:auto;padding:16px 12px 88px;display:flex;flex-direction:column;gap:20px">
+
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <p style="margin:0 0 2px;font-size:.8rem;color:var(--color-text-muted)">How is your money this September 2026?</p>
+        <h1 style="margin:0;font-family:var(--font-playfair),Georgia,serif;font-size:1.6rem;font-weight:900;line-height:1.1;letter-spacing:-.02em">Dashboard</h1>
+      </div>
+      <button style="height:40px;padding:0 16px;border:none;border-radius:8px;background:var(--color-primary);color:#fff;font-family:inherit;font-size:.85rem;font-weight:500;display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <i data-lucide="plus" style="width:16px;height:16px"></i>Add
+      </button>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <div style="flex:1 1 130px;max-width:180px;height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:.85rem">
+        September<i data-lucide="chevron-down" style="width:15px;height:15px;color:var(--color-text-muted)"></i>
+      </div>
+      <div style="flex:0 0 92px;height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:.85rem">
+        2026<i data-lucide="chevron-down" style="width:15px;height:15px;color:var(--color-text-muted)"></i>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);padding:24px 28px;display:flex;flex-direction:column;align-items:center;gap:4">
+        <p style="margin:0 0 8px;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted);font-weight:600">Pera Health Score</p>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="position:relative;width:148px;height:148px">
+            <svg viewBox="0 0 120 120" style="width:100%;height:100%;transform:rotate(-90deg)">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-elevated)" stroke-width="9"></circle>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-income)" stroke-width="9" stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="72.26"></circle>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <span style="font-size:1.9rem;font-weight:800;color:var(--color-income);line-height:1;font-variant-numeric:tabular-nums">77</span>
+              <span style="font-size:.55rem;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px">Score</span>
+            </div>
+          </div>
+          <span style="font-size:.75rem;font-weight:600;padding:3px 12px;border-radius:999px;background:var(--color-income-bg);color:var(--color-income);letter-spacing:.02em">Healthy</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:var(--color-card);border-radius:14px;border:1px solid var(--color-border);border-left:3px solid var(--color-income);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <p style="margin:0;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Total Income</p>
+            <div style="background:var(--color-income-bg);border-radius:9px;padding:6px;display:flex"><i data-lucide="trending-up" style="width:14px;height:14px;color:var(--color-income)"></i></div>
+          </div>
+          <p style="margin:0;font-size:1.55rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">₱48,200</p>
+        </div>
+        <div style="background:var(--color-card);border-radius:14px;border:1px solid var(--color-border);border-left:3px solid var(--color-expense);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <p style="margin:0;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Total Expenses</p>
+            <div style="background:var(--color-expense-bg);border-radius:9px;padding:6px;display:flex"><i data-lucide="trending-down" style="width:14px;height:14px;color:var(--color-expense)"></i></div>
+          </div>
+          <p style="margin:0;font-size:1.55rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">₱33,540</p>
+        </div>
+        <div style="background:var(--color-card);border-radius:14px;border:1px solid var(--color-border);border-left:3px solid var(--color-savings);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <p style="margin:0;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Total Savings</p>
+            <div style="background:var(--color-savings-bg);border-radius:9px;padding:6px;display:flex"><i data-lucide="piggy-bank" style="width:14px;height:14px;color:var(--color-savings)"></i></div>
+          </div>
+          <p style="margin:0;font-size:1.55rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">₱9,000</p>
+        </div>
+        <div style="background:var(--color-card);border-radius:14px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <p style="margin:0;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-muted);font-weight:600">Savings Rate</p>
+            <div style="background:var(--color-sage);border-radius:9px;padding:6px;display:flex"><i data-lucide="percent" style="width:14px;height:14px;color:var(--color-accent)"></i></div>
+          </div>
+          <p style="margin:0;font-size:1.55rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">19%</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
+        <h2 style="margin:0;font-size:.95rem;font-weight:700">Balance per Account</h2>
+        <a href="#1a" style="font-size:.78rem;font-weight:600;color:var(--color-accent)">View all →</a>
+      </div>
+      <div style="padding:16px 24px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--color-border)">
+          <span style="font-size:.78rem;font-weight:600;color:var(--color-text-muted)">Total Money</span>
+          <span style="font-size:1.15rem;font-weight:800;color:var(--color-income);font-variant-numeric:tabular-nums">₱71,480</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div style="width:26px;height:26px;border-radius:8px;flex-shrink:0;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center"><i data-lucide="landmark" style="width:13px;height:13px"></i></div>
+            <span style="font-size:.83rem;font-weight:600;white-space:nowrap">BPI Payroll</span>
+          </div>
+          <span style="font-size:.85rem;font-weight:700;font-variant-numeric:tabular-nums">₱28,410</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div style="width:26px;height:26px;border-radius:8px;flex-shrink:0;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center"><i data-lucide="smartphone" style="width:13px;height:13px"></i></div>
+            <span style="font-size:.83rem;font-weight:600;white-space:nowrap">GCash</span>
+          </div>
+          <span style="font-size:.85rem;font-weight:700;font-variant-numeric:tabular-nums">₱4,265</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div style="width:26px;height:26px;border-radius:8px;flex-shrink:0;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center"><i data-lucide="piggy-bank" style="width:13px;height:13px"></i></div>
+            <span style="font-size:.83rem;font-weight:600;white-space:nowrap">GoTyme Savings</span>
+          </div>
+          <span style="font-size:.85rem;font-weight:700;font-variant-numeric:tabular-nums">₱36,000</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div style="width:26px;height:26px;border-radius:8px;flex-shrink:0;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center"><i data-lucide="banknote" style="width:13px;height:13px"></i></div>
+            <span style="font-size:.83rem;font-weight:600;white-space:nowrap">Cash on Hand</span>
+          </div>
+          <span style="font-size:.85rem;font-weight:700;font-variant-numeric:tabular-nums">₱2,805</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div style="width:26px;height:26px;border-radius:8px;flex-shrink:0;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center"><i data-lucide="credit-card" style="width:13px;height:13px"></i></div>
+            <span style="font-size:.83rem;font-weight:600;white-space:nowrap">BPI Amore Card</span>
+          </div>
+          <span style="font-size:.85rem;font-weight:700;color:var(--color-expense);font-variant-numeric:tabular-nums">-₱7,940</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-radius:12px;background:var(--color-sage);border:1px solid var(--color-border);border-left:4px solid var(--color-accent);padding:12px 16px;display:flex;align-items:flex-start;gap:10px">
+      <i data-lucide="lightbulb" style="width:16px;height:16px;color:var(--color-accent);flex-shrink:0;margin-top:1px"></i>
+      <p style="margin:0;font-size:.85rem;line-height:1.5">You spent <strong style="color:var(--color-accent)">31%</strong> on Groceries this period - saving <strong style="color:var(--color-income)">19%</strong> of your income. <span style="color:var(--color-text-secondary)">Great work! Keep saving consistently.</span></p>
+    </div>
+
+    <div style="background:var(--color-card);border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="width:34px;height:34px;border-radius:9px;background:var(--color-elevated);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-primary)"><i data-lucide="pie-chart" style="width:18px;height:18px"></i></div>
+        <div style="flex:1;padding-top:1px">
+          <p style="margin:0 0 2px;font-size:.83rem;font-weight:700;line-height:1.3">The 50-30-20 Rule</p>
+          <p style="margin:0;font-size:.72rem;color:var(--color-text-secondary);font-family:var(--font-playfair),Georgia,serif;font-style:italic">Tatlong Hati ng Sweldo</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:2px;font-size:.7rem;font-weight:600;color:var(--color-accent);flex-shrink:0">Next<i data-lucide="chevron-right" style="width:13px;height:13px"></i></div>
+      </div>
+      <p style="margin:0;font-size:.8rem;line-height:1.6;opacity:.88">Sweldo just came in? Before it disappears into bills, Shopee carts, and 'panggastos lang,' try splitting it into three: 50% for needs, 30% for wants, 20% straight…</p>
+      <a href="#1a" style="font-size:.75rem;font-weight:600;color:var(--color-accent);align-self:flex-start">Read full tip →</a>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <h2 style="margin:0;font-size:.95rem;font-weight:700">Income vs Expenses | Jul – Sep 2026</h2>
+        <span style="font-size:.72rem;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--color-sage);color:var(--color-accent);border:1px solid var(--color-accent);flex-shrink:0;white-space:nowrap">Upgrade ↗</span>
+      </div>
+      <div style="padding:16px 24px">
+        <div style="height:180px;display:flex;align-items:flex-end;gap:24px">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="width:100%;display:flex;align-items:flex-end;justify-content:center;gap:6px;height:150px">
+              <div style="width:26%;height:62%;border-radius:4px 4px 0 0;background:var(--color-income)"></div>
+              <div style="width:26%;height:47%;border-radius:4px 4px 0 0;background:var(--color-expense)"></div>
+              <div style="width:26%;height:16%;border-radius:4px 4px 0 0;background:var(--color-accent);opacity:.55"></div>
+            </div>
+            <span style="font-size:.68rem;color:var(--color-text-muted)">Jul</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="width:100%;display:flex;align-items:flex-end;justify-content:center;gap:6px;height:150px">
+              <div style="width:26%;height:64%;border-radius:4px 4px 0 0;background:var(--color-income)"></div>
+              <div style="width:26%;height:58%;border-radius:4px 4px 0 0;background:var(--color-expense)"></div>
+              <div style="width:26%;height:11%;border-radius:4px 4px 0 0;background:var(--color-accent);opacity:.55"></div>
+            </div>
+            <span style="font-size:.68rem;color:var(--color-text-muted)">Aug</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="width:100%;display:flex;align-items:flex-end;justify-content:center;gap:6px;height:150px">
+              <div style="width:26%;height:76%;border-radius:4px 4px 0 0;background:var(--color-income)"></div>
+              <div style="width:26%;height:53%;border-radius:4px 4px 0 0;background:var(--color-expense)"></div>
+              <div style="width:26%;height:14%;border-radius:4px 4px 0 0;background:var(--color-accent);opacity:.55"></div>
+            </div>
+            <span style="font-size:.68rem;color:var(--color-text-muted)">Sep</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border)">
+        <h2 style="margin:0;font-size:.95rem;font-weight:700">Budget Overview</h2>
+      </div>
+      <div style="padding:16px 24px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:8px;height:8px;border-radius:50%;background:#4ADE80;flex-shrink:0"></div>
+              <span style="font-size:.83rem;font-weight:500">Groceries</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:.72rem;color:var(--color-text-muted)">₱8,420 / ₱10,000</span>
+              <span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--color-warning-bg);color:var(--color-warning)">84%</span>
+            </div>
+          </div>
+          <div style="height:5px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;border-radius:999px;background:var(--color-warning);width:84%"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:8px;height:8px;border-radius:50%;background:#FBBF24;flex-shrink:0"></div>
+              <span style="font-size:.83rem;font-weight:500">Transportation</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:.72rem;color:var(--color-text-muted)">₱2,150 / ₱4,000</span>
+              <span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--color-income-bg);color:var(--color-income)">54%</span>
+            </div>
+          </div>
+          <div style="height:5px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;border-radius:999px;background:var(--color-income);width:54%"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:8px;height:8px;border-radius:50%;background:#F87171;flex-shrink:0"></div>
+              <span style="font-size:.83rem;font-weight:500">Load &amp; Data</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:.72rem;color:var(--color-text-muted)">₱980 / ₱1,000</span>
+              <span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--color-expense-bg);color:var(--color-expense)">98%</span>
+            </div>
+          </div>
+          <div style="height:5px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;border-radius:999px;background:var(--color-expense);width:98%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
+        <h2 style="margin:0;font-size:.95rem;font-weight:700">Goals Overview</h2>
+        <a href="#1a" style="font-size:.78rem;font-weight:600;color:var(--color-accent)">View all →</a>
+      </div>
+      <div style="padding:16px 24px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+              <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--color-expense)"></div>
+              <span style="font-size:.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Emergency Fund</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <span style="font-size:.72rem;color:var(--color-text-muted)">₱36,000 <span style="opacity:.5">/</span> ₱90,000</span>
+              <span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary)">40%</span>
+            </div>
+          </div>
+          <div style="height:5px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;border-radius:999px;background:var(--color-expense);width:40%"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+              <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--color-warning)"></div>
+              <span style="font-size:.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Boracay, April</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <span style="font-size:.72rem;color:var(--color-text-muted)">₱12,500 <span style="opacity:.5">/</span> ₱25,000</span>
+              <span style="font-size:.65rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-secondary)">50%</span>
+            </div>
+          </div>
+          <div style="height:5px;border-radius:999px;background:var(--color-elevated);overflow:hidden"><div style="height:100%;border-radius:999px;background:var(--color-warning);width:50%"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav style="flex-shrink:0;display:flex;align-items:stretch;border-top:1px solid var(--color-border);background:var(--color-surface);padding-bottom:8px">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-accent)"><i data-lucide="layout-dashboard" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Home</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="arrow-left-right" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Transactions</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="pie-chart" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Budgets</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="target" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Goals</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="bot" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">AI</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="more-horizontal" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">More</span></div>
+  </nav>
+
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Transactions — <code>transactions/page.tsx</code></div>
+<div class="dv-card">
+<div class="dark" style="width:390px;height:844px;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text-primary);overflow:hidden">
+
+  <div style="height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--color-surface)">
+    <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">9:41</span>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:15px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:13px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:22px;height:10px;border-radius:3px;border:1px solid var(--color-text-secondary);opacity:.85"></div>
+    </div>
+  </div>
+
+  <header style="height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--color-border);background:var(--color-surface-blur);backdrop-filter:blur(12px)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <img src="assets/logo-dark.png" alt="WaiseKa" style="width:32px;height:32px;border-radius:8px;object-fit:contain">
+      <span style="font-size:16px;font-weight:800;letter-spacing:-.02em">WaiseKa</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:1px;padding:5px 9px;border-radius:8px;background:var(--color-elevated);border:1px solid var(--color-border);font-size:11px;font-weight:700;letter-spacing:.05em">
+        <span style="color:var(--color-accent)">EN</span><span style="color:var(--color-text-muted);margin:0 2px">·</span><span style="color:var(--color-text-muted)">TL</span>
+      </div>
+      <div style="padding:8px;border-radius:8px;color:var(--color-text-secondary);display:flex"><i data-lucide="sun" style="width:16px;height:16px"></i></div>
+      <div style="padding:8px;border-radius:8px;color:var(--color-text-secondary);display:flex"><i data-lucide="bell" style="width:16px;height:16px"></i></div>
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">JB</div>
+    </div>
+  </header>
+
+  <div class="wk-scroll" style="flex:1;min-height:0;overflow-y:auto;padding:16px 12px 88px;display:flex;flex-direction:column;gap:20px">
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <h1 style="margin:0;font-family:var(--font-playfair),Georgia,serif;font-size:1.6rem;font-weight:900;line-height:1.1">Transactions</h1>
+        <p style="margin:4px 0 0;font-size:.78rem;color:var(--color-text-muted)">412 total records</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;height:36px;border-radius:8px;border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;gap:4px;font-size:.75rem;font-weight:500"><i data-lucide="download" style="width:14px;height:14px"></i>Export</div>
+        <div style="flex:1;height:36px;border-radius:8px;border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;gap:4px;font-size:.75rem;font-weight:500"><i data-lucide="upload" style="width:14px;height:14px"></i>Import</div>
+        <div style="flex:1;height:36px;border-radius:8px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;gap:4px;font-size:.75rem;font-weight:500"><i data-lucide="plus" style="width:14px;height:14px"></i>Bulk</div>
+        <div style="flex:1;height:36px;border-radius:8px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;gap:4px;font-size:.75rem;font-weight:500"><i data-lucide="plus" style="width:14px;height:14px"></i>Add</div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);padding:12px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:.75rem;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.04em">Accounts</span>
+        <div style="display:flex;gap:2px;color:var(--color-text-muted)">
+          <div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center"><i data-lucide="settings" style="width:14px;height:14px"></i></div>
+          <div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center"><i data-lucide="chevron-up" style="width:14px;height:14px"></i></div>
+        </div>
+      </div>
+      <div class="wk-x" style="margin-top:10px;display:flex;gap:10px;overflow-x:auto;padding-bottom:2px">
+        <div style="min-width:150px;max-width:150px;flex-shrink:0;border-radius:12px;padding:10px 12px;background:var(--color-sage);border:1px solid var(--color-accent);border-left:3px solid var(--color-accent);display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BPI Payroll</span>
+          <span style="font-size:.9rem;font-weight:800;font-variant-numeric:tabular-nums">₱28,410.00</span>
+        </div>
+        <div style="min-width:150px;max-width:150px;flex-shrink:0;border-radius:12px;padding:10px 12px;background:var(--color-card);border:1px solid var(--color-border);border-left:3px solid var(--color-accent);display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">GCash</span>
+          <span style="font-size:.9rem;font-weight:800;font-variant-numeric:tabular-nums">₱4,265.00</span>
+        </div>
+        <div style="min-width:150px;max-width:150px;flex-shrink:0;border-radius:12px;padding:10px 12px;background:var(--color-card);border:1px solid var(--color-warning);border-left:3px solid var(--color-warning);display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:.72rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BPI Amore Card</span>
+          <div style="display:flex;align-items:center;gap:4px"><i data-lucide="alert-triangle" style="width:12px;height:12px;color:var(--color-warning);flex-shrink:0"></i><span style="font-size:.9rem;font-weight:800;color:var(--color-expense);font-variant-numeric:tabular-nums">₱7,940.00</span></div>
+          <span style="font-size:.65rem;color:var(--color-text-muted)">Available: ₱42,060.00</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+        <div style="flex:1 1 100%;position:relative">
+          <i data-lucide="search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--color-text-muted)"></i>
+          <div style="height:40px;border-radius:10px;border:1px solid var(--color-border);background:var(--color-elevated);font-size:.85rem;padding-left:38px;display:flex;align-items:center;color:var(--color-text-muted)">Search description or category…</div>
+        </div>
+        <div style="width:148px;flex-shrink:0;height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:.85rem">All Types<i data-lucide="chevron-down" style="width:15px;height:15px;color:var(--color-text-muted)"></i></div>
+        <div style="flex:1;min-width:120px;height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:.85rem">All Accounts<i data-lucide="chevron-down" style="width:15px;height:15px;color:var(--color-text-muted)"></i></div>
+        <div style="height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--color-border);background:var(--color-elevated);color:var(--color-text-secondary);display:flex;align-items:center;gap:6px;font-size:.82rem;flex-shrink:0"><i data-lucide="filter" style="width:14px;height:14px"></i></div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
+        <h2 style="margin:0;font-size:.88rem;font-weight:700">Transactions</h2>
+        <span style="font-size:.75rem;color:var(--color-text-muted)">412 total records</span>
+      </div>
+      <div style="overflow-x:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead><tr style="border-bottom:1px solid var(--color-border)">
+            <th style="padding:10px 12px 10px 20px;text-align:left;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted);white-space:nowrap">Date</th>
+            <th style="padding:10px 12px;text-align:left;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted)">Description</th>
+            <th style="padding:10px 12px;text-align:right;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted);white-space:nowrap">Amount</th>
+            <th style="padding:10px 12px 10px 4px"></th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--color-border)">
+              <td style="padding:12px 12px 12px 20px;white-space:nowrap;font-size:.8rem;font-weight:600;color:var(--color-text-secondary)">Sep 6</td>
+              <td style="padding:12px 12px;font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">SM Hypermarket</td>
+              <td style="padding:12px 12px;text-align:right"><span style="color:var(--color-expense);font-weight:700;font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap">−₱2,340</span></td>
+              <td style="padding:12px 12px 12px 4px"><div style="display:flex;gap:2px;justify-content:flex-end;color:var(--color-text-muted)"><i data-lucide="pencil" style="width:14px;height:14px"></i><i data-lucide="trash-2" style="width:14px;height:14px"></i></div></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-border)">
+              <td style="padding:12px 12px 12px 20px;white-space:nowrap;font-size:.8rem;font-weight:600;color:var(--color-text-secondary)">Sep 5</td>
+              <td style="padding:12px 12px;font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Grab to office</td>
+              <td style="padding:12px 12px;text-align:right"><span style="color:var(--color-expense);font-weight:700;font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap">−₱185</span></td>
+              <td style="padding:12px 12px 12px 4px"><div style="display:flex;gap:2px;justify-content:flex-end;color:var(--color-text-muted)"><i data-lucide="pencil" style="width:14px;height:14px"></i><i data-lucide="trash-2" style="width:14px;height:14px"></i></div></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-border)">
+              <td style="padding:12px 12px 12px 20px;white-space:nowrap;font-size:.8rem;font-weight:600;color:var(--color-text-secondary)">Sep 5</td>
+              <td style="padding:12px 12px;font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sweldo — 1st cutoff</td>
+              <td style="padding:12px 12px;text-align:right"><span style="color:var(--color-income);font-weight:700;font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap">+₱24,100</span></td>
+              <td style="padding:12px 12px 12px 4px"><div style="display:flex;gap:2px;justify-content:flex-end;color:var(--color-text-muted)"><i data-lucide="pencil" style="width:14px;height:14px"></i><i data-lucide="trash-2" style="width:14px;height:14px"></i></div></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-border)">
+              <td style="padding:12px 12px 12px 20px;white-space:nowrap;font-size:.8rem;font-weight:600;color:var(--color-text-secondary)">Sep 4</td>
+              <td style="padding:12px 12px;font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">To GoTyme Savings</td>
+              <td style="padding:12px 12px;text-align:right"><span style="color:var(--color-accent);font-weight:700;font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap">⇄₱4,500</span></td>
+              <td style="padding:12px 12px 12px 4px"><div style="display:flex;gap:2px;justify-content:flex-end;color:var(--color-text-muted)"><i data-lucide="trash-2" style="width:14px;height:14px"></i></div></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-border)">
+              <td style="padding:12px 12px 12px 20px;white-space:nowrap;font-size:.8rem;font-weight:600;color:var(--color-text-secondary)">Sep 3</td>
+              <td style="padding:12px 12px;font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Load — Globe</td>
+              <td style="padding:12px 12px;text-align:right"><span style="color:var(--color-expense);font-weight:700;font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap">−₱299</span></td>
+              <td style="padding:12px 12px 12px 4px"><div style="display:flex;gap:2px;justify-content:flex-end;color:var(--color-text-muted)"><i data-lucide="pencil" style="width:14px;height:14px"></i><i data-lucide="trash-2" style="width:14px;height:14px"></i></div></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-border)">
+              <td style="padding:12px 12px 12px 20px;white-space:nowrap;font-size:.8rem;font-weight:600;color:var(--color-text-secondary)">Sep 2</td>
+              <td style="padding:12px 12px;font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Padala — Nanay</td>
+              <td style="padding:12px 12px;text-align:right"><span style="color:var(--color-expense);font-weight:700;font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap">−₱3,000</span></td>
+              <td style="padding:12px 12px 12px 4px"><div style="display:flex;gap:2px;justify-content:flex-end;color:var(--color-text-muted)"><i data-lucide="pencil" style="width:14px;height:14px"></i><i data-lucide="trash-2" style="width:14px;height:14px"></i></div></td>
+            </tr>
+            <tr>
+              <td style="padding:12px 12px 12px 20px;white-space:nowrap;font-size:.8rem;font-weight:600;color:var(--color-text-secondary)">Sep 1</td>
+              <td style="padding:12px 12px;font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Meralco</td>
+              <td style="padding:12px 12px;text-align:right"><span style="color:var(--color-expense);font-weight:700;font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap">−₱2,870</span></td>
+              <td style="padding:12px 12px 12px 4px"><div style="display:flex;gap:2px;justify-content:flex-end;color:var(--color-text-muted)"><i data-lucide="pencil" style="width:14px;height:14px"></i><i data-lucide="trash-2" style="width:14px;height:14px"></i></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:14px 24px;border-top:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;gap:4px">
+        <div style="width:32px;height:32px;border-radius:8px;border:1px solid var(--color-accent);background:var(--color-sage);color:var(--color-accent);font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+        <div style="width:32px;height:32px;border-radius:8px;border:1px solid var(--color-border);color:var(--color-text-secondary);font-size:.8rem;display:flex;align-items:center;justify-content:center">2</div>
+        <div style="width:32px;height:32px;border-radius:8px;border:1px solid var(--color-border);color:var(--color-text-secondary);font-size:.8rem;display:flex;align-items:center;justify-content:center">3</div>
+        <span style="font-size:.8rem;color:var(--color-text-muted);padding:0 2px">…</span>
+        <div style="width:32px;height:32px;border-radius:8px;border:1px solid var(--color-border);color:var(--color-text-secondary);font-size:.8rem;display:flex;align-items:center;justify-content:center">28</div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav style="flex-shrink:0;display:flex;align-items:stretch;border-top:1px solid var(--color-border);background:var(--color-surface);padding-bottom:8px">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="layout-dashboard" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Home</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-accent)"><i data-lucide="arrow-left-right" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Transactions</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="pie-chart" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Budgets</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="target" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Goals</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="bot" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">AI</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="more-horizontal" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">More</span></div>
+  </nav>
+
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Settings — <code>settings/page.tsx</code></div>
+<div class="dv-card">
+<div class="dark" style="width:390px;height:844px;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text-primary);overflow:hidden">
+
+  <div style="height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--color-surface)">
+    <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">9:41</span>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:15px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:13px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:22px;height:10px;border-radius:3px;border:1px solid var(--color-text-secondary);opacity:.85"></div>
+    </div>
+  </div>
+
+  <header style="height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--color-border);background:var(--color-surface-blur);backdrop-filter:blur(12px)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <img src="assets/logo-dark.png" alt="WaiseKa" style="width:32px;height:32px;border-radius:8px;object-fit:contain">
+      <span style="font-size:16px;font-weight:800;letter-spacing:-.02em">WaiseKa</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:1px;padding:5px 9px;border-radius:8px;background:var(--color-elevated);border:1px solid var(--color-border);font-size:11px;font-weight:700;letter-spacing:.05em">
+        <span style="color:var(--color-accent)">EN</span><span style="color:var(--color-text-muted);margin:0 2px">·</span><span style="color:var(--color-text-muted)">TL</span>
+      </div>
+      <div style="padding:8px;border-radius:8px;color:var(--color-text-secondary);display:flex"><i data-lucide="sun" style="width:16px;height:16px"></i></div>
+      <div style="padding:8px;border-radius:8px;color:var(--color-text-secondary);display:flex"><i data-lucide="bell" style="width:16px;height:16px"></i></div>
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">JB</div>
+    </div>
+  </header>
+
+  <div class="wk-scroll" style="flex:1;min-height:0;overflow-y:auto;padding:16px 12px 88px;display:flex;flex-direction:column;gap:20px">
+
+    <div>
+      <h1 style="margin:0;font-family:var(--font-playfair),Georgia,serif;font-size:1.6rem;font-weight:900;line-height:1.1">Settings</h1>
+      <p style="margin:4px 0 0;font-size:.78rem;color:var(--color-text-muted)">Manage your account and preferences</p>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:12px;flex-shrink:0;background:var(--color-sage);display:flex;align-items:center;justify-content:center"><i data-lucide="user" style="width:18px;height:18px;color:var(--color-accent)"></i></div>
+        <div>
+          <h2 style="margin:0;font-size:.92rem;font-weight:700;line-height:1.2">Profile</h2>
+          <p style="margin:1px 0 0;font-size:.72rem;color:var(--color-text-muted)">Your name and avatar</p>
+        </div>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font-size:.78rem;font-weight:500;color:var(--color-text-secondary)">Name</label>
+          <div style="height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);padding:0 12px;display:flex;align-items:center;font-size:.85rem">Justin Brian Balano</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--color-income-bg)">
+          <i data-lucide="mail-check" style="width:15px;height:15px;color:var(--color-income);flex-shrink:0"></i>
+          <span style="font-size:.78rem;color:var(--color-text-secondary)">Email verified</span>
+        </div>
+        <button style="height:40px;padding:0 16px;border:none;border-radius:8px;background:var(--color-primary);color:#fff;font-family:inherit;font-size:.85rem;font-weight:500;align-self:flex-start">Save changes</button>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:12px;flex-shrink:0;background:var(--color-income-bg);display:flex;align-items:center;justify-content:center"><i data-lucide="dollar-sign" style="width:18px;height:18px;color:var(--color-income)"></i></div>
+        <div>
+          <h2 style="margin:0;font-size:.92rem;font-weight:700;line-height:1.2">Currency</h2>
+          <p style="margin:1px 0 0;font-size:.72rem;color:var(--color-text-muted)">Amounts are never converted</p>
+        </div>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        <div style="height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:.85rem">🇵🇭 Philippine Peso (₱)<i data-lucide="chevron-down" style="width:15px;height:15px;color:var(--color-text-muted)"></i></div>
+        <p style="margin:0;font-size:.78rem;color:var(--color-text-muted)">Preview: <strong style="color:var(--color-text-primary);font-variant-numeric:tabular-nums">₱1,234.50</strong></p>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:12px;flex-shrink:0;background:var(--color-sage);display:flex;align-items:center;justify-content:center"><i data-lucide="wallet" style="width:18px;height:18px;color:var(--color-accent)"></i></div>
+        <div>
+          <h2 style="margin:0;font-size:.92rem;font-weight:700;line-height:1.2">Default Account</h2>
+          <p style="margin:1px 0 0;font-size:.72rem;color:var(--color-text-muted)">Pre-selected on new transactions</p>
+        </div>
+      </div>
+      <div style="padding:20px 24px">
+        <div style="height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:.85rem">GCash<i data-lucide="chevron-down" style="width:15px;height:15px;color:var(--color-text-muted)"></i></div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:12px;flex-shrink:0;background:var(--color-warning-bg);display:flex;align-items:center;justify-content:center"><i data-lucide="bell" style="width:18px;height:18px;color:var(--color-warning)"></i></div>
+        <div>
+          <h2 style="margin:0;font-size:.92rem;font-weight:700;line-height:1.2">Notifications</h2>
+          <p style="margin:1px 0 0;font-size:.72rem;color:var(--color-text-muted)">Reminders and summaries</p>
+        </div>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div><p style="margin:0;font-size:.85rem;font-weight:500">Email reminders</p><p style="margin:2px 0 0;font-size:.72rem;color:var(--color-text-muted)">1 sent this month</p></div>
+          <div style="position:relative;width:44px;height:24px;border-radius:999px;background:var(--color-accent);flex-shrink:0"><span style="position:absolute;top:3px;left:23px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div><p style="margin:0;font-size:.85rem;font-weight:500">Push notifications</p><p style="margin:2px 0 0;font-size:.72rem;color:var(--color-text-muted)">In-app alerts</p></div>
+          <div style="position:relative;width:44px;height:24px;border-radius:999px;background:var(--color-elevated);flex-shrink:0"><span style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font-size:.78rem;font-weight:500;color:var(--color-text-secondary)">Frequency</label>
+          <div style="height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:.85rem">Weekly<i data-lucide="chevron-down" style="width:15px;height:15px;color:var(--color-text-muted)"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:12px;flex-shrink:0;background:var(--color-elevated);display:flex;align-items:center;justify-content:center"><i data-lucide="moon" style="width:18px;height:18px;color:var(--color-text-secondary)"></i></div>
+        <div>
+          <h2 style="margin:0;font-size:.92rem;font-weight:700;line-height:1.2">Appearance</h2>
+          <p style="margin:1px 0 0;font-size:.72rem;color:var(--color-text-muted)">Light or dark theme</p>
+        </div>
+      </div>
+      <div style="padding:20px 24px;display:flex;gap:10px">
+        <div style="flex:1;height:44px;border-radius:8px;border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;gap:6px;font-size:.85rem;color:var(--color-text-secondary)"><i data-lucide="sun" style="width:16px;height:16px"></i>Light</div>
+        <div style="flex:1;height:44px;border-radius:8px;border:1px solid var(--color-accent);background:var(--color-sage);color:var(--color-accent);display:flex;align-items:center;justify-content:center;gap:6px;font-size:.85rem;font-weight:600"><i data-lucide="moon" style="width:16px;height:16px"></i>Dark</div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-card);border-radius:16px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:12px;flex-shrink:0;background:var(--color-sage);display:flex;align-items:center;justify-content:center"><i data-lucide="shield-check" style="width:18px;height:18px;color:var(--color-accent)"></i></div>
+        <div>
+          <h2 style="margin:0;font-size:.92rem;font-weight:700;line-height:1.2">Two-Factor Auth</h2>
+          <p style="margin:1px 0 0;font-size:.72rem;color:var(--color-text-muted)">Authenticator app + backup codes</p>
+        </div>
+      </div>
+      <div style="padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="font-size:.8rem;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--color-elevated);color:var(--color-text-muted)">Off</span>
+        <button style="height:40px;padding:0 16px;border:1px solid var(--color-border);border-radius:8px;background:transparent;color:var(--color-text-primary);font-family:inherit;font-size:.85rem;font-weight:500">Enable 2FA</button>
+      </div>
+    </div>
+
+  </div>
+
+  <nav style="flex-shrink:0;display:flex;align-items:stretch;border-top:1px solid var(--color-border);background:var(--color-surface);padding-bottom:8px">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="layout-dashboard" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Home</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="arrow-left-right" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Transactions</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="pie-chart" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Budgets</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="target" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">Goals</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-text-secondary)"><i data-lucide="bot" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">AI</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 0;color:var(--color-accent)"><i data-lucide="more-horizontal" style="width:20px;height:20px"></i><span style="font-size:10px;font-weight:500;line-height:1">More</span></div>
+  </nav>
+
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Sign in — <code>(auth)/login/page.tsx</code></div>
+<div class="dv-card">
+<div class="dark" style="width:390px;height:844px;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text-primary);overflow:hidden">
+
+  <div style="height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px">
+    <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">9:41</span>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:15px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:13px;height:10px;border-radius:2px;background:var(--color-text-secondary);opacity:.85"></div>
+      <div style="width:22px;height:10px;border-radius:3px;border:1px solid var(--color-text-secondary);opacity:.85"></div>
+    </div>
+  </div>
+
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:24px 20px">
+    <div style="width:100%;max-width:448px;margin:0 auto">
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:32px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <img src="assets/logo-dark.png" alt="WaiseKa" style="width:48px;height:48px;border-radius:12px;object-fit:contain">
+          <span style="font-size:1.5rem;font-weight:700;letter-spacing:-.02em">WaiseKa</span>
+        </div>
+        <p style="margin:0;font-size:.875rem;color:var(--color-text-secondary)">Sign in to your account</p>
+      </div>
+
+      <div style="background:var(--color-card);border:1px solid var(--color-border);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+        <div style="padding:24px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:.78rem;font-weight:500;color:var(--color-text-secondary)">Email</label>
+              <div style="height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);padding:0 12px;display:flex;align-items:center;font-size:.85rem;color:var(--color-text-muted)">you@example.com</div>
+            </div>
+            <div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:.78rem;font-weight:500;color:var(--color-text-secondary)">Password</label>
+                <div style="height:40px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-elevated);padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;color:var(--color-text-muted)">
+                  ••••••••<i data-lucide="eye" style="width:16px;height:16px"></i>
+                </div>
+              </div>
+              <div style="margin-top:4px;text-align:right">
+                <a href="#1d" style="font-size:.75rem;color:var(--color-accent)">Forgot password?</a>
+              </div>
+            </div>
+            <button style="height:48px;width:100%;border:none;border-radius:8px;background:var(--color-primary);color:#fff;font-family:inherit;font-size:1rem;font-weight:500">Sign In</button>
+          </div>
+          <p style="margin:16px 0 0;text-align:center;font-size:.875rem;color:var(--color-text-secondary)">Don't have an account? <a href="#1d" style="color:var(--color-accent);font-weight:500">Register</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Coming next in turn 2: home-layout options that lead with total balance and budget-remaining, a numpad quick-add sheet behind a FAB, and a denser transaction list.</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() { this.icons() }
+  componentDidUpdate() { this.icons() }
+  icons() {
+    if (this._t) clearTimeout(this._t);
+    this._t = setTimeout(() => {
+      if (window.lucide) window.lucide.createIcons();
+    }, 40);
+  }
+  state = {
+    tab: 'home', sheetOpen: false, mode: 'numpad',
+    amount: '', txType: 'expense', cat: 'Groceries', acct: 'GCash',
+    txs: [
+      { id: 1, day: 'Today · Sun 6 Sep', desc: 'SM Hypermarket', cat: 'Groceries', acct: 'BPI Amore Card', amount: 2340, type: 'expense', icon: 'shopping-basket' },
+      { id: 2, day: 'Today · Sun 6 Sep', desc: 'Baon — pandesal', cat: 'Baon', acct: 'Cash on Hand', amount: 60, type: 'expense', icon: 'utensils' },
+      { id: 3, day: 'Yesterday · Sat 5 Sep', desc: 'Grab to office', cat: 'Transport', acct: 'GCash', amount: 185, type: 'expense', icon: 'car' },
+      { id: 4, day: 'Yesterday · Sat 5 Sep', desc: 'Sweldo — 1st cutoff', cat: 'Salary', acct: 'BPI Payroll', amount: 24100, type: 'income', icon: 'trending-up' },
+      { id: 5, day: 'Fri 4 Sep', desc: 'To GoTyme Savings', cat: 'Transfer', acct: 'BPI Payroll → GoTyme', amount: 4500, type: 'transfer', icon: 'arrow-left-right' },
+      { id: 6, day: 'Fri 4 Sep', desc: 'Load — Globe', cat: 'Load & Data', acct: 'GCash', amount: 299, type: 'expense', icon: 'smartphone' },
+      { id: 7, day: 'Wed 2 Sep', desc: 'Padala — Nanay', cat: 'Family', acct: 'GCash', amount: 3000, type: 'expense', icon: 'users' },
+      { id: 8, day: 'Wed 2 Sep', desc: 'Pulutan — Friday', cat: 'Pulutan', acct: 'Cash on Hand', amount: 640, type: 'expense', icon: 'beer' },
+    ],
+  };
+
+  componentDidMount() { this.icons() }
+  componentDidUpdate() { this.icons() }
+  icons() {
+    if (this._t) clearTimeout(this._t);
+    this._t = setTimeout(() => { if (window.lucide) window.lucide.createIcons() }, 40);
+  }
+
+  peso(n) { return '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 0 }) }
+
+  press(k) {
+    this.setState((s) => {
+      if (k === 'del') return { amount: s.amount.slice(0, -1) };
+      if (k === '00') return { amount: (s.amount + '00').slice(0, 8) };
+      return { amount: (s.amount + k).replace(/^0+(?=\d)/, '').slice(0, 8) };
+    });
+  }
+
+  save() {
+    const n = parseInt(this.state.amount || '0', 10);
+    if (!n) { this.setState({ sheetOpen: false }); return }
+    const icons = { Groceries: 'shopping-basket', Baon: 'utensils', 'Load & Data': 'smartphone', Transport: 'car', Utilities: 'zap', Utang: 'landmark', Pulutan: 'beer', Padala: 'users', Salary: 'trending-up' };
+    this.setState((s) => ({
+      sheetOpen: false, amount: '', tab: 'tx',
+      txs: [{ id: Date.now(), day: 'Today · Sun 6 Sep', desc: s.cat, cat: s.cat, acct: s.acct, amount: n, type: s.txType, icon: icons[s.cat] || 'receipt' }, ...s.txs],
+    }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const seen = [];
+    const groups = [];
+    s.txs.forEach((t) => {
+      let g = groups.find((x) => x.day === t.day);
+      if (!g) { g = { day: t.day, items: [], net: 0 }; groups.push(g) }
+      g.items.push(Object.assign({}, t, {
+        amountText: (t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄' : '−') + this.peso(t.amount),
+        amountColor: t.type === 'income' ? 'var(--color-income)' : t.type === 'transfer' ? 'var(--color-accent)' : 'var(--color-expense)',
+        tintBg: t.type === 'income' ? 'var(--color-income-bg)' : t.type === 'transfer' ? 'var(--color-sage)' : 'var(--color-expense-bg)',
+        meta: t.cat + ' · ' + t.acct,
+      }));
+      g.net += t.type === 'income' ? t.amount : t.type === 'transfer' ? 0 : -t.amount;
+    });
+    groups.forEach((g) => {
+      g.netText = (g.net >= 0 ? '+' : '−') + this.peso(Math.abs(g.net));
+      g.netColor = g.net >= 0 ? 'var(--color-income)' : 'var(--color-text-muted)';
+    });
+
+    const t = (name) => () => this.setState({ tab: name });
+    const activeCol = (name) => (s.tab === name ? 'var(--color-accent)' : 'var(--color-text-secondary)');
+
+    return {
+      isHome: s.tab === 'home', isTx: s.tab === 'tx', isBudgets: s.tab === 'budgets',
+      goHome: t('home'), goTx: t('tx'), goBudgets: t('budgets'), goMore: t('more'),
+      colHome: activeCol('home'), colTx: activeCol('tx'), colBudgets: activeCol('budgets'), colMore: activeCol('more'),
+      isMore: s.tab === 'more',
+      groups,
+      sheetOpen: s.sheetOpen,
+      openSheet: () => this.setState({ sheetOpen: true, mode: 'numpad' }),
+      closeSheet: () => this.setState({ sheetOpen: false, amount: '' }),
+      amountText: s.amount ? this.peso(parseInt(s.amount, 10)) : '₱0',
+      amountColor: s.amount ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+      isNumpad: s.mode === 'numpad', isVoice: s.mode === 'voice', isReceipt: s.mode === 'receipt',
+      numpadBg: s.mode === 'numpad' ? 'var(--color-card)' : 'transparent',
+      numpadFg: s.mode === 'numpad' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+      voiceBg: s.mode === 'voice' ? 'var(--color-card)' : 'transparent',
+      voiceFg: s.mode === 'voice' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+      receiptBg: s.mode === 'receipt' ? 'var(--color-card)' : 'transparent',
+      receiptFg: s.mode === 'receipt' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+      modeNumpad: () => this.setState({ mode: 'numpad' }),
+      modeVoice: () => this.setState({ mode: 'voice' }),
+      modeReceipt: () => this.setState({ mode: 'receipt' }),
+      k1: () => this.press('1'), k2: () => this.press('2'), k3: () => this.press('3'),
+      k4: () => this.press('4'), k5: () => this.press('5'), k6: () => this.press('6'),
+      k7: () => this.press('7'), k8: () => this.press('8'), k9: () => this.press('9'),
+      k0: () => this.press('0'), k00: () => this.press('00'), kdel: () => this.press('del'),
+      doSave: () => this.save(),
+      typeExpense: () => this.setState({ txType: 'expense', cat: 'Groceries' }),
+      typeIncome: () => this.setState({ txType: 'income', cat: 'Salary' }),
+      typeSavings: () => this.setState({ txType: 'savings', cat: 'Savings' }),
+      expenseSel: s.txType === 'expense' ? 'var(--color-expense-bg)' : 'transparent',
+      expenseFg: s.txType === 'expense' ? 'var(--color-expense)' : 'var(--color-text-secondary)',
+      incomeSel: s.txType === 'income' ? 'var(--color-income-bg)' : 'transparent',
+      incomeFg: s.txType === 'income' ? 'var(--color-income)' : 'var(--color-text-secondary)',
+      savingsSel: s.txType === 'savings' ? 'var(--color-sage)' : 'transparent',
+      savingsFg: s.txType === 'savings' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+      cats: ['Groceries', 'Baon', 'Load & Data', 'Transport', 'Utilities', 'Utang', 'Pulutan', 'Padala'].map((c) => ({
+        name: c, pick: () => this.setState({ cat: c }),
+        bg: s.cat === c ? 'var(--color-sage)' : 'var(--color-elevated)',
+        fg: s.cat === c ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+        bd: s.cat === c ? 'var(--color-accent)' : 'var(--color-border)',
+      })),
+      accts: ['GCash', 'BPI Payroll', 'Cash on Hand', 'GoTyme'].map((a) => ({
+        name: a, pick: () => this.setState({ acct: a }),
+        bg: s.acct === a ? 'var(--color-sage)' : 'var(--color-elevated)',
+        fg: s.acct === a ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+        bd: s.acct === a ? 'var(--color-accent)' : 'var(--color-border)',
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>
