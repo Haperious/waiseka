@@ -1,0 +1,11 @@
+{
+  "key": "sign-in-refresh",
+  "title": "A fresh, safer sign-in",
+  "description": "New login screens, easy 6-digit code boxes for two-factor, and a password strength meter when you sign up or reset. We also added stronger protection against repeated login attempts.",
+  "imagePath": "/announcements/sign-in-refresh.png",
+  "imageAlt": "Split-screen login page with the 6-digit verification code boxes",
+  "ctaLabel": null,
+  "ctaHref": null,
+  "targetTier": "all",
+  "priority": 8
+}
