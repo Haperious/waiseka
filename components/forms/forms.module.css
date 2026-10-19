@@ -732,3 +732,248 @@ button.accountCard:focus-visible {
   font-size: 0.82rem;
   line-height: 1.5;
 }
+
+/* ── Bulk table (desktop Add Multiple) ──────────────────────────────────── */
+
+.sharedRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sharedField {
+  width: 200px;
+}
+
+.sharedHint {
+  padding-bottom: 11px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.table {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 28px 112px 128px 1fr 1.2fr 36px 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.tableHead {
+  border-top: 0;
+  background: var(--color-elevated);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.tableRowInvalid {
+  background: var(--color-expense-bg);
+}
+
+.rowNum {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--color-elevated);
+  min-width: 0;
+}
+
+.cell:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+.cellInvalid {
+  border-color: #ef4444;
+}
+
+.cellInput {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+}
+
+.cellInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.cellPrefix {
+  padding-left: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.cellAmount {
+  padding-left: 4px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cellSelect {
+  appearance: none;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.cellSelect option {
+  background: var(--color-card);
+  color: var(--color-text-primary);
+}
+
+.cellChevron {
+  position: absolute;
+  right: 9px;
+  pointer-events: none;
+  color: var(--color-text-muted);
+}
+
+.miniSeg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  height: 34px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--color-elevated);
+}
+
+.miniSegBtn {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.miniSegOn {
+  background: var(--color-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.iconToggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-elevated);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.iconToggleOn {
+  background: var(--color-sage);
+  color: var(--color-accent);
+}
+
+.iconButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.iconButton:hover:not(:disabled) {
+  color: var(--color-expense);
+  background: var(--color-expense-bg);
+}
+
+.iconButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.tableFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.addLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.lineErrors {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--color-expense);
+}
+
+.footerSplit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.net {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-right: auto;
+}
+
+.netValue {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

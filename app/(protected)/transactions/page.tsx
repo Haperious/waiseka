@@ -263,7 +263,7 @@ export default function TransactionsPage() {
           onCancel={() => setBulkOpen(false)}
         />
       ) : (
-        <Modal open={bulkOpen} onClose={() => setBulkOpen(false)} title={t('bulk.titleFull')}>
+        <Modal open={bulkOpen} onClose={() => setBulkOpen(false)} title={t('bulk.titleFull')} variant="form" className="max-w-[820px]">
           <BulkTransactionForm
             onSuccess={() => { setBulkOpen(false); refetch(); refetchAccounts() }}
             onCancel={() => setBulkOpen(false)}
