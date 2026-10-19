@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import {
-  X, CalendarDays, Wallet, ChevronDown, Trash2, Pencil, Plus,
+  X, CalendarDays, Wallet, ChevronDown, Trash2, PenLine, Plus,
   CheckCircle, TrendingUp, TrendingDown, PiggyBank, Repeat,
 } from 'lucide-react'
 import { useCategories } from '@/hooks/useCategories'
@@ -284,7 +284,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
           id="bulk-add-title"
           style={{
             fontFamily: 'var(--font-playfair), Georgia, serif',
-            fontWeight: 900, fontSize: '1.05rem', letterSpacing: '-0.02em',
+            fontWeight: 900, fontSize: '1.1rem', letterSpacing: '-0.02em',
             color: 'var(--color-text-primary)',
           }}
         >
@@ -292,7 +292,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
         </h2>
         <span
           style={{
-            fontSize: '0.72rem', fontWeight: 500, color: 'var(--color-text-muted)',
+            fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-muted)',
             fontVariantNumeric: 'tabular-nums', minWidth: 64, textAlign: 'right', paddingRight: 12,
           }}
         >
@@ -331,7 +331,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
       </div>
 
       {/* ── Ledger ───────────────────────────────────────────────────── */}
-      <div ref={ledgerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '10px 14px' }}>
+      <div ref={ledgerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '10px 14px', backgroundColor: 'var(--color-bg)' }}>
         {lines.length === 0 ? (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -346,6 +346,9 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
               const visual = typeVisual(line.type)
               const errors = lineErrors[line.id]
               const hasError = !!errors
+              // A server-side category error reads as the design's "No category / Pick a category" line
+              const categoryMissing = !!errors?.category || !line.category
+              const otherErrors = errors ? Object.entries(errors).filter(([field]) => field !== 'category').map(([, msg]) => msg) : []
               const sign = line.type === 'expense' ? '−' : '+'
               return (
                 <li
@@ -369,25 +372,27 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{
-                      fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)',
+                      fontSize: '0.84rem', fontWeight: 600, color: 'var(--color-text-primary)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
-                      {line.category}
+                      {categoryMissing ? t('bulk.noCategory') : line.category}
                     </p>
                     <p style={{
-                      fontSize: '0.68rem', color: 'var(--color-text-muted)',
+                      fontSize: '0.7rem', color: categoryMissing ? 'var(--color-expense)' : 'var(--color-text-muted)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
-                      {line.description || t('bulk.noDescription')} · {accountLabel}{line.isRecurring && ` · ↻ ${t('tx.recurring')}`}
+                      {categoryMissing
+                        ? t('bulk.pickCategory')
+                        : <>{line.description || t('bulk.noDescription')} · {accountLabel}{line.isRecurring && ` · ↻ ${t('tx.recurring')}`}</>}
                     </p>
-                    {hasError && (
+                    {otherErrors.length > 0 && (
                       <p style={{ fontSize: '0.65rem', color: 'var(--color-expense)', marginTop: 2 }}>
-                        {Object.values(errors).join(', ')}
+                        {otherErrors.join(', ')}
                       </p>
                     )}
                   </div>
                   <span style={{
-                    fontWeight: 800, fontSize: '0.86rem', fontVariantNumeric: 'tabular-nums',
+                    fontWeight: 800, fontSize: '0.88rem', fontVariantNumeric: 'tabular-nums',
                     color: visual.color, flexShrink: 0, whiteSpace: 'nowrap',
                   }}>
                     {sign}{formatAmount(line.amount)}
@@ -397,7 +402,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
                     onClick={() => handleDeleteLine(line.id)}
                     aria-label={t('bulk.removeLineAria').replace('{category}', line.category)}
                     style={{
-                      width: 44, height: 44, flexShrink: 0, marginRight: -10,
+                      width: 36, height: 36, flexShrink: 0, marginRight: -6,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer',
                     }}
@@ -479,12 +484,13 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
             selected={category}
             onSelect={setCategory}
             emptyLabel={t('quickAdd.selectCategory')}
+            bleed={14}
           />
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-            <Pencil style={{
+            <PenLine style={{
               position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
               width: 13, height: 13, color: 'var(--color-text-muted)',
             }} />

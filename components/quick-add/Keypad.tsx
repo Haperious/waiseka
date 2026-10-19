@@ -89,8 +89,10 @@ export default function Keypad({
           disabled={actionKey.disabled}
           className="flex flex-col items-center justify-center gap-1 font-bold text-white transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none"
           style={{
+            // Pin to rows 2-4 so the digit keys flow around it; with only a span,
+            // auto-placement puts it after the last digit and digits fill this column.
             gridColumn: columns,
-            gridRow: 'span 3',
+            gridRow: '2 / span 3',
             borderRadius: 12,
             background: 'linear-gradient(135deg, #166534, #16A34A)',
             boxShadow: actionKey.disabled ? 'none' : '0 4px 20px rgba(22,163,74,.35)',
