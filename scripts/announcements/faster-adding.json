@@ -1,0 +1,11 @@
+{
+  "key": "faster-adding",
+  "title": "Log expenses faster, even in bulk",
+  "description": "Pick a date right in Quick Add to log past spends, or tap Add multiple to enter several at once. On desktop it's now a table: just press Enter to start the next line.",
+  "imagePath": "/announcements/faster-adding.png",
+  "imageAlt": "Quick Add sheet on mobile next to the desktop Add multiple table",
+  "ctaLabel": "Try it now",
+  "ctaHref": "/transactions",
+  "targetTier": "all",
+  "priority": 12
+}

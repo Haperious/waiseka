@@ -1,0 +1,11 @@
+{
+  "key": "smarter-planning",
+  "title": "Budgets and goals that plan ahead",
+  "description": "See what you've already spent while setting a budget, and how much to save each cutoff to reach your goal. Adding accounts and paying off cards got quicker too.",
+  "imagePath": "/announcements/smarter-planning.png",
+  "imageAlt": "Budget form with a live spend bar and a goal showing savings per cutoff",
+  "ctaLabel": "Set a goal",
+  "ctaHref": "/goals",
+  "targetTier": "all",
+  "priority": 11
+}
