@@ -1,11 +1,13 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { WKIcon } from '@/components/ui/WKIcon'
+import { getSession } from 'next-auth/react'
+import { CircleCheck, Mail, MailWarning, Unlink } from 'lucide-react'
+import { AuthIconTile, AuthShell, RegisterPanel } from '@/components/auth/AuthShell'
+import styles from '@/components/auth/auth.module.css'
 import Button from '@/components/ui/Button'
-import { Card, CardContent } from '@/components/ui/Card'
 import { useToast } from '@/components/ui/Toast'
 
 function VerifyEmailContent() {
@@ -15,6 +17,14 @@ function VerifyEmailContent() {
   const { toast } = useToast()
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
+  const [email, setEmail] = useState('')
+
+  useEffect(() => {
+    // Signed-in but unverified users land here; show which address the link went to.
+    getSession()
+      .then((s) => setEmail(s?.user?.email ?? ''))
+      .catch(() => {})
+  }, [])
 
   const resend = async () => {
     setResending(true)
@@ -34,116 +44,116 @@ function VerifyEmailContent() {
     }
   }
 
+  const backToSignIn = (
+    <Link href="/login" className={styles.link} style={{ fontSize: '0.88rem' }}>
+      Back to sign in
+    </Link>
+  )
+
+  const resentNote = (
+    <p className={styles.match} style={{ marginTop: 0 }}>
+      <CircleCheck size={14} />
+      New verification email sent - check your inbox.
+    </p>
+  )
+
   if (success) {
     return (
-      <div className="text-center space-y-4">
-        <div className="text-5xl">✅</div>
-        <p className="text-lg font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: "'Sora', sans-serif" }}>
-          Email verified!
-        </p>
-        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          Your account is now active. You can start using WaiseKa.
-        </p>
-        {/* /dashboard falls through to /login via the proxy when there's no session */}
-        <Link href="/dashboard">
-          <Button className="w-full mt-2">Continue to WaiseKa</Button>
-        </Link>
+      <div className={styles.stack}>
+        <AuthIconTile icon={CircleCheck} variant="success" />
+        <div className={styles.titleBlock}>
+          <h2 className={styles.title}>Email <em>verified.</em></h2>
+          <p className={styles.sub}>Your account is active. Tara, let&apos;s set up your first cutoff.</p>
+        </div>
+        <div className={styles.actionsPlain}>
+          {/* /dashboard falls through to /login via the proxy when there's no session */}
+          <Link href="/dashboard" className={styles.buttonLink}>
+            Continue to WaiseKa
+          </Link>
+        </div>
       </div>
     )
   }
 
   if (error === 'invalid') {
     return (
-      <div className="text-center space-y-4">
-        <div className="text-5xl">❌</div>
-        <p className="text-lg font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: "'Sora', sans-serif" }}>
-          Link expired or invalid
-        </p>
-        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          This verification link has expired or already been used. Request a new one below.
-        </p>
-        {resent ? (
-          <p className="text-sm font-medium" style={{ color: 'var(--color-income)' }}>
-            New verification email sent - check your inbox.
+      <div className={styles.stack}>
+        <AuthIconTile icon={MailWarning} variant="warning" />
+        <div className={styles.titleBlock}>
+          <h2 className={styles.title}>Link <em>expired.</em></h2>
+          <p className={styles.sub}>
+            This verification link has expired or was already used. Request a new one below.
           </p>
-        ) : (
-          <Button onClick={resend} loading={resending} className="w-full">
-            Resend verification email
-          </Button>
-        )}
-        <p className="text-sm">
-          <Link href="/login" style={{ color: 'var(--color-accent)' }}>
-            Back to login
-          </Link>
-        </p>
+        </div>
+        <div className={styles.actionsPlain}>
+          {resent ? (
+            resentNote
+          ) : (
+            <Button size="lg" onClick={resend} loading={resending} style={{ width: '100%' }}>
+              Resend verification email
+            </Button>
+          )}
+          {backToSignIn}
+        </div>
       </div>
     )
   }
 
+  // Not in the handoff (the API's malformed-link redirect); styled like the other error states.
   if (error === 'missing') {
     return (
-      <div className="text-center space-y-4">
-        <div className="text-5xl">🔗</div>
-        <p className="text-lg font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: "'Sora', sans-serif" }}>
-          Invalid link
-        </p>
-        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          This verification link is malformed. Use the link from your email or request a new one.
-        </p>
-        <Link href="/login">
-          <Button variant="outline" className="w-full">Back to login</Button>
-        </Link>
+      <div className={styles.stack}>
+        <AuthIconTile icon={Unlink} variant="error" />
+        <div className={styles.titleBlock}>
+          <h2 className={styles.title}>Invalid <em>link.</em></h2>
+          <p className={styles.sub}>
+            This verification link is malformed. Use the link from your email or request a new one.
+          </p>
+        </div>
+        <div className={styles.actionsPlain}>
+          <Link href="/login" className={styles.buttonLinkOutline}>
+            Back to sign in
+          </Link>
+        </div>
       </div>
     )
   }
 
   // Default: landing page (user navigated here directly)
   return (
-    <div className="text-center space-y-4">
-      <div className="text-5xl">✉️</div>
-      <p className="text-lg font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: "'Sora', sans-serif" }}>
-        Check your inbox
-      </p>
-      <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-        We sent a verification link to your email address. Click it to activate your account.
-      </p>
-      {resent ? (
-        <p className="text-sm font-medium" style={{ color: 'var(--color-income)' }}>
-          New verification email sent - check your inbox.
+    <div className={styles.stack}>
+      <AuthIconTile icon={Mail} />
+      <div className={styles.titleBlock}>
+        <h2 className={styles.title}>Check your <em>inbox.</em></h2>
+        <p className={styles.sub}>
+          A verification link went to {email ? <strong>{email}</strong> : 'your email address'}. Click it to activate
+          your account.
         </p>
-      ) : (
-        <Button variant="outline" onClick={resend} loading={resending} className="w-full">
-          Resend verification email
-        </Button>
-      )}
-      <p className="text-sm">
-        <Link href="/login" style={{ color: 'var(--color-accent)' }}>
-          Back to login
-        </Link>
-      </p>
+      </div>
+      <div className={styles.actionsPlain}>
+        {resent ? (
+          resentNote
+        ) : (
+          <Button variant="outline" size="lg" onClick={resend} loading={resending} style={{ width: '100%' }}>
+            Resend verification email
+          </Button>
+        )}
+        {backToSignIn}
+      </div>
     </div>
   )
 }
 
 export default function VerifyEmailPage() {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[30rem] flex-col justify-center px-4 py-8">
-      <div className="flex flex-col items-center mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <WKIcon size={48} scope="light" className="rounded-xl" />
-          <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: "'Sora', sans-serif" }}>
-            WaiseKa
-          </span>
-        </div>
-        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Email verification</p>
-      </div>
-      <Card>
-        <CardContent className="pt-6 pb-6">
-          <Suspense fallback={<div className="text-sm text-center" style={{ color: 'var(--color-text-muted)' }}>Loading…</div>}>
-            <VerifyEmailContent />
-          </Suspense>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthShell
+      headline={<>Start your <br className={styles.desktopOnly} /><em>first cutoff.</em></>}
+      panel={<RegisterPanel />}
+      panelFooter="Free to start · PHP, QAR and USD"
+    >
+      <Suspense fallback={null}>
+        <VerifyEmailContent />
+      </Suspense>
+    </AuthShell>
   )
 }
