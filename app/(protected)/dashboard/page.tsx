@@ -454,7 +454,7 @@ export default function DashboardPage() {
       <LastThreeMonthsBand months={rangeMonths} movers={rangeMovers} loading={rangeLoading} formatAmount={formatAmount} />
 
       {/* ── Add transaction modal ───────────────────────────────────────── */}
-      <Modal open={addTxOpen} onClose={() => setAddTxOpen(false)} title={t('dashboard.addTransaction')}>
+      <Modal open={addTxOpen} onClose={() => setAddTxOpen(false)} title={t('dashboard.addTransaction')} variant="form">
         <TransactionForm
           onSuccess={onTransactionSuccess}
           onCancel={() => setAddTxOpen(false)}

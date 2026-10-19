@@ -248,7 +248,7 @@ export default function TransactionsPage() {
       />
 
       {/* ── Add modal ────────────────────────────────────────────────────────── */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('tx.add')}>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('tx.add')} variant="form">
         <TransactionForm
           onSuccess={() => { setAddOpen(false); refetch(); refetchAccounts() }}
           onCancel={() => setAddOpen(false)}
@@ -272,7 +272,7 @@ export default function TransactionsPage() {
       )}
 
       {/* ── Edit modal ───────────────────────────────────────────────────────── */}
-      <Modal open={!!editTx} onClose={() => setEditTx(null)} title={t('tx.editTitle')}>
+      <Modal open={!!editTx} onClose={() => setEditTx(null)} title={t('tx.editTitle')} variant="form">
         {editTx && (
           <TransactionForm
             transaction={editTx}

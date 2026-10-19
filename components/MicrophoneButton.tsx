@@ -10,16 +10,19 @@ import { parseSpeechToTransaction, ParsedTransaction } from '@/lib/parseSpeechTo
 import { useCurrency } from '@/context/CurrencyContext'
 import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import formStyles from '@/components/forms/forms.module.css'
 
 interface MicrophoneButtonProps {
   onFill: (data: Partial<{ type: 'income' | 'expense' | 'savings'; amount: number; category: string; description: string }>) => void
   /** Currency of the account being filled; defaults to the primary currency. */
   currency?: string | null
+  /** `prompt`: the "Say it instead" row used at the top of the transaction form. */
+  variant?: 'default' | 'prompt'
 }
 
 type UIState = 'idle' | 'listening' | 'preview' | 'error'
 
-export default function MicrophoneButton({ onFill, currency }: MicrophoneButtonProps) {
+export default function MicrophoneButton({ onFill, currency, variant = 'default' }: MicrophoneButtonProps) {
   const { transcript, isListening, isSupported, error, language, setLanguage, startListening, stopListening, clearTranscript, clearError } =
     useSpeechToText()
   const { formatAmountIn } = useCurrency()
@@ -79,9 +82,52 @@ export default function MicrophoneButton({ onFill, currency }: MicrophoneButtonP
     return parts.join(' ')
   }
 
+  const promptRow = (
+    <div className={formStyles.voiceRow}>
+      <button
+        type="button"
+        onClick={handleMicClick}
+        className={`${formStyles.voiceTile} ${uiState === 'listening' ? formStyles.voiceTileListening : ''}`}
+        title={isFil ? 'Mag-record ng boses' : 'Record voice'}
+        aria-label={uiState === 'listening' ? 'Stop recording' : 'Record voice'}
+      >
+        {uiState === 'listening' && (
+          <span className="absolute inset-0 rounded-lg animate-ping bg-red-400 opacity-40" />
+        )}
+        {uiState === 'listening' ? <Square size={14} /> : <Mic size={16} />}
+      </button>
+      <button type="button" onClick={handleMicClick} className={formStyles.voiceText}>
+        <span className={formStyles.voiceTitle}>
+          {uiState === 'listening' ? (isFil ? 'Nakikinig…' : 'Listening… tap to stop') : 'Say it instead'}
+        </span>
+        <span className={formStyles.voiceExample}>&ldquo;Jollibee lunch, 245, GCash&rdquo;</span>
+      </button>
+      {!isIOS && (
+        <button
+          type="button"
+          onClick={() => setLanguage(isFil ? 'en-US' : 'fil-PH')}
+          className={formStyles.voiceAction}
+          title={isFil ? 'Switch to English' : 'Palitan ng Filipino'}
+        >
+          {isFil ? '🇵🇭 FIL' : '🇵🇭 ENG'}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => setShowKeywordManager((v) => !v)}
+        className={formStyles.voiceAction}
+        title={isFil ? 'Pamahalaan ang mga keyword' : 'Manage keywords'}
+        aria-label="Manage voice keywords"
+        aria-pressed={showKeywordManager}
+      >
+        <Settings size={13} />
+      </button>
+    </div>
+  )
+
   return (
     <div className="space-y-2">
-      {/* Mic row */}
+      {variant === 'prompt' ? promptRow : (
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex-1">
           {isFil ? 'Input ng boses' : 'Voice input'}
@@ -138,6 +184,7 @@ export default function MicrophoneButton({ onFill, currency }: MicrophoneButtonP
           <Settings className="h-4 w-4" />
         </button>
       </div>
+      )}
 
       {/* Keyword manager link */}
       {showKeywordManager && (
