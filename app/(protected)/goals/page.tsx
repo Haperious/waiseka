@@ -629,7 +629,7 @@ export default function GoalsPage() {
       )}
 
       {/* ── Add modal ────────────────────────────────────────────────────────── */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t("goal.create")}>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t("goal.newTitle")} variant="form">
         <GoalForm
           onSuccess={() => {
             setAddOpen(false)
@@ -641,7 +641,7 @@ export default function GoalsPage() {
       </Modal>
 
       {/* ── Edit modal ───────────────────────────────────────────────────────── */}
-      <Modal open={!!editGoal} onClose={() => setEditGoal(null)} title={t("goal.editTitle")}>
+      <Modal open={!!editGoal} onClose={() => setEditGoal(null)} title={t("goal.editTitle")} variant="form">
         {editGoal && (
           <GoalForm
             goal={editGoal}

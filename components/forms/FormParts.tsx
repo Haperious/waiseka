@@ -6,9 +6,13 @@ import { getCurrencySymbol } from '@/lib/currency'
 import { orderCategoryChips } from './categoryChips'
 import styles from './forms.module.css'
 
-/** "₱245.00" - symbol hugging the number, for button labels ("Add expense · ₱245.00"). */
-export function moneyLabel(amount: number, currency: string): string {
-  const abs = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+/**
+ * "₱245.00" - symbol hugging the number, for button labels ("Add expense · ₱245.00").
+ * `whole` drops the centavos for round figures in running text ("₱2,350 per cutoff").
+ */
+export function moneyLabel(amount: number, currency: string, { whole = false } = {}): string {
+  const digits = whole ? 0 : 2
+  const abs = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
   return `${getCurrencySymbol(currency)}${abs}`
 }
 

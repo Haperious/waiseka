@@ -465,3 +465,54 @@
   border-radius: 999px;
   transition: width 0.4s ease;
 }
+
+/* ── Suggestion chips (goal names) ──────────────────────────────────────── */
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.suggestChip {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--color-elevated);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.suggestChip:hover {
+  color: var(--color-text-primary);
+}
+
+/* ── Projection (goals) ─────────────────────────────────────────────────── */
+
+.projection {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-income-bg);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.projection svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-income);
+}
+
+.projection strong {
+  color: var(--color-income);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

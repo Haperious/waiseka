@@ -2,25 +2,42 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
+import { Lightbulb } from 'lucide-react'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Goal } from '@/hooks/useGoals'
 import { useViewCurrency } from '@/context/ViewCurrencyContext'
+import { useCurrency } from '@/context/CurrencyContext'
 import { getAllCurrencies, type CurrencyCode } from '@/lib/currency'
+import { countCutoffsUntil } from '@/lib/cutoffs'
+import {
+  AmountField,
+  Field,
+  FormModalLayout,
+  Segmented,
+  moneyLabel,
+  type SegmentOption,
+} from '@/components/forms/FormParts'
+import formStyles from '@/components/forms/forms.module.css'
 
-const PRIORITY_OPTIONS = [
+const PRIORITY_OPTIONS: SegmentOption<Goal['priority']>[] = [
   { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
+  { value: 'medium', label: 'Med' },
   { value: 'high', label: 'High' },
 ]
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: SegmentOption<Goal['status']>[] = [
   { value: 'active', label: 'Active' },
   { value: 'paused', label: 'Paused' },
   { value: 'completed', label: 'Completed' },
 ]
+
+const NAME_SUGGESTIONS = ['Emergency Fund', 'Boracay trip', 'New laptop', 'Pang-Pasko']
+
+/** Round up to the next ₱50 so the per-cutoff amount is easy to set aside. */
+const ROUND_TO = 50
 
 interface GoalFormProps {
   goal?: Goal
@@ -30,9 +47,11 @@ interface GoalFormProps {
   onCapHit?: () => void
 }
 
+/** Create/edit goal form. Render inside <Modal variant="form">. */
 export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFormProps) {
   const { toast } = useToast()
   const { viewCurrency, currencies, isMultiCurrency } = useViewCurrency()
+  const { currency: primaryCurrency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     currency: goal?.currency ?? viewCurrency,
@@ -44,6 +63,8 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
     status: goal?.status ?? 'active',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const goalCurrency = isMultiCurrency ? form.currency : primaryCurrency
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -99,10 +120,32 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
     }
   }
 
+  // Projection: how much to set aside each payday to hit the target by the deadline
+  const target = Number(form.targetAmount) || 0
+  const current = Number(form.savedAmount) || 0
+  const deadline = form.deadline ? new Date(form.deadline) : null
+  const remaining = target - current
+  const cutoffs = deadline && !isNaN(deadline.getTime()) ? countCutoffsUntil(deadline) : 0
+  const showProjection = target > 0 && remaining > 0 && cutoffs > 0
+  const perCutoff = showProjection ? Math.ceil(remaining / cutoffs / ROUND_TO) * ROUND_TO : 0
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <FormModalLayout
+      onSubmit={handleSubmit}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={loading}>
+            {goal ? 'Update goal' : 'Create goal'}
+          </Button>
+        </>
+      }
+    >
       {isMultiCurrency && (
         <Select
+          tone="token"
           label="Currency"
           value={form.currency}
           onValueChange={(v) => setForm({ ...form, currency: v as CurrencyCode })}
@@ -112,26 +155,43 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
           })}
         />
       )}
-      <Input
-        label="Goal Title"
-        placeholder="e.g. Emergency Fund"
-        value={form.title}
-        onChange={(e) => setForm({ ...form, title: e.target.value })}
-        error={errors.title}
-      />
-      <Input
-        label="Target Amount"
-        type="number"
-        step="0.01"
-        min="0"
-        placeholder="0.00"
+
+      <div className={formStyles.field}>
+        <Input
+          id="goal-title"
+          label="What are you saving for?"
+          placeholder="e.g. Emergency Fund"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          error={errors.title}
+        />
+        <div className={formStyles.suggestions}>
+          {NAME_SUGGESTIONS.map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={formStyles.suggestChip}
+              onClick={() => setForm({ ...form, title: name })}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AmountField
+        id="goal-target"
+        label="Target amount"
         value={form.targetAmount}
-        onChange={(e) => setForm({ ...form, targetAmount: e.target.value })}
+        onChange={(targetAmount) => setForm({ ...form, targetAmount })}
+        currency={goalCurrency}
         error={errors.targetAmount}
       />
+
       {goal && (
         <Input
-          label="Current Savings"
+          id="goal-saved"
+          label="Current savings"
           type="number"
           step="0.01"
           min="0"
@@ -140,34 +200,47 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
           onChange={(e) => setForm({ ...form, savedAmount: e.target.value })}
         />
       )}
-      <Input
-        label="Deadline"
-        type="datetime-local"
-        value={form.deadline}
-        onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-        error={errors.deadline}
-      />
-      <Select
-        label="Priority"
-        value={form.priority}
-        onValueChange={(v) => setForm({ ...form, priority: v as Goal['priority'] })}
-        options={PRIORITY_OPTIONS}
-      />
-      {goal && (
-        <Select
-          label="Status"
-          value={form.status}
-          onValueChange={(v) => setForm({ ...form, status: v as Goal['status'] })}
-          options={STATUS_OPTIONS}
+
+      <div className={formStyles.twoCol}>
+        <Input
+          id="goal-deadline"
+          label="Target date"
+          type="datetime-local"
+          value={form.deadline}
+          onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+          error={errors.deadline}
         />
+        <Field label="Priority">
+          <Segmented
+            ariaLabel="Priority"
+            options={PRIORITY_OPTIONS}
+            value={form.priority}
+            onChange={(priority) => setForm({ ...form, priority })}
+          />
+        </Field>
+      </div>
+
+      {goal && (
+        <Field label="Status">
+          <Segmented
+            ariaLabel="Status"
+            options={STATUS_OPTIONS}
+            value={form.status}
+            onChange={(status) => setForm({ ...form, status })}
+          />
+        </Field>
       )}
 
-      <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" className="flex-1" loading={loading}>
-          {goal ? 'Update' : 'Create'} Goal
-        </Button>
-      </div>
-    </form>
+      {showProjection && deadline && (
+        <div className={formStyles.projection} aria-live="polite">
+          <Lightbulb size={16} />
+          <span>
+            Set aside about <strong>{moneyLabel(perCutoff, goalCurrency, { whole: true })} per cutoff</strong> to reach{' '}
+            {moneyLabel(target, goalCurrency, { whole: Number.isInteger(target) })} by {format(deadline, 'MMM d, yyyy')}. That&apos;s {cutoffs}{' '}
+            {cutoffs === 1 ? 'sweldo' : 'sweldos'} from now.
+          </span>
+        </div>
+      )}
+    </FormModalLayout>
   )
 }
