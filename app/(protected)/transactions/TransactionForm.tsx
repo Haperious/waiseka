@@ -210,15 +210,14 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       />
 
       <div className={formStyles.twoCol}>
-        <Field label="Account">
-          <Select
-            tone="token"
-            value={accountId}
-            onValueChange={(v) => setForm({ ...form, accountId: v })}
-            options={accountOptions}
-            placeholder={accountPending ? 'Default account' : 'Unassigned'}
-          />
-        </Field>
+        <Select
+          tone="token"
+          label="Account"
+          value={accountId}
+          onValueChange={(v) => setForm({ ...form, accountId: v })}
+          options={accountOptions}
+          placeholder={accountPending ? 'Default account' : 'Unassigned'}
+        />
         <Field label="Date" error={errors.date}>
           <div style={{ position: 'relative' }}>
             <Segmented ariaLabel="Date" options={dateOptions} value={dateChoice} onChange={pickDate} />

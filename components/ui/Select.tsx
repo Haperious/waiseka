@@ -47,7 +47,7 @@ export default function Select({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn('flex flex-col', token ? 'gap-1.5' : 'gap-1')}>
       {label && (
         <label
           className={cn('text-sm font-medium', !token && 'text-gray-700 dark:text-gray-300')}
@@ -138,7 +138,12 @@ export default function Select({
           </RadixSelect.Content>
         </RadixSelect.Portal>
       </RadixSelect.Root>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error &&
+        (token ? (
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-expense)', margin: 0 }}>{error}</p>
+        ) : (
+          <p className="text-xs text-red-500">{error}</p>
+        ))}
     </div>
   )
 }

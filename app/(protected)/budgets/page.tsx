@@ -392,7 +392,7 @@ export default function BudgetsPage() {
       )}
 
       {/* ── Add modal ────────────────────────────────────────────────────────── */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('budget.create')}>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('budget.newTitle')} variant="form">
         <BudgetForm
           onSuccess={() => { setAddOpen(false); refetch() }}
           onCancel={() => setAddOpen(false)}
@@ -401,7 +401,7 @@ export default function BudgetsPage() {
       </Modal>
 
       {/* ── Edit modal ───────────────────────────────────────────────────────── */}
-      <Modal open={!!editBudget} onClose={() => setEditBudget(null)} title={t('budget.editTitle')}>
+      <Modal open={!!editBudget} onClose={() => setEditBudget(null)} title={t('budget.editTitle')} variant="form">
         {editBudget && (
           <BudgetForm
             budget={editBudget}
