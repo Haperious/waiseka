@@ -2,12 +2,15 @@
 
 import { useState, useMemo } from "react"
 import { format } from "date-fns"
+import { ArrowDown } from "lucide-react"
 import Input from "@/components/ui/Input"
-import Select from "@/components/ui/Select"
 import Button from "@/components/ui/Button"
 import { useToast } from "@/components/ui/Toast"
 import { useCurrency } from "@/context/CurrencyContext"
 import { Account } from "@/hooks/useAccounts"
+import { AccountCard } from "@/components/forms/AccountCard"
+import { AmountField, Chip, FormModalLayout, moneyLabel } from "@/components/forms/FormParts"
+import formStyles from "@/components/forms/forms.module.css"
 
 interface TransferFormProps {
   accounts: Account[]
@@ -17,9 +20,10 @@ interface TransferFormProps {
   lockedToAccountId?: string
 }
 
+/** Transfer / pay-card form. Render inside <Modal variant="form">. */
 export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAccountId }: TransferFormProps) {
   const { toast } = useToast()
-  const { formatAmount } = useCurrency()
+  const { currency: primaryCurrency } = useCurrency()
   const [loading, setLoading] = useState(false)
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
@@ -40,18 +44,19 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
   // Cross-currency transfers are rejected server-side, so constrain the pickers to
   // matching currencies. When the destination is locked (card payment), filter the
   // source list to the card's currency; otherwise filter destinations to the source's.
-  const fromOptions = activeAccounts
-    .filter((a) => a._id !== form.toAccountId && (!lockedToAccount || a.currency === lockedToAccount.currency))
-    .map((a) => ({ value: a._id, label: `${a.name} (${a.currency})` }))
-  const toOptions = activeAccounts
-    .filter((a) => a._id !== form.fromAccountId && (!fromAccount || a.currency === fromAccount.currency))
-    .map((a) => ({ value: a._id, label: `${a.name} (${a.currency})` }))
+  const fromOptions = activeAccounts.filter(
+    (a) => a._id !== form.toAccountId && (!lockedToAccount || a.currency === lockedToAccount.currency)
+  )
+  const toOptions = activeAccounts.filter(
+    (a) => a._id !== form.fromAccountId && (!fromAccount || a.currency === fromAccount.currency)
+  )
 
   const currencyMismatch = fromAccount && toAccount && fromAccount.currency !== toAccount.currency
   const isCardPayment = toAccount?.type === "credit"
   const countsAsSavings = toAccount?.type === "savings" || toAccount?.type === "time_deposit"
   const outstanding = toAccount?.outstandingBalance ?? 0
   const willOverpay = isCardPayment && form.amount !== "" && Number(form.amount) > outstanding
+  const currency = fromAccount?.currency ?? toAccount?.currency ?? primaryCurrency
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -103,80 +108,107 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
     }
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Select
-        label="From"
-        value={form.fromAccountId}
-        onValueChange={(v) =>
-          setForm({ ...form, fromAccountId: v, toAccountId: v === form.toAccountId ? "" : form.toAccountId })
-        }
-        options={fromOptions}
-        placeholder="Source account"
-        error={errors.fromAccountId}
-      />
-      <Select
-        label="To"
-        value={form.toAccountId}
-        onValueChange={(v) => setForm({ ...form, toAccountId: v })}
-        options={toOptions}
-        placeholder="Destination account"
-        error={errors.toAccountId}
-        disabled={!!lockedToAccountId}
-      />
-      <Input
-        label="Amount"
-        type="number"
-        step="0.01"
-        min="0"
-        placeholder="0.00"
-        value={form.amount}
-        onChange={(e) => setForm({ ...form, amount: e.target.value })}
-        error={errors.amount}
-      />
+  // Card payment shortcuts. Amounts are kept to 2 decimals like typed input.
+  const fullAmount = outstanding > 0 ? String(Math.round(outstanding * 100) / 100) : ""
+  const halfValue = Math.round((outstanding / 2) * 100) / 100
+  const halfAmount = outstanding > 0 ? String(halfValue) : ""
+  const amountNumber = Number(form.amount)
+  const verb = isCardPayment ? "Pay card" : "Transfer"
+  const submitLabel = form.amount && amountNumber > 0 ? `${verb} · ${moneyLabel(amountNumber, currency)}` : verb
+  const pairError = errors.fromAccountId ?? errors.toAccountId
 
-      {isCardPayment && (
-        <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", margin: 0 }}>
-          Outstanding on {toAccount?.name}:{" "}
-          <strong style={{ color: "var(--color-text-primary)" }}>{formatAmount(outstanding)}</strong>
-        </p>
-      )}
+  return (
+    <FormModalLayout
+      onSubmit={handleSubmit}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={loading} className={formStyles.money}>
+            {submitLabel}
+          </Button>
+        </>
+      }
+    >
+      <div className={formStyles.field}>
+        <div className={formStyles.transferPair}>
+          <AccountCard
+            eyebrow="From"
+            position="top"
+            value={form.fromAccountId}
+            options={fromOptions}
+            accounts={activeAccounts}
+            placeholder="Choose source account"
+            invalid={!!errors.fromAccountId}
+            onChange={(v) =>
+              setForm({ ...form, fromAccountId: v, toAccountId: v === form.toAccountId ? "" : form.toAccountId })
+            }
+          />
+          <span className={formStyles.seamBadge} aria-hidden="true">
+            <ArrowDown size={15} />
+          </span>
+          <AccountCard
+            eyebrow="To"
+            position="bottom"
+            value={form.toAccountId}
+            options={toOptions}
+            accounts={activeAccounts}
+            placeholder="Choose destination account"
+            invalid={!!errors.toAccountId}
+            locked={!!lockedToAccountId}
+            onChange={(v) => setForm({ ...form, toAccountId: v })}
+          />
+        </div>
+        {pairError && <span className={formStyles.errorText}>{pairError}</span>}
+      </div>
+
+      <div className={formStyles.field}>
+        <AmountField
+          id="transfer-amount"
+          label="Amount"
+          value={form.amount}
+          onChange={(amount) => setForm({ ...form, amount })}
+          currency={currency}
+          error={errors.amount}
+        />
+        {isCardPayment && outstanding > 0 && (
+          <div className={formStyles.chips}>
+            <Chip selected={form.amount === fullAmount} onClick={() => setForm({ ...form, amount: fullAmount })}>
+              Pay full balance
+            </Chip>
+            <Chip selected={form.amount === halfAmount} onClick={() => setForm({ ...form, amount: halfAmount })}>
+              Half · {moneyLabel(halfValue, currency)}
+            </Chip>
+          </div>
+        )}
+      </div>
+
       {willOverpay && (
-        <p
-          style={{
-            fontSize: "0.78rem",
-            color: "var(--color-warning)",
-            padding: "8px 12px",
-            borderRadius: 8,
-            margin: 0,
-            backgroundColor: "var(--color-warning-bg)",
-          }}
-        >
+        <div className={formStyles.warningBlock} role="status">
           This is more than the outstanding balance. The card will show a credit balance after this payment.
-        </p>
+        </div>
       )}
       {countsAsSavings && (
-        <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", margin: 0 }}>
-          This transfer will count toward your total savings and health score.
-        </p>
+        <span className={formStyles.hint}>This transfer will count toward your total savings and health score.</span>
       )}
 
-      <Input
-        label="Description (optional)"
-        placeholder="e.g. Move savings, pay card"
-        value={form.description}
-        onChange={(e) => setForm({ ...form, description: e.target.value })}
-      />
-      <Input label="Date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-
-      <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" className="flex-1" loading={loading}>
-          {isCardPayment ? "Pay Card" : "Transfer"}
-        </Button>
+      <div className={formStyles.twoCol}>
+        <Input
+          id="transfer-note"
+          label="Note (optional)"
+          placeholder="e.g. Move savings, pay card"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+        />
+        <Input
+          id="transfer-date"
+          label="Date"
+          type="date"
+          value={form.date}
+          onChange={(e) => setForm({ ...form, date: e.target.value })}
+        />
       </div>
-    </form>
+    </FormModalLayout>
   )
 }

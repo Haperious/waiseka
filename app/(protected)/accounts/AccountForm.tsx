@@ -1,35 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { Banknote, CreditCard, Landmark, Lock, PiggyBank, Smartphone, type LucideIcon } from 'lucide-react'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useLanguage } from '@/context/LanguageContext'
-import { TranslationKey } from '@/lib/translations'
 import { Account } from '@/hooks/useAccounts'
 import { useCurrency } from '@/context/CurrencyContext'
 import { getAllCurrencies, CurrencyCode } from '@/lib/currency'
 import { Field, FormModalLayout, Segmented, type SegmentOption } from '@/components/forms/FormParts'
+import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_KEYS } from '@/components/forms/accountTypes'
 import formStyles from '@/components/forms/forms.module.css'
-
-const TYPE_KEYS: Record<Account['type'], TranslationKey> = {
-  debit: 'account.typeDebit',
-  credit: 'account.typeCredit',
-  savings: 'account.typeSavings',
-  time_deposit: 'account.typeTimeDeposit',
-  cash: 'account.typeCash',
-  e_wallet: 'account.typeEWallet',
-}
-
-const TYPE_ICONS: Record<Account['type'], LucideIcon> = {
-  debit: Landmark,
-  credit: CreditCard,
-  savings: PiggyBank,
-  time_deposit: Lock,
-  cash: Banknote,
-  e_wallet: Smartphone,
-}
 
 interface AccountFormProps {
   account?: Account
@@ -158,8 +139,8 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
     >
       <Field label="Type">
         <div className={formStyles.typeGrid} role="radiogroup" aria-label="Type">
-          {(Object.keys(TYPE_KEYS) as Account['type'][]).map((type) => {
-            const Icon = TYPE_ICONS[type]
+          {(Object.keys(ACCOUNT_TYPE_KEYS) as Account['type'][]).map((type) => {
+            const Icon = ACCOUNT_TYPE_ICONS[type]
             const on = form.type === type
             return (
               <button
@@ -173,7 +154,7 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
                 <span className={formStyles.typeIcon}>
                   <Icon size={15} />
                 </span>
-                {t(TYPE_KEYS[type])}
+                {t(ACCOUNT_TYPE_KEYS[type])}
               </button>
             )
           })}

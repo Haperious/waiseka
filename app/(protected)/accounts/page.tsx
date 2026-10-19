@@ -443,7 +443,7 @@ export default function AccountsPage() {
       )}
 
       {/* ── Transfer modal ───────────────────────────────────────────────────── */}
-      <Modal open={transferOpen} onClose={() => setTransferOpen(false)} title="Transfer Between Accounts">
+      <Modal open={transferOpen} onClose={() => setTransferOpen(false)} title="Transfer" variant="form">
         <TransferForm
           accounts={accounts}
           onSuccess={() => { setTransferOpen(false); refetch() }}
@@ -452,7 +452,7 @@ export default function AccountsPage() {
       </Modal>
 
       {/* ── Pay card modal (transfer with locked credit destination) ──────────── */}
-      <Modal open={!!payCardAccount} onClose={() => setPayCardAccount(null)} title={`Pay ${payCardAccount?.name ?? 'Card'}`}>
+      <Modal open={!!payCardAccount} onClose={() => setPayCardAccount(null)} title="Pay card" variant="form">
         {payCardAccount && (
           <TransferForm
             accounts={accounts}
