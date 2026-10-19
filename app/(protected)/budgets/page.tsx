@@ -1,16 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus, Pencil, Trash2, Lock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useBudgets, Budget } from '@/hooks/useBudgets'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
 import { useCurrency } from '@/context/CurrencyContext'
+import ViewCurrencySwitcher from '@/components/ViewCurrencySwitcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { TranslationKey } from '@/lib/translations'
 import { useToast } from '@/components/ui/Toast'
 import BudgetForm from './BudgetForm'
+import { onTransactionSaved } from '@/lib/transactionEvents'
 
 // ── Animated progress bar ────────────────────────────────────────────────────
 function BudgetProgressBar({ spent, limit }: { spent: number; limit: number }) {
@@ -27,10 +30,6 @@ function BudgetProgressBar({ spent, limit }: { spent: number; limit: number }) {
     percent >= 70 ? 'var(--color-warning)' :
     'var(--color-income)'
 
-  const trackColor =
-    percent >= 90 ? 'var(--color-expense-bg)' :
-    percent >= 70 ? 'var(--color-warning-bg)' :
-    'var(--color-income-bg)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -213,10 +212,20 @@ function BudgetCard({
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function BudgetsPage() {
-  const { formatAmount } = useCurrency()
+  // One currency at a time: budgets, their totals and amounts are all in the view
+  // currency (single-currency users: always their primary, so nothing changes).
+  const { viewCurrency, formatView: formatAmount } = useViewCurrency()
+  const { currency: primary } = useCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
-  const { budgets, loading, deleteBudget, refetch } = useBudgets()
+  const { budgets: allBudgets, loading, deleteBudget, refetch } = useBudgets()
+  const budgets = useMemo(
+    () => allBudgets.filter((b) => (b.currency ?? primary) === viewCurrency),
+    [allBudgets, viewCurrency, primary],
+  )
+
+  // Refresh spent totals when the mobile quick-add sheet saves a transaction
+  useEffect(() => onTransactionSaved(refetch), [refetch])
 
   const [addOpen, setAddOpen] = useState(false)
   const [editBudget, setEditBudget] = useState<Budget | null>(null)
@@ -252,10 +261,13 @@ export default function BudgetsPage() {
             {budgets.length} {t('budget.title').toLowerCase()} {t('budget.active')}
           </p>
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
-          <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
-          <span className="hidden sm:inline">{t('budget.add')}</span>
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <ViewCurrencySwitcher />
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
+            <span className="hidden sm:inline">{t('budget.add')}</span>
+          </Button>
+        </div>
       </div>
 
       {/* ── Free-tier cap banner ─────────────────────────────────────────────── */}
@@ -286,7 +298,60 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      {/* ── Content ──────────────────────────────────────────────────────────── */}
+      {/* ── Mobile summary: Left to spend + N categories ────────────────────── */}
+      {loading && (
+        <div className="lg:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      )}
+      {!loading && budgets.length > 0 && (
+        <div className="lg:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {(() => {
+            const totalBudgeted = budgets.reduce((s, b) => s + b.limit, 0)
+            const totalSpent = budgets.reduce((s, b) => s + b.spent, 0)
+            const leftToSpend = totalBudgeted - totalSpent
+            const pct = totalBudgeted > 0 ? Math.min((totalSpent / totalBudgeted) * 100, 100) : 0
+            const barColor = pct >= 90 ? 'var(--color-expense)' : pct >= 70 ? 'var(--color-warning)' : 'var(--color-income)'
+            return (
+              <div style={{
+                backgroundColor: 'var(--color-card)',
+                borderRadius: 16,
+                border: '1px solid var(--color-border)',
+                padding: '20px 20px 18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}>
+                <div>
+                  <p style={{
+                    fontSize: '0.68rem', textTransform: 'uppercase',
+                    letterSpacing: '0.07em', color: 'var(--color-text-muted)',
+                    fontWeight: 600, marginBottom: 6,
+                  }}>
+                    Left to spend
+                  </p>
+                  <span style={{
+                    fontSize: '1.55rem', fontWeight: '800', lineHeight: 1,
+                    color: leftToSpend >= 0 ? 'var(--color-income)' : 'var(--color-expense)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {formatAmount(leftToSpend)}
+                  </span>
+                </div>
+                <div style={{ height: 6, borderRadius: 999, backgroundColor: 'var(--color-elevated)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 999, backgroundColor: barColor, width: `${pct}%`, transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)' }} />
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  of {formatAmount(totalBudgeted)} budgeted
+                </p>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
+      {/* ── Content (desktop) ───────────────────────────────────────────────── */}
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
@@ -327,7 +392,7 @@ export default function BudgetsPage() {
       )}
 
       {/* ── Add modal ────────────────────────────────────────────────────────── */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('budget.create')}>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('budget.newTitle')} variant="form">
         <BudgetForm
           onSuccess={() => { setAddOpen(false); refetch() }}
           onCancel={() => setAddOpen(false)}
@@ -336,7 +401,7 @@ export default function BudgetsPage() {
       </Modal>
 
       {/* ── Edit modal ───────────────────────────────────────────────────────── */}
-      <Modal open={!!editBudget} onClose={() => setEditBudget(null)} title={t('budget.editTitle')}>
+      <Modal open={!!editBudget} onClose={() => setEditBudget(null)} title={t('budget.editTitle')} variant="form">
         {editBudget && (
           <BudgetForm
             budget={editBudget}

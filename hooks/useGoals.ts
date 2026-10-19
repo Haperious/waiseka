@@ -1,6 +1,8 @@
-'use client'
+"use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from "react"
+import { useResource, extractApiError } from "@/hooks/useFetch"
+import type { CurrencyCode } from "@/lib/currency"
 
 export interface Goal {
   _id: string
@@ -8,66 +10,79 @@ export interface Goal {
   title: string
   targetAmount: number
   savedAmount: number
+  /** Missing = the user's primary currency. */
+  currency?: CurrencyCode
   deadline: string
-  priority: 'low' | 'medium' | 'high'
-  status: 'active' | 'completed' | 'paused'
+  priority: "low" | "medium" | "high"
+  status: "active" | "completed" | "paused"
   createdAt: string
 }
 
-export function useGoals() {
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const NO_GOALS: Goal[] = []
 
-  const fetchGoals = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/goals')
-      const data = await res.json()
-      setGoals(Array.isArray(data) ? data : [])
-    } catch {
-      setError('Failed to load goals')
-    } finally {
-      setLoading(false)
-    }
+export function useGoals() {
+  const fetcher = useCallback(async () => {
+    const res = await fetch("/api/goals")
+    if (!res.ok) throw new Error(await extractApiError(res))
+    const data: unknown = await res.json()
+    return (Array.isArray(data) ? data : []) as Goal[]
   }, [])
 
-  useEffect(() => { fetchGoals() }, [fetchGoals])
+  const { data, loading, error, refetch, mutate } = useResource(fetcher)
+  const goals = data ?? NO_GOALS
+  // Local list update after a write - wraps mutate so the handlers below read like setState
+  const setGoals = useCallback(
+    (update: (goals: Goal[]) => Goal[]) => mutate((prev) => update(prev ?? [])),
+    [mutate],
+  )
 
-  const createGoal = async (data: Omit<Goal, '_id' | 'userId' | 'savedAmount' | 'status' | 'createdAt'>) => {
-    const res = await fetch('/api/goals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+  const createGoal = async (
+    data: Omit<Goal, "_id" | "userId" | "savedAmount" | "status" | "createdAt">,
+  ): Promise<Goal> => {
+    const res = await fetch("/api/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
-    if (!res.ok) throw new Error('Failed to create goal')
-    await fetchGoals()
+    if (!res.ok) throw new Error(await extractApiError(res))
+    const created: Goal = await res.json()
+    setGoals((prev) => [created, ...prev])
+    return created
   }
 
-  const updateGoal = async (id: string, data: Partial<Goal>) => {
+  const updateGoal = async (id: string, data: Partial<Goal>): Promise<Goal> => {
     const res = await fetch(`/api/goals/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
-    if (!res.ok) throw new Error('Failed to update goal')
-    await fetchGoals()
+    if (!res.ok) throw new Error(await extractApiError(res))
+    const updated: Goal = await res.json()
+    setGoals((prev) => prev.map((g) => (g._id === id ? updated : g)))
+    return updated
   }
 
-  const deleteGoal = async (id: string) => {
-    const res = await fetch(`/api/goals/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('Failed to delete goal')
-    await fetchGoals()
+  const deleteGoal = async (id: string): Promise<void> => {
+    const res = await fetch(`/api/goals/${id}`, { method: "DELETE" })
+    if (!res.ok) throw new Error(await extractApiError(res))
+    setGoals((prev) => prev.filter((g) => g._id !== id))
   }
 
-  const addFunds = async (id: string, amount: number) => {
-    const goal = goals.find((g) => g._id === id)
-    if (!goal) throw new Error('Goal not found')
-    const newSaved = goal.savedAmount + amount
-    const newStatus = newSaved >= goal.targetAmount ? 'completed' : goal.status
-    await updateGoal(id, { savedAmount: newSaved, status: newStatus })
+  /**
+   * Add funds via server-side atomic $inc - avoids client-side race conditions
+   * where two concurrent calls could both read the same savedAmount.
+   */
+  const addFunds = async (id: string, amount: number): Promise<Goal> => {
+    const res = await fetch(`/api/goals/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addAmount: amount }),
+    })
+    if (!res.ok) throw new Error(await extractApiError(res))
+    const updated: Goal = await res.json()
+    setGoals((prev) => prev.map((g) => (g._id === id ? updated : g)))
+    return updated
   }
 
-  return { goals, loading, error, createGoal, updateGoal, deleteGoal, addFunds, refetch: fetchGoals }
+  return { goals, loading, error, createGoal, updateGoal, deleteGoal, addFunds, refetch }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { getSettings } from '@/lib/models/GlobalSettings'
 import type { IUser } from '@/lib/models/User'
@@ -8,7 +8,7 @@ import type { IUser } from '@/lib/models/User'
 const VALID_FREQUENCIES = ['daily', 'weekly', 'monthly'] as const
 
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -29,7 +29,7 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const settings = await getSettings()

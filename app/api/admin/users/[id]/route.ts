@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { adminGate } from '@/lib/admin-gate'
+import { objectIdParam } from '@/lib/route-params'
 import type { IUser } from '@/lib/models/User'
 
 const USER_PROJECTION = {
@@ -11,10 +10,11 @@ const USER_PROJECTION = {
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  try { adminGate(session) } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  const session = await requireAdminSession()
+  if (session instanceof NextResponse) return session
 
-  const { id } = await params
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const body = await req.json()
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
@@ -25,7 +25,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const db = await getDb()
   const user = await db.collection<IUser>('users').findOneAndUpdate(
-    { _id: new ObjectId(id) },
+    { _id },
     { $set: update },
     { returnDocument: 'after', projection: USER_PROJECTION }
   )

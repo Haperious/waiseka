@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { sendVerificationEmail } from '@/lib/email'
 import type { IUser } from '@/lib/models/User'
+import { logEmail } from '@/lib/models/EmailLog'
+import { APP_URL } from '@/lib/app-url'
 
 const EXPIRY_HOURS = 24
 
 export async function POST() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -34,13 +36,15 @@ export async function POST() {
     createdAt: new Date(),
   })
 
-  const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/auth/verify-email?token=${token}`
+  const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${token}`
 
   sendVerificationEmail({
     firstName: user.name.split(' ')[0],
     email: user.email,
     verifyUrl,
-  }).catch((err) => console.error('[resend-verification] email error:', err))
+  })
+    .then(() => logEmail(db, { userId: session.user.id, type: 'email_verification' }))
+    .catch((err) => console.error('[resend-verification] email error:', err))
 
   return NextResponse.json({ message: 'Verification email sent' })
 }

@@ -2,23 +2,31 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
+import { Lightbulb } from 'lucide-react'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Goal } from '@/hooks/useGoals'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
+import { useCurrency } from '@/context/CurrencyContext'
+import { useLanguage } from '@/context/LanguageContext'
+import { getAllCurrencies, type CurrencyCode } from '@/lib/currency'
+import { cutoffPrefsFor } from '@/lib/services/cutoff'
+import { goalDeadlineToIso, parseGoalDeadline, projectGoal } from '@/lib/goalProjection'
+import { usePreferences } from '@/hooks/usePreferences'
+import {
+  AmountField,
+  Field,
+  FormModalLayout,
+  Segmented,
+  moneyLabel,
+  type SegmentOption,
+} from '@/components/forms/FormParts'
+import formStyles from '@/components/forms/forms.module.css'
 
-const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-]
 
-const STATUS_OPTIONS = [
-  { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'completed', label: 'Completed' },
-]
+const NAME_SUGGESTIONS = ['Emergency Fund', 'Boracay trip', 'New laptop', 'Pang-Pasko']
 
 interface GoalFormProps {
   goal?: Goal
@@ -28,24 +36,44 @@ interface GoalFormProps {
   onCapHit?: () => void
 }
 
+/** Create/edit goal form. Render inside <Modal variant="form">. */
 export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFormProps) {
   const { toast } = useToast()
+  const { t } = useLanguage()
+  const priorityOptions: SegmentOption<Goal['priority']>[] = [
+    { value: 'low', label: t('goalForm.low') },
+    { value: 'medium', label: t('goalForm.medium') },
+    { value: 'high', label: t('goalForm.high') },
+  ]
+  const statusOptions: SegmentOption<Goal['status']>[] = [
+    { value: 'active', label: t('goalForm.active') },
+    { value: 'paused', label: t('goalForm.paused') },
+    { value: 'completed', label: t('goalForm.completed') },
+  ]
+  const { viewCurrency, currencies, isMultiCurrency } = useViewCurrency()
+  const { currency: primaryCurrency } = useCurrency()
+  const { preferences } = usePreferences()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
+    currency: goal?.currency ?? viewCurrency,
     title: goal?.title ?? '',
     targetAmount: goal?.targetAmount ? String(goal.targetAmount) : '',
-    deadline: goal?.deadline ? format(new Date(goal.deadline), "yyyy-MM-dd'T'HH:mm") : '',
+    savedAmount: goal?.savedAmount != null ? String(goal.savedAmount) : '',
+    // Date only (yyyy-MM-dd); sent as the end of that local day so the goal is due through the whole day
+    deadline: goal?.deadline ? format(new Date(goal.deadline), 'yyyy-MM-dd') : '',
     priority: goal?.priority ?? 'medium',
     status: goal?.status ?? 'active',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  const goalCurrency = isMultiCurrency ? form.currency : primaryCurrency
+
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.title.trim()) e.title = 'Title is required'
+    if (!form.title.trim()) e.title = t('goalForm.errTitle')
     if (!form.targetAmount || isNaN(Number(form.targetAmount)) || Number(form.targetAmount) <= 0)
-      e.targetAmount = 'Enter a valid target amount'
-    if (!form.deadline) e.deadline = 'Deadline is required'
+      e.targetAmount = t('goalForm.errTarget')
+    if (!form.deadline) e.deadline = t('goalForm.errDeadline')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -58,12 +86,17 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
     try {
       const url = goal ? `/api/goals/${goal._id}` : '/api/goals'
       const method = goal ? 'PUT' : 'POST'
-      const payload = {
+      const payload: Record<string, unknown> = {
         title: form.title,
         targetAmount: Number(form.targetAmount),
         priority: form.priority,
         status: form.status,
-        deadline: form.deadline,
+        deadline: goalDeadlineToIso(form.deadline),
+      }
+      // Single-currency users never pick one: the server defaults new goals to the primary
+      if (isMultiCurrency) payload.currency = form.currency
+      if (goal && form.savedAmount !== '') {
+        payload.savedAmount = Number(form.savedAmount)
       }
       const res = await fetch(url, {
         method,
@@ -76,66 +109,144 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
           onCancel()
           onCapHit()
         } else {
-          toast(data.error ?? 'Failed to save goal', 'error')
+          toast(data.error ?? t('goalForm.failed'), 'error')
         }
       } else {
-        toast(goal ? 'Goal updated' : 'Goal created', 'success')
+        toast(goal ? t('goalForm.updated') : t('goalForm.created'), 'success')
         onSuccess()
       }
     } catch {
-      toast('Something went wrong', 'error')
+      toast(t('common.genericError'), 'error')
     } finally {
       setLoading(false)
     }
   }
 
+  // Projection: how much to set aside each payday to hit the target by the deadline
+  const target = Number(form.targetAmount) || 0
+  const current = Number(form.savedAmount) || 0
+  const deadline = parseGoalDeadline(form.deadline)
+  // Paydays follow the user's own cutoff schedule for this goal's currency (Settings → Money)
+  const projection = projectGoal(target, current, deadline, cutoffPrefsFor(preferences, goalCurrency))
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        label="Goal Title"
-        placeholder="e.g. Emergency Fund"
-        value={form.title}
-        onChange={(e) => setForm({ ...form, title: e.target.value })}
-        error={errors.title}
-      />
-      <Input
-        label="Target Amount"
-        type="number"
-        step="0.01"
-        min="0"
-        placeholder="0.00"
-        value={form.targetAmount}
-        onChange={(e) => setForm({ ...form, targetAmount: e.target.value })}
-        error={errors.targetAmount}
-      />
-      <Input
-        label="Deadline"
-        type="datetime-local"
-        value={form.deadline}
-        onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-        error={errors.deadline}
-      />
-      <Select
-        label="Priority"
-        value={form.priority}
-        onValueChange={(v) => setForm({ ...form, priority: v as Goal['priority'] })}
-        options={PRIORITY_OPTIONS}
-      />
-      {goal && (
+    <FormModalLayout
+      onSubmit={handleSubmit}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" loading={loading}>
+            {goal ? t('goalForm.update') : t('goalForm.create')}
+          </Button>
+        </>
+      }
+    >
+      {isMultiCurrency && (
         <Select
-          label="Status"
-          value={form.status}
-          onValueChange={(v) => setForm({ ...form, status: v as Goal['status'] })}
-          options={STATUS_OPTIONS}
+          tone="token"
+          label={t('form.currency')}
+          value={form.currency}
+          onValueChange={(v) => setForm({ ...form, currency: v as CurrencyCode })}
+          options={currencies.map((code) => {
+            const info = getAllCurrencies().find((c) => c.code === code)
+            return { value: code, label: `${info?.flag ?? ''} ${code} (${info?.symbol ?? ''})` }
+          })}
         />
       )}
 
-      <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" className="flex-1" loading={loading}>
-          {goal ? 'Update' : 'Create'} Goal
-        </Button>
+      <div className={formStyles.field}>
+        <Input
+          id="goal-title"
+          label={t('goalForm.name')}
+          placeholder={t('goalForm.namePlaceholder')}
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          error={errors.title}
+        />
+        <div className={formStyles.suggestions}>
+          {NAME_SUGGESTIONS.map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={formStyles.suggestChip}
+              onClick={() => setForm({ ...form, title: name })}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
       </div>
-    </form>
+
+      <AmountField
+        id="goal-target"
+        label={t('goalForm.target')}
+        value={form.targetAmount}
+        onChange={(targetAmount) => setForm({ ...form, targetAmount })}
+        currency={goalCurrency}
+        error={errors.targetAmount}
+      />
+
+      {goal && (
+        <Input
+          id="goal-saved"
+          label={t('goalForm.saved')}
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="0.00"
+          value={form.savedAmount}
+          onChange={(e) => setForm({ ...form, savedAmount: e.target.value })}
+        />
+      )}
+
+      <div className={formStyles.twoCol}>
+        <Input
+          id="goal-deadline"
+          label={t('goalForm.date')}
+          type="date"
+          value={form.deadline}
+          onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+          error={errors.deadline}
+        />
+        <Field label={t('goalForm.priority')}>
+          <Segmented
+            ariaLabel={t('goalForm.priority')}
+            options={priorityOptions}
+            value={form.priority}
+            onChange={(priority) => setForm({ ...form, priority })}
+          />
+        </Field>
+      </div>
+
+      {goal && (
+        <Field label={t('goalForm.status')}>
+          <Segmented
+            ariaLabel={t('goalForm.status')}
+            options={statusOptions}
+            value={form.status}
+            onChange={(status) => setForm({ ...form, status })}
+          />
+        </Field>
+      )}
+
+      {projection && deadline && (
+        <div className={formStyles.projection} aria-live="polite">
+          <Lightbulb size={16} />
+          <span>
+            {t('goalForm.projectionLead')}{' '}
+            <strong>
+              {t('goalForm.projectionPer').replace('{amount}', moneyLabel(projection.perCutoff, goalCurrency, { whole: true }))}
+            </strong>{' '}
+            {t('goalForm.projectionRest')
+              .replace('{target}', moneyLabel(target, goalCurrency, { whole: Number.isInteger(target) }))
+              .replace('{date}', format(deadline, 'MMM d, yyyy'))
+              .replace('{n}', String(projection.cutoffs))
+              .replace('{unit}', projection.cutoffs === 1 ? t('goalForm.sweldo') : t('goalForm.sweldos'))}
+          </span>
+        </div>
+      )}
+    </FormModalLayout>
   )
 }

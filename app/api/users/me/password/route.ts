@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import bcrypt from 'bcryptjs'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { IUser } from '@/lib/models/User'
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
@@ -33,10 +33,12 @@ export async function PUT(req: NextRequest) {
   if (!match) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
 
   const hashed = await bcrypt.hash(newPassword, 12)
+  const now = new Date()
   await users.updateOne(
     { _id: new ObjectId(session.user.id) },
-    { $set: { password: hashed, updatedAt: new Date() } }
+    { $set: { password: hashed, passwordChangedAt: now, updatedAt: now } }
   )
 
-  return NextResponse.json({ message: 'Password updated successfully' })
+  // The response includes a flag so the client can force a re-login
+  return NextResponse.json({ message: 'Password updated successfully', requireReLogin: true })
 }

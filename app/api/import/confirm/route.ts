@@ -1,13 +1,15 @@
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
 import { incrementImportCount } from '@/lib/importUsage'
 import { NextRequest, NextResponse } from 'next/server'
 import type { ITransaction } from '@/lib/models/Transaction'
+import type { IUser } from '@/lib/models/User'
 import { ObjectId } from 'mongodb'
+import { primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = session.user.id
@@ -19,14 +21,17 @@ export async function POST(req: NextRequest) {
 
   const db = await getDb()
 
-  const user = await db.collection('users').findOne({ _id: new ObjectId(userId) })
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(userId) as never })
   const userIsPremium = user ? isPremium({ tier: user.tier, premiumOverride: user.premiumOverride }) : false
 
+  // Imports have no account (out of scope, PRD Q4), so they take the primary currency
+  const currency = primaryCurrencyOf(user)
   const now = new Date()
 
   const docs = transactions.map((t) => ({
     userId,
     amount: t.amount ?? 0,
+    currency,
     type: t.type ?? 'expense',
     category: t.category ?? 'Others',
     description: t.description ?? '',

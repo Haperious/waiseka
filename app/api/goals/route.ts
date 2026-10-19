@@ -1,34 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
 import { FREE_GOAL_LIMIT } from '@/lib/constants'
 import { ObjectId } from 'mongodb'
 import type { IGoal } from '@/lib/models/Goal'
 import type { IUser } from '@/lib/models/User'
+import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
-  const goals = await db
-    .collection<IGoal>('goals')
-    .find({ userId: session.user.id })
-    .sort({ createdAt: -1 })
-    .toArray()
-  return NextResponse.json(goals)
+  const [goals, user] = await Promise.all([
+    db.collection<IGoal>('goals').find({ userId: session.user.id }).sort({ createdAt: -1 }).toArray(),
+    db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never }, { projection: { preferences: 1 } }),
+  ])
+  // Goals created before multi-currency have no currency - they're the primary's. Filling it
+  // in here keeps GoalForm from defaulting an edit to the view currency and re-denominating it.
+  const primary = primaryCurrencyOf(user)
+  return NextResponse.json(goals.map((g) => ({ ...g, currency: g.currency ?? primary })))
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { title, targetAmount, deadline, priority } = body
+  const { title, targetAmount, deadline, priority, currency } = body
 
   if (!title || !targetAmount || !deadline) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+  if (currency !== undefined && !isCurrencyCode(currency)) {
+    return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
   }
 
   const db = await getDb()
@@ -56,6 +62,7 @@ export async function POST(req: NextRequest) {
     title,
     targetAmount,
     savedAmount: 0,
+    currency: currency ?? primaryCurrencyOf(user),
     deadline: new Date(deadline),
     priority: priority ?? 'medium',
     status: 'active',

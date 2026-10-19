@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# yarn is the package manager (yarn.lock) - keep npm's lockfile out
+package-lock.json
 /.pnp
 .pnp.*
 .yarn/*
@@ -32,6 +34,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -40,10 +43,45 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# claude memory insturcrtions
+# Claude / agent working files
 TASKS.md
-
 /memory
+/.claude
+CLAUDE.md
+AGENTS.md
 
-waiseka_tests.py
+# internal planning docs (PRDs, prompts, notes) - see note in README
 *.md
+!README.md
+# legal page content is read by the app at build time - must be committed
+!/content/legal/*.md
+
+# local test + tooling scripts, not part of the deployed app
+waiseka_tests.py
+seed-announcement.ts
+generate-announcement-image.py
+
+# python virtualenv (used only by local announcement-image script)
+/.venv
+__pycache__/
+*.pyc
+
+# editor / IDE
+/.vscode
+/.idea
+*.swp
+
+# OS junk
+Thumbs.db
+desktop.ini
+
+# local build + dev artifacts
+/.netlify
+*.local
+/dist
+/tmp
+
+# one-off design/export artifacts not served by the app
+dashboard.html
+/docs
+/brag-output

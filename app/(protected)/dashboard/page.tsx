@@ -1,38 +1,30 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import {
-  TrendingUp, TrendingDown, PiggyBank, Percent, Plus, Lightbulb, MailWarning,
-} from 'lucide-react'
-import { format } from 'date-fns'
+import { Plus, MailWarning } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
+import SurveyBanner from '@/components/SurveyBanner'
+import AnnouncementModal, { PendingAnnouncement } from '@/components/AnnouncementModal'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useViewCurrency } from '@/context/ViewCurrencyContext'
+import ViewCurrencySwitcher from '@/components/ViewCurrencySwitcher'
 import { useSession } from 'next-auth/react'
 import { isPremium } from '@/lib/tier'
 import { useLanguage } from '@/context/LanguageContext'
-import { TranslationKey } from '@/lib/translations'
-import Link from 'next/link'
 import type { Budget } from '@/hooks/useBudgets'
-import type { Goal } from '@/hooks/useGoals'
-import { useTransactions } from '@/hooks/useTransactions'
+import { useResource } from '@/hooks/useFetch'
+import { useAccounts } from '@/hooks/useAccounts'
 import { useToast } from '@/components/ui/Toast'
 import TransactionForm from '../transactions/TransactionForm'
-import dynamic from 'next/dynamic'
-import type { CategoryTrendData } from '@/components/charts/CategoryTrendChart'
-
-const IncomeExpenseChart = dynamic(() => import('@/components/charts/IncomeExpenseChart'), { ssr: false })
-const CategoryTrendChart  = dynamic(() => import('@/components/charts/CategoryTrendChart'),  { ssr: false })
-
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-// Category bar color palette — sage-adjacent, works dark + light
-const CAT_COLORS = [
-  '#166534', '#16A34A', '#4ADE80', '#84CC16',
-  '#D97706', '#B45309', '#2563EB', '#7C3AED',
-]
+import { onTransactionSaved } from '@/lib/transactionEvents'
+import TotalMoneyCard from '@/components/dashboard/TotalMoneyCard'
+import CutoffCard, { type CutoffData } from '@/components/dashboard/CutoffCard'
+import NeedsTodayRow, { type InsightItem } from '@/components/dashboard/NeedsTodayRow'
+import LastThreeMonthsBand, { type RangeMonth, type CategoryMover } from '@/components/dashboard/LastThreeMonthsBand'
+import RecentActivityCard from '@/components/dashboard/RecentActivityCard'
 
 interface Summary {
   totalIncome: number
@@ -41,149 +33,6 @@ interface Summary {
   netSavings: number
   savingsRate: number
   categoryBreakdown: { category: string; total: number; percentage: number }[]
-}
-
-// ── Pera Health Score ring ───────────────────────────────────────────────────
-function HealthRing({
-  score,
-  label,
-  statusKey,
-}: {
-  score: number
-  label: string
-  statusKey: string
-}) {
-  const r = 50
-  const circ = 2 * Math.PI * r
-  const offset = circ - (Math.min(score, 100) / 100) * circ
-
-  const [animated, setAnimated] = useState(false)
-  useEffect(() => {
-    const t = requestAnimationFrame(() => setAnimated(true))
-    return () => cancelAnimationFrame(t)
-  }, [score])
-
-  const ringColor =
-    score >= 70 ? 'var(--color-income)' :
-    score >= 45 ? 'var(--color-warning)' :
-    'var(--color-expense)'
-
-  const statusBg =
-    score >= 70 ? 'var(--color-income-bg)' :
-    score >= 45 ? 'var(--color-warning-bg)' :
-    'var(--color-expense-bg)'
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-      <div style={{ position: 'relative', width: 148, height: 148 }}>
-        <svg
-          viewBox="0 0 120 120"
-          style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}
-        >
-          <circle cx="60" cy="60" r={r} fill="none" stroke="var(--color-elevated)" strokeWidth="9" />
-          <circle
-            cx="60" cy="60" r={r} fill="none"
-            stroke={ringColor} strokeWidth="9"
-            strokeLinecap="round"
-            strokeDasharray={`${circ}`}
-            strokeDashoffset={animated ? `${offset}` : `${circ}`}
-            style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)' }}
-          />
-        </svg>
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span style={{
-            fontSize: '1.9rem', fontWeight: '800',
-            color: ringColor, lineHeight: 1,
-            fontVariantNumeric: 'tabular-nums',
-          }}>
-            {score}
-          </span>
-          <span style={{
-            fontSize: '0.55rem', color: 'var(--color-text-muted)',
-            textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 3,
-          }}>
-            {label}
-          </span>
-        </div>
-      </div>
-      <span style={{
-        fontSize: '0.75rem', fontWeight: '600',
-        padding: '3px 12px', borderRadius: 999,
-        backgroundColor: statusBg,
-        color: ringColor,
-        letterSpacing: '0.02em',
-      }}>
-        {statusKey}
-      </span>
-    </div>
-  )
-}
-
-// ── Individual stat card ─────────────────────────────────────────────────────
-function StatCard({
-  label, value, icon: Icon, type, loading,
-}: {
-  label: string
-  value: string
-  icon: React.ElementType
-  type: 'income' | 'expense' | 'savings' | 'rate'
-  loading: boolean
-}) {
-  const accent =
-    type === 'income'  ? 'var(--color-income)'   :
-    type === 'expense' ? 'var(--color-expense)'  :
-    type === 'savings' ? 'var(--color-savings)'  :
-    'var(--color-accent)'
-
-  const bg =
-    type === 'income'  ? 'var(--color-income-bg)'  :
-    type === 'expense' ? 'var(--color-expense-bg)' :
-    type === 'savings' ? 'var(--color-savings-bg)' :
-    'var(--color-sage)'
-
-  return (
-    <div style={{
-      backgroundColor: 'var(--color-card)',
-      borderRadius: 14,
-      border: '1px solid var(--color-border)',
-      borderLeft: `3px solid ${accent}`,
-      padding: '18px 20px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{
-          fontSize: '0.68rem', textTransform: 'uppercase',
-          letterSpacing: '0.07em', color: 'var(--color-text-muted)',
-          fontWeight: 600,
-        }}>
-          {label}
-        </p>
-        <div style={{
-          background: bg, borderRadius: 9,
-          padding: '6px', display: 'flex', alignItems: 'center',
-        }}>
-          <Icon style={{ width: 14, height: 14, color: accent }} />
-        </div>
-      </div>
-      {loading
-        ? <Skeleton className="h-8 w-28" />
-        : <p style={{
-            fontSize: '1.55rem', fontWeight: '800',
-            color: 'var(--color-text-primary)',
-            fontVariantNumeric: 'tabular-nums',
-            lineHeight: 1,
-          }}>
-            {value}
-          </p>
-      }
-    </div>
-  )
 }
 
 // ── Budget progress bar ──────────────────────────────────────────────────────
@@ -210,7 +59,10 @@ function BudgetBar({ budget, formatAmount }: { budget: Budget; formatAmount: (v:
               backgroundColor: budget.color, flexShrink: 0,
             }} />
           )}
-          <span style={{ fontSize: '0.83rem', fontWeight: '500', color: 'var(--color-text-primary)' }}>
+          <span style={{
+            fontSize: '0.83rem', fontWeight: '500', color: 'var(--color-text-primary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '14ch',
+          }}>
             {budget.category}
           </span>
         </div>
@@ -247,166 +99,14 @@ function BudgetBar({ budget, formatAmount }: { budget: Budget; formatAmount: (v:
   )
 }
 
-// ── Category horizontal bar ──────────────────────────────────────────────────
-function CategoryBar({
-  cat, color, formatAmount,
-}: {
-  cat: { category: string; total: number; percentage: number }
-  color: string
-  formatAmount: (v: number) => string
-}) {
-  const [animated, setAnimated] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setAnimated(true), 100)
-    return () => clearTimeout(t)
-  }, [])
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color, flexShrink: 0 }} />
-          <span style={{ fontSize: '0.82rem', fontWeight: '500', color: 'var(--color-text-primary)' }}>
-            {cat.category}
-          </span>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
-            {formatAmount(cat.total)}
-          </span>
-          <span style={{ fontSize: '0.7rem', fontWeight: '600', color, minWidth: 32, textAlign: 'right' }}>
-            {cat.percentage}%
-          </span>
-        </div>
-      </div>
-      <div style={{
-        height: 4, borderRadius: 999,
-        backgroundColor: 'var(--color-elevated)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          height: '100%', borderRadius: 999,
-          backgroundColor: color,
-          opacity: 0.85,
-          width: animated ? `${cat.percentage}%` : '0%',
-          transition: 'width 1s cubic-bezier(0.4,0,0.2,1)',
-        }} />
-      </div>
-    </div>
-  )
-}
-
-// ── Goal progress row ────────────────────────────────────────────────────────
-function GoalBar({
-  goal,
-  formatAmount,
-  t,
-}: {
-  goal: Goal
-  formatAmount: (v: number) => string
-  t: (k: TranslationKey) => string
-}) {
-  const pct       = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0
-  const isComplete = goal.status === 'completed' || pct >= 100
-  const isPaused   = goal.status === 'paused'
-
-  const [animated, setAnimated] = useState(false)
-  useEffect(() => {
-    const id = setTimeout(() => setAnimated(true), 100)
-    return () => clearTimeout(id)
-  }, [])
-
-  const daysLeft = goal.deadline
-    ? Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86_400_000)
-    : null
-
-  const priorityColor =
-    goal.priority === 'high'   ? 'var(--color-expense)'  :
-    goal.priority === 'medium' ? 'var(--color-warning)'  :
-    'var(--color-income)'
-
-  const barColor = isComplete ? 'var(--color-income)' : isPaused ? 'var(--color-text-muted)' : priorityColor
-
-  const deadlineStyle = daysLeft === null || isComplete ? null :
-    daysLeft <  0 ? { bg: 'var(--color-expense-bg)',  fg: 'var(--color-expense)'  } :
-    daysLeft < 30 ? { bg: 'var(--color-warning-bg)',  fg: 'var(--color-warning)'  } :
-                    { bg: 'var(--color-pale)',         fg: 'var(--color-text-muted)' }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        {/* Left: dot + title + status badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-          <div style={{
-            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-            backgroundColor: priorityColor,
-          }} />
-          <span style={{
-            fontSize: '0.83rem', fontWeight: 600,
-            color: 'var(--color-text-primary)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {goal.title}
-          </span>
-          {isComplete && (
-            <span style={{
-              fontSize: '0.63rem', fontWeight: 700, padding: '1px 7px', borderRadius: 999, flexShrink: 0,
-              backgroundColor: 'var(--color-income-bg)', color: 'var(--color-income)',
-            }}>
-              {t('goal.completed')}
-            </span>
-          )}
-          {isPaused && !isComplete && (
-            <span style={{
-              fontSize: '0.63rem', fontWeight: 700, padding: '1px 7px', borderRadius: 999, flexShrink: 0,
-              backgroundColor: 'var(--color-elevated)', color: 'var(--color-text-muted)',
-            }}>
-              {t('dashboard.goalPaused')}
-            </span>
-          )}
-        </div>
-
-        {/* Right: amounts + pct + deadline */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-            {formatAmount(goal.savedAmount)}{' '}
-            <span style={{ color: 'var(--color-text-muted)', opacity: 0.5 }}>/</span>{' '}
-            {formatAmount(goal.targetAmount)}
-          </span>
-          <span style={{
-            fontSize: '0.65rem', fontWeight: 700, padding: '1px 7px', borderRadius: 999,
-            backgroundColor: isComplete ? 'var(--color-income-bg)' : 'var(--color-elevated)',
-            color: isComplete ? 'var(--color-income)' : 'var(--color-text-secondary)',
-          }}>
-            {Math.round(pct)}%
-          </span>
-          {deadlineStyle && daysLeft !== null && (
-            <span style={{
-              fontSize: '0.63rem', fontWeight: 700, padding: '1px 7px', borderRadius: 999,
-              backgroundColor: deadlineStyle.bg, color: deadlineStyle.fg,
-            }}>
-              {daysLeft < 0 ? t('dashboard.overdue') : `${daysLeft}d`}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div style={{ height: 5, borderRadius: 999, backgroundColor: 'var(--color-elevated)', overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', borderRadius: 999,
-          backgroundColor: barColor,
-          width: animated ? `${pct}%` : '0%',
-          transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)',
-        }} />
-      </div>
-    </div>
-  )
-}
+const NO_BUDGETS: Budget[] = []
 
 // ── Main dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { formatAmount } = useCurrency()
+  // Everything below the Total Money card - cutoff, monthly totals, budgets, the
+  // 3-month band - is in the view currency (always the primary for single-currency users).
+  const { currency: primary } = useCurrency()
+  const { viewCurrency, formatView: formatAmount } = useViewCurrency()
   const { t } = useLanguage()
   const { toast } = useToast()
   const now = new Date()
@@ -416,14 +116,49 @@ export default function DashboardPage() {
   const [addTxOpen,       setAddTxOpen]       = useState(false)
   const [selectedYear,    setSelectedYear]    = useState(String(currentYear))
   const [selectedMonth,   setSelectedMonth]   = useState(String(currentMonth))
-  const [allMonths,       setAllMonths]       = useState<{ month: string; income: number; expenses: number; savings: number }[]>([])
-  const [analyticsSummary, setAnalyticsSummary] = useState<Summary | null>(null)
-  const [analyticsLoading, setAnalyticsLoading] = useState(true)
-  const [yearlyLoading,    setYearlyLoading]    = useState(true)
-  const [budgets,          setBudgets]          = useState<Budget[]>([])
-  const [budgetsLoading,   setBudgetsLoading]   = useState(true)
-  const [goals,            setGoals]            = useState<Goal[]>([])
-  const [goalsLoading,     setGoalsLoading]     = useState(true)
+  const { accounts } = useAccounts()
+
+  // ── Dashboard v2: cutoff card, "needs you today", last-3-months band ─────
+  const [cutoffData,    setCutoffData]    = useState<CutoffData | null>(null)
+  const [cutoffLoading, setCutoffLoading] = useState(true)
+  const [insights,        setInsights]        = useState<InsightItem[]>([])
+  const [insightsLoading, setInsightsLoading] = useState(true)
+  const [rangeMonths,    setRangeMonths]    = useState<RangeMonth[]>([])
+  const [rangeMovers,    setRangeMovers]    = useState<CategoryMover[]>([])
+  const [rangeLoading,   setRangeLoading]   = useState(true)
+
+  // The insights feed covers every currency, so it loads once
+  useEffect(() => {
+    fetch('/api/insights/today')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setInsights(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setInsightsLoading(false))
+  }, [])
+
+  // Re-fetched when the view currency changes; a stale response is dropped
+  useEffect(() => {
+    let cancelled = false
+    const q = `currency=${viewCurrency}`
+
+    fetch(`/api/summary/cutoff?${q}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled) setCutoffData(data) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCutoffLoading(false) })
+
+    fetch(`/api/summary/range?${q}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return
+        setRangeMonths(data?.months ?? [])
+        setRangeMovers(data?.movers ?? [])
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setRangeLoading(false) })
+
+    return () => { cancelled = true }
+  }, [viewCurrency])
 
   const { data: session } = useSession()
   const userIsPremium = session?.user ? isPremium(session.user as { tier: string; premiumOverride: boolean }) : false
@@ -450,11 +185,6 @@ export default function DashboardPage() {
     }
   }
 
-  const [categoryTrendData, setCategoryTrendData] = useState<{ months: string[]; categories: CategoryTrendData[]; restricted: boolean } | null>(null)
-  const [categoryTrendLoading, setCategoryTrendLoading] = useState(true)
-
-  const { refetch } = useTransactions({ limit: 1 })
-
   const MONTHS = useMemo(() => [
     { value: '1',  label: t('common.january')   },
     { value: '2',  label: t('common.february')  },
@@ -471,84 +201,59 @@ export default function DashboardPage() {
   ], [t])
 
   const years = useMemo(
-    () => Array.from({ length: 5 }, (_, i) => {
+    () => Array.from({ length: userIsPremium ? 5 : 3 }, (_, i) => {
       const y = currentYear - i
       return { value: String(y), label: String(y) }
     }),
-    [currentYear],
+    [currentYear, userIsPremium],
   )
 
-  const loadYearlyTrend = useCallback(async () => {
-    setYearlyLoading(true)
-    const year = parseInt(selectedYear)
-    const results = []
-    for (let m = 1; m <= 12; m++) {
-      try {
-        const res = await fetch(`/api/summary?month=${m}&year=${year}`)
-        const d   = await res.json()
-        results.push({ month: MONTH_LABELS[m - 1], income: d.totalIncome, expenses: d.totalExpenses, savings: d.totalSavings ?? 0 })
-      } catch {
-        results.push({ month: MONTH_LABELS[m - 1], income: 0, expenses: 0, savings: 0 })
-      }
-    }
-    setAllMonths(results)
-    setYearlyLoading(false)
-  }, [selectedYear])
+  // Failures are non-fatal here - the cards just render their empty state
+  const fetchAnalyticsSummary = useCallback(async () => {
+    const res = await fetch(`/api/summary?month=${selectedMonth}&year=${selectedYear}&currency=${viewCurrency}`)
+    return res.ok ? (res.json() as Promise<Summary>) : null
+  }, [selectedMonth, selectedYear, viewCurrency])
 
-  const loadCategoryTrend = useCallback(async () => {
-    setCategoryTrendLoading(true)
-    try {
-      const res  = await fetch(`/api/summary/categories-by-month?year=${selectedYear}`)
-      const data = await res.json()
-      setCategoryTrendData(data)
-    } catch { /* ignore */ }
-    finally  { setCategoryTrendLoading(false) }
-  }, [selectedYear])
-
-  const loadAnalyticsSummary = useCallback(async () => {
-    setAnalyticsLoading(true)
-    try {
-      const res  = await fetch(`/api/summary?month=${selectedMonth}&year=${selectedYear}`)
-      const data = await res.json()
-      setAnalyticsSummary(data)
-    } catch { /* ignore */ }
-    finally  { setAnalyticsLoading(false) }
+  const fetchBudgets = useCallback(async () => {
+    const res = await fetch(`/api/budgets?month=${selectedMonth}&year=${selectedYear}`)
+    const data: unknown = res.ok ? await res.json() : []
+    return (Array.isArray(data) ? data : []) as Budget[]
   }, [selectedMonth, selectedYear])
 
-  const loadBudgets = useCallback(async () => {
-    setBudgetsLoading(true)
-    try {
-      const res  = await fetch(`/api/budgets?month=${selectedMonth}&year=${selectedYear}`)
-      const data = await res.json()
-      setBudgets(Array.isArray(data) ? data : [])
-    } catch { /* ignore */ }
-    finally  { setBudgetsLoading(false) }
-  }, [selectedMonth, selectedYear])
+  const { data: analyticsSummary = null, refetch: loadAnalyticsSummary } = useResource(fetchAnalyticsSummary)
+  const { data: allBudgets = NO_BUDGETS, loading: budgetsLoading, refetch: loadBudgets } = useResource(fetchBudgets)
+  const budgets = useMemo(
+    () => allBudgets.filter((b) => (b.currency ?? primary) === viewCurrency),
+    [allBudgets, primary, viewCurrency],
+  )
 
-  const loadGoals = useCallback(async () => {
-    setGoalsLoading(true)
-    try {
-      const res  = await fetch('/api/goals')
-      const data = await res.json()
-      // Sort: active first, then paused, then completed
-      const sorted = (Array.isArray(data) ? data : []).sort((a: Goal, b: Goal) => {
-        const order = { active: 0, paused: 1, completed: 2 }
-        return (order[a.status] ?? 0) - (order[b.status] ?? 0)
+  // Load pending feature announcements - at most once per browser session, guarded by a
+  // per-user sessionStorage flag. The flag is a presentation-layer guard only; the
+  // announcementViews collection is the source of truth for what's actually been seen,
+  // so clearing sessionStorage re-checks but never resurfaces an already-dismissed card.
+  const [pendingAnnouncements, setPendingAnnouncements] = useState<PendingAnnouncement[]>([])
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    const checkedKey = `waiseka_announcements_checked_${session.user.id}`
+    if (sessionStorage.getItem(checkedKey)) return
+    sessionStorage.setItem(checkedKey, '1')
+
+    fetch('/api/announcements/pending')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.announcements?.length) {
+          setPendingAnnouncements(data.announcements)
+          setAnnouncementModalOpen(true)
+        }
       })
-      setGoals(sorted)
-    } catch { /* ignore */ }
-    finally  { setGoalsLoading(false) }
-  }, [])
-
-  useEffect(() => { loadYearlyTrend() },      [loadYearlyTrend])
-  useEffect(() => { loadCategoryTrend() },    [loadCategoryTrend])
-  useEffect(() => { loadAnalyticsSummary() }, [loadAnalyticsSummary])
-  useEffect(() => { loadBudgets() },          [loadBudgets])
-  useEffect(() => { loadGoals() },            [loadGoals])
+      .catch(() => { /* non-critical */ })
+  }, [session?.user?.id])
 
   // Compute Pera Health Score 0-100
-  const { score, statusLabel, tipKey } = useMemo(() => {
-    if (!analyticsSummary) return { score: 0, statusLabel: t('dashboard.healthy'), tipKey: 'dashboard.healthyTip' as const }
+  const { score, statusLabel } = useMemo(() => {
+    if (!analyticsSummary) return { score: 0, statusLabel: t('dashboard.healthy') }
     const { savingsRate, netSavings } = analyticsSummary
     let s = 0
     if      (savingsRate >= 20) s += 60
@@ -574,57 +279,38 @@ export default function DashboardPage() {
       s >= 20 ? t('dashboard.needsAttention') :
       t('dashboard.alert')
 
-    const tk =
-      s >= 70 ? 'dashboard.healthyTip'     as const :
-      s >= 45 ? 'dashboard.acceptableTip'  as const :
-      s >= 20 ? 'dashboard.attentionTip'   as const :
-      'dashboard.alertTip' as const
-
-    return { score: Math.min(s, 100), statusLabel: sl, tipKey: tk }
+    return { score: Math.min(s, 100), statusLabel: sl }
   }, [analyticsSummary, budgets, t])
 
   const selectedMonthLabel = MONTHS.find(m => m.value === selectedMonth)?.label ?? ''
-  const topCategory        = analyticsSummary?.categoryBreakdown?.[0]
+
+  // Shared by the "Total Money" card
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+  const moneyByCurrency = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const a of activeAccounts) {
+      if (a.type === 'credit' || !a.includeInTotal) continue
+      map.set(a.currency, (map.get(a.currency) ?? 0) + (a.computedBalance ?? a.openingBalance))
+    }
+    return map
+  }, [activeAccounts])
+
+  const budgetsNeedingAttention = useMemo(
+    () => budgets.filter((b) => b.limit > 0 && b.spent / b.limit >= 0.9).length,
+    [budgets],
+  )
 
   const onTransactionSuccess = useCallback(() => {
     setAddTxOpen(false)
-    refetch()
     loadAnalyticsSummary()
     loadBudgets()
-  }, [refetch, loadAnalyticsSummary, loadBudgets])
+  }, [loadAnalyticsSummary, loadBudgets])
 
-  // For free-tier users: show only current month + last 2 months (3 total).
-  // For premium users: show the full year.
-  const chartMonths = useMemo(() => {
-    if (userIsPremium) return allMonths
-    // lastMonthIndex is 0-based index into the 12-month array
-    const lastMonthIndex =
-      parseInt(selectedYear) === currentYear
-        ? currentMonth - 1   // currentMonth is 1-based, so -1 for 0-based index
-        : 11
-    const start = Math.max(0, lastMonthIndex - 2)
-    return allMonths.slice(start, lastMonthIndex + 1)
-  }, [allMonths, userIsPremium, selectedYear, currentYear, currentMonth])
-
-  const visibleCategoryTrendData = useMemo(() => {
-    if (!categoryTrendData) return null
-    if (userIsPremium) return categoryTrendData
-    const lastMonthIndex =
-      parseInt(selectedYear) === currentYear
-        ? currentMonth - 1
-        : 11
-    const start = Math.max(0, lastMonthIndex - 2)
-    return {
-      ...categoryTrendData,
-      months: categoryTrendData.months.slice(start, lastMonthIndex + 1),
-      categories: categoryTrendData.categories.map(cat => ({
-        ...cat,
-        data: cat.data.slice(start, lastMonthIndex + 1),
-      })),
-    }
-  }, [categoryTrendData, userIsPremium, selectedYear, currentYear, currentMonth])
-
-  const hasYearlyData = allMonths.some(d => d.income > 0 || d.expenses > 0)
+  // Refresh dashboard data when the mobile quick-add sheet saves a transaction
+  useEffect(() => onTransactionSaved(() => {
+    loadAnalyticsSummary()
+    loadBudgets()
+  }), [loadAnalyticsSummary, loadBudgets])
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -639,20 +325,21 @@ export default function DashboardPage() {
             {t('dashboard.title')}
           </h1>
         </div>
-        <Button onClick={() => setAddTxOpen(true)} size="sm">
-          <Plus className="h-4 w-4 sm:mr-1.5" />
-          <span className="hidden sm:inline">{t('dashboard.addTransaction')}</span>
+        <Button onClick={() => setAddTxOpen(true)} size="sm" className="hidden sm:inline-flex sm:h-8 sm:px-3 sm:text-xs">
+          <Plus className="h-4 w-4 mr-1.5" />
+          <span>{t('dashboard.addTransaction')}</span>
         </Button>
       </div>
 
       {/* ── Period selector ─────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ width: 160 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 130, flex: '1 1 130px', maxWidth: 180 }}>
           <Select value={selectedMonth} onValueChange={setSelectedMonth} options={MONTHS} />
         </div>
-        <div style={{ width: 100 }}>
+        <div style={{ minWidth: 90, flex: '0 0 auto' }}>
           <Select value={selectedYear} onValueChange={setSelectedYear} options={years} />
         </div>
+        <ViewCurrencySwitcher />
       </div>
 
       {/* ── Email verification banner ──────────────────────────────────── */}
@@ -693,229 +380,37 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Hero: health ring + 4 stat cards ──────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'auto 1fr',
-        gap: 16,
-        alignItems: 'stretch',
-      }} className="flex-col sm:grid">
-        {/* Health ring card */}
-        <div style={{
-          backgroundColor: 'var(--color-card)',
-          borderRadius: 16,
-          border: '1px solid var(--color-border)',
-          padding: '28px 32px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 4,
-          minWidth: 200,
-        }}>
-          <p style={{
-            fontSize: '0.7rem', textTransform: 'uppercase',
-            letterSpacing: '0.08em', color: 'var(--color-text-muted)',
-            fontWeight: 600, marginBottom: 8,
-          }}>
-            {t('dashboard.healthTitle')}
-          </p>
-          {analyticsLoading
-            ? <Skeleton className="h-36 w-36 rounded-full" />
-            : <HealthRing score={score} label={t('dashboard.healthScore')} statusKey={statusLabel} />
-          }
-        </div>
+      {/* ── Feature announcement modal ───────────────────────────────── */}
+      <AnnouncementModal
+        open={announcementModalOpen}
+        announcements={pendingAnnouncements}
+        onClose={() => setAnnouncementModalOpen(false)}
+      />
 
-        {/* 2×2 stat grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <StatCard
-            label={t('dashboard.totalIncome')}
-            value={analyticsLoading ? '—' : formatAmount(analyticsSummary?.totalIncome ?? 0)}
-            icon={TrendingUp}
-            type="income"
-            loading={analyticsLoading}
-          />
-          <StatCard
-            label={t('dashboard.totalExpenses')}
-            value={analyticsLoading ? '—' : formatAmount(analyticsSummary?.totalExpenses ?? 0)}
-            icon={TrendingDown}
-            type="expense"
-            loading={analyticsLoading}
-          />
-          <StatCard
-            label={t('dashboard.totalSavings')}
-            value={analyticsLoading ? '—' : formatAmount(analyticsSummary?.totalSavings ?? 0)}
-            icon={PiggyBank}
-            type="savings"
-            loading={analyticsLoading}
-          />
-          <StatCard
-            label={t('dashboard.savingsRate')}
-            value={analyticsLoading ? '—' : `${analyticsSummary?.savingsRate ?? 0}%`}
-            icon={Percent}
-            type="rate"
-            loading={analyticsLoading}
-          />
-        </div>
-      </div>
-
-      {/* ── Insight banner ─────────────────────────────────────────────── */}
-      {!analyticsLoading && topCategory && (
-        <div style={{
-          borderRadius: 12,
-          backgroundColor: 'var(--color-sage)',
-          border: '1px solid var(--color-border)',
-          borderLeft: '4px solid var(--color-accent)',
-          padding: '12px 16px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 10,
-        }}>
-          <Lightbulb style={{ width: 16, height: 16, color: 'var(--color-accent)', flexShrink: 0, marginTop: 1 }} />
-          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
-            {t('dashboard.youSpent')}{' '}
-            <strong style={{ color: 'var(--color-accent)' }}>{topCategory.percentage}%</strong>{' '}
-            {t('dashboard.on')}{' '}
-            <strong>{topCategory.category}</strong>{' '}
-            {t('dashboard.thisPeriod')}
-            {(analyticsSummary?.savingsRate ?? 0) > 0 && (
-              <> — {t('dashboard.saving')}{' '}
-                <strong style={{ color: 'var(--color-income)' }}>{analyticsSummary!.savingsRate}%</strong>{' '}
-                {t('dashboard.ofYourIncome')}
-              </>
-            )}.{' '}
-            <span style={{ color: 'var(--color-text-secondary)' }}>{t(tipKey)}</span>
-          </p>
-        </div>
+      {/* ── Survey banner ───────────────────────────────────────────── */}
+      {session?.user?.id && session?.user?.createdAt && (
+        <SurveyBanner userId={session.user.id} accountCreatedAt={session.user.createdAt} />
       )}
 
-      {/* ── Charts: side-by-side (free) or stacked (premium) ──────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: userIsPremium ? '1fr' : '1fr 1fr',
-        gap: 16,
-      }}>
-
-      {/* ── Yearly chart ───────────────────────────────────────────────── */}
-      <div style={{
-        backgroundColor: 'var(--color-card)',
-        borderRadius: 16,
-        border: '1px solid var(--color-border)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          padding: '16px 24px',
-          borderBottom: '1px solid var(--color-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}>
-          <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-            {t('dashboard.incomeVsExpenses')} | {' '}
-            {userIsPremium
-              ? selectedYear
-              : chartMonths.length > 0
-                ? `${chartMonths[0].month} – ${chartMonths[chartMonths.length - 1].month} ${selectedYear}`
-                : selectedYear}
-          </h2>
-          {!userIsPremium && (
-            <Link
-              href="/premium"
-              style={{
-                fontSize: '0.72rem', fontWeight: 600,
-                padding: '3px 10px', borderRadius: 999,
-                backgroundColor: 'var(--color-sage)',
-                color: 'var(--color-accent)',
-                border: '1px solid var(--color-accent)',
-                textDecoration: 'none', flexShrink: 0,
-              }}
-            >
-              Upgrade for full year ↗
-            </Link>
-          )}
-        </div>
-        <div style={{ padding: '16px 24px' }}>
-          {yearlyLoading ? (
-            <Skeleton className="h-64 w-full" />
-          ) : !hasYearlyData ? (
-            <div style={{
-              height: 128, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--color-text-muted)', fontSize: '0.85rem',
-            }}>
-              {t('dashboard.noData')} {selectedYear}
-            </div>
-          ) : (
-            <IncomeExpenseChart data={chartMonths} />
-          )}
-        </div>
+      {/* ── Total Money + Cutoff row ──────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: 18 }} className="max-lg:!grid-cols-1">
+        <TotalMoneyCard
+          moneyByCurrency={moneyByCurrency}
+          accountCount={activeAccounts.filter((a) => a.includeInTotal && a.type !== 'credit').length}
+          healthScore={score}
+          healthStatusLabel={statusLabel}
+          accounts={activeAccounts}
+        />
+        <CutoffCard data={cutoffData} loading={cutoffLoading} formatAmount={formatAmount} />
       </div>
 
+      {/* ── Needs you today ──────────────────────────────────────────── */}
+      <NeedsTodayRow items={insights} loading={insightsLoading} />
 
-      {/* Category Spending by Month chart */}
-      <div style={{
-        backgroundColor: 'var(--color-card)',
-        borderRadius: 16,
-        border: '1px solid var(--color-border)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          padding: '16px 24px',
-          borderBottom: '1px solid var(--color-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}>
-          <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-            {t('dashboard.categoryBreakdown')} | {' '}
-            {userIsPremium
-              ? selectedYear
-              : visibleCategoryTrendData && visibleCategoryTrendData.months.length > 0
-                ? `${visibleCategoryTrendData.months[0]} – ${visibleCategoryTrendData.months[visibleCategoryTrendData.months.length - 1]} ${selectedYear}`
-                : selectedYear}
-          </h2>
-          {!userIsPremium && (
-            <Link
-              href="/premium"
-              style={{
-                fontSize: '0.72rem', fontWeight: 600,
-                padding: '3px 10px', borderRadius: 999,
-                backgroundColor: 'var(--color-sage)',
-                color: 'var(--color-accent)',
-                border: '1px solid var(--color-accent)',
-                textDecoration: 'none', flexShrink: 0,
-              }}
-            >
-              Upgrade for full year ↗
-            </Link>
-          )}
-        </div>
-        <div style={{ padding: '16px 24px' }}>
-          {categoryTrendLoading ? (
-            <Skeleton className="h-56 w-full" />
-          ) : !visibleCategoryTrendData || visibleCategoryTrendData.categories.length === 0 ? (
-            <div style={{
-              height: 128, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--color-text-muted)', fontSize: '0.85rem',
-            }}>
-              No expense data for {selectedYear}
-            </div>
-          ) : (
-            <CategoryTrendChart
-              months={visibleCategoryTrendData.months}
-              categories={visibleCategoryTrendData.categories}
-            />
-          )}
-        </div>
-      </div>
+      {/* ── Recent activity + Budgets ───────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }} className="max-lg:!grid-cols-1">
+        <RecentActivityCard />
 
-      </div>{/* end charts grid */}
-
-      {/* ── Budget health + Category breakdown ─────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="grid-cols-1 lg:grid-cols-2">
-
-        {/* Budget health */}
         <div style={{
           backgroundColor: 'var(--color-card)',
           borderRadius: 16,
@@ -923,14 +418,23 @@ export default function DashboardPage() {
           overflow: 'hidden',
         }}>
           <div style={{
-            padding: '16px 24px',
+            padding: '14px 20px',
             borderBottom: '1px solid var(--color-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
-            <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
+            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
               {t('dashboard.budgetOverview')}
-            </h2>
+            </p>
+            {budgetsNeedingAttention > 0 && (
+              <span style={{
+                fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: 999,
+                backgroundColor: 'var(--color-expense-bg)', color: 'var(--color-expense)',
+              }}>
+                {budgetsNeedingAttention} need attention
+              </span>
+            )}
           </div>
-          <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {budgetsLoading ? (
               <>{[0, 1, 2].map(i => <Skeleton key={i} className="h-8 w-full" />)}</>
             ) : budgets.length === 0 ? (
@@ -944,114 +448,13 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        {/* Category breakdown */}
-        <div style={{
-          backgroundColor: 'var(--color-card)',
-          borderRadius: 16,
-          border: '1px solid var(--color-border)',
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            padding: '16px 24px',
-            borderBottom: '1px solid var(--color-border)',
-          }}>
-            <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-              {t('dashboard.categoryBreakdown')}
-            </h2>
-          </div>
-          <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {analyticsLoading ? (
-              <>{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-7 w-full" />)}</>
-            ) : !analyticsSummary || analyticsSummary.categoryBreakdown.length === 0 ? (
-              <p style={{ fontSize: '0.83rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '16px 0' }}>
-                {t('dashboard.noTransactionData')}
-              </p>
-            ) : (
-              analyticsSummary.categoryBreakdown.slice(0, 7).map((c, i) => (
-                <CategoryBar
-                  key={c.category}
-                  cat={c}
-                  color={CAT_COLORS[i % CAT_COLORS.length]}
-                  formatAmount={formatAmount}
-                />
-              ))
-            )}
-          </div>
-        </div>
       </div>
 
-      {/* ── Goals overview ─────────────────────────────────────────────── */}
-      <div style={{
-        backgroundColor: 'var(--color-card)',
-        borderRadius: 16,
-        border: '1px solid var(--color-border)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          padding: '16px 24px',
-          borderBottom: '1px solid var(--color-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <h2 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-            {t('dashboard.goalsOverview')}
-          </h2>
-          <Link
-            href="/goals"
-            style={{
-              fontSize: '0.78rem', fontWeight: 600,
-              color: 'var(--color-accent)', textDecoration: 'none',
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >
-            {t('dashboard.viewAll')} →
-          </Link>
-        </div>
-
-        <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {goalsLoading ? (
-            <>{[0, 1, 2].map(i => <Skeleton key={i} className="h-8 w-full" />)}</>
-          ) : goals.length === 0 ? (
-            <div style={{
-              textAlign: 'center', padding: '24px 0',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-            }}>
-              <p style={{ fontSize: '0.83rem', color: 'var(--color-text-muted)' }}>
-                {t('goal.noGoals')}
-              </p>
-              <Link
-                href="/goals"
-                style={{
-                  fontSize: '0.78rem', fontWeight: 600, padding: '6px 16px',
-                  borderRadius: 8, textDecoration: 'none',
-                  backgroundColor: 'var(--color-sage)',
-                  color: 'var(--color-accent)',
-                  border: '1px solid var(--color-border)',
-                }}
-              >
-                {t('goal.add')} →
-              </Link>
-            </div>
-          ) : (
-            <>
-              {goals.slice(0, 5).map(g => (
-                <GoalBar key={g._id} goal={g} formatAmount={formatAmount} t={t} />
-              ))}
-              {goals.length > 5 && (
-                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', paddingTop: 4 }}>
-                  +{goals.length - 5} more —{' '}
-                  <Link href="/goals" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}>
-                    {t('dashboard.viewAll')}
-                  </Link>
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      {/* ── Last 3 months band ────────────────────────────────────────── */}
+      <LastThreeMonthsBand months={rangeMonths} movers={rangeMovers} loading={rangeLoading} formatAmount={formatAmount} />
 
       {/* ── Add transaction modal ───────────────────────────────────────── */}
-      <Modal open={addTxOpen} onClose={() => setAddTxOpen(false)} title={t('dashboard.addTransaction')}>
+      <Modal open={addTxOpen} onClose={() => setAddTxOpen(false)} title={t('dashboard.addTransaction')} variant="form">
         <TransactionForm
           onSuccess={onTransactionSuccess}
           onCancel={() => setAddTxOpen(false)}

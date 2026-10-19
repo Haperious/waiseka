@@ -1,48 +1,47 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Mic, Square, Loader2, Settings, ExternalLink } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Mic, Square, Settings, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { useVoiceKeywords } from '@/hooks/useVoiceKeywords'
+import { useClientValue } from '@/hooks/useClientValue'
 import { parseSpeechToTransaction, ParsedTransaction } from '@/lib/parseSpeechToTransaction'
 import { useCurrency } from '@/context/CurrencyContext'
 import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import formStyles from '@/components/forms/forms.module.css'
 
 interface MicrophoneButtonProps {
   onFill: (data: Partial<{ type: 'income' | 'expense' | 'savings'; amount: number; category: string; description: string }>) => void
+  /** Currency of the account being filled; defaults to the primary currency. */
+  currency?: string | null
+  /** `prompt`: the "Say it instead" row used at the top of the transaction form. */
+  variant?: 'default' | 'prompt'
 }
 
-type UIState = 'idle' | 'listening' | 'processing' | 'preview' | 'error'
+type UIState = 'idle' | 'listening' | 'preview' | 'error'
 
-export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
+export default function MicrophoneButton({ onFill, currency, variant = 'default' }: MicrophoneButtonProps) {
   const { transcript, isListening, isSupported, error, language, setLanguage, startListening, stopListening, clearTranscript, clearError } =
     useSpeechToText()
-  const { formatAmount } = useCurrency()
-  const { keywords, addKeyword, removeKeyword } = useVoiceKeywords()
+  const { formatAmountIn } = useCurrency()
+  const { keywords } = useVoiceKeywords()
 
-  const [uiState, setUiState] = useState<UIState>('idle')
-  const [parsed, setParsed] = useState<ParsedTransaction | null>(null)
   const [showKeywordManager, setShowKeywordManager] = useState(false)
+  const isIOS = useClientValue(() => /iPad|iPhone|iPod/.test(navigator.userAgent), false)
 
-  // When transcript arrives, parse it
-  useEffect(() => {
-    if (!transcript) return
-    setUiState('processing')
+  // Everything below derives from the recognizer: every reset path clears the transcript.
+  const parsed = useMemo<ParsedTransaction | null>(() => {
+    if (!transcript) return null
     const result = parseSpeechToTransaction(transcript, keywords)
-    if (result.type || result.amount || result.category) {
-      setParsed(result)
-      setUiState('preview')
-    } else {
-      setUiState('error')
-    }
-  }, [transcript]) // eslint-disable-line react-hooks/exhaustive-deps
+    return result.type || result.amount || result.category ? result : null
+  }, [transcript, keywords])
 
-  // Keep uiState in sync with isListening
-  useEffect(() => {
-    if (isListening) setUiState('listening')
-  }, [isListening])
+  const uiState: UIState =
+    isListening ? 'listening'
+    : transcript ? (parsed ? 'preview' : 'error')
+    : 'idle'
 
   if (!isSupported) return null
 
@@ -51,12 +50,9 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
   const handleMicClick = () => {
     if (uiState === 'listening') {
       stopListening()
-      setUiState('idle')
     } else {
       clearTranscript()
       clearError()
-      setParsed(null)
-      setUiState('idle')
       startListening()
     }
   }
@@ -69,16 +65,10 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
       ...(parsed.category && { category: parsed.category }),
       ...(parsed.description && { description: parsed.description }),
     })
-    setParsed(null)
     clearTranscript()
-    setUiState('idle')
   }
 
-  const handleRetry = () => {
-    setParsed(null)
-    clearTranscript()
-    setUiState('idle')
-  }
+  const handleRetry = () => clearTranscript()
 
   const formatSummary = (p: ParsedTransaction) => {
     const parts: string[] = []
@@ -87,28 +77,73 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
       p.type === 'savings' ? (isFil ? 'Ipon' : 'Savings') :
       (isFil ? 'Kita' : 'Income')
     )
-    if (p.amount !== undefined) parts.push(formatAmount(p.amount))
+    if (p.amount !== undefined) parts.push(formatAmountIn(p.amount, currency))
     if (p.category) parts.push(isFil ? `sa ${p.category}` : `on ${p.category}`)
     return parts.join(' ')
   }
 
+  const promptRow = (
+    <div className={formStyles.voiceRow}>
+      <button
+        type="button"
+        onClick={handleMicClick}
+        className={`${formStyles.voiceTile} ${uiState === 'listening' ? formStyles.voiceTileListening : ''}`}
+        title={isFil ? 'Mag-record ng boses' : 'Record voice'}
+        aria-label={uiState === 'listening' ? 'Stop recording' : 'Record voice'}
+      >
+        {uiState === 'listening' && (
+          <span className="absolute inset-0 rounded-lg animate-ping bg-red-400 opacity-40" />
+        )}
+        {uiState === 'listening' ? <Square size={14} /> : <Mic size={16} />}
+      </button>
+      <button type="button" onClick={handleMicClick} className={formStyles.voiceText}>
+        <span className={formStyles.voiceTitle}>
+          {uiState === 'listening' ? (isFil ? 'Nakikinig…' : 'Listening… tap to stop') : isFil ? 'Sabihin na lang' : 'Say it instead'}
+        </span>
+        <span className={formStyles.voiceExample}>&ldquo;Jollibee lunch, 245, GCash&rdquo;</span>
+      </button>
+      {!isIOS && (
+        <button
+          type="button"
+          onClick={() => setLanguage(isFil ? 'en-US' : 'fil-PH')}
+          className={formStyles.voiceAction}
+          title={isFil ? 'Switch to English' : 'Palitan ng Filipino'}
+        >
+          {isFil ? '🇵🇭 FIL' : '🇵🇭 ENG'}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => setShowKeywordManager((v) => !v)}
+        className={formStyles.voiceAction}
+        title={isFil ? 'Pamahalaan ang mga keyword' : 'Manage keywords'}
+        aria-label="Manage voice keywords"
+        aria-pressed={showKeywordManager}
+      >
+        <Settings size={13} />
+      </button>
+    </div>
+  )
+
   return (
     <div className="space-y-2">
-      {/* Mic row */}
+      {variant === 'prompt' ? promptRow : (
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex-1">
           {isFil ? 'Input ng boses' : 'Voice input'}
         </span>
 
-        {/* Language toggle */}
-        <button
-          type="button"
-          onClick={() => setLanguage(isFil ? 'en-PH' : 'fil-PH')}
-          className="text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-          title={isFil ? 'Switch to English' : 'Palitan ng Filipino'}
-        >
-          {isFil ? '🇵🇭 FIL' : 'ENG'}
-        </button>
+        {/* Language toggle - hidden on iOS since fil-PH is unsupported */}
+        {!isIOS && (
+          <button
+            type="button"
+            onClick={() => setLanguage(isFil ? 'en-US' : 'fil-PH')}
+            className="text-xs px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            title={isFil ? 'Switch to English' : 'Palitan ng Filipino'}
+          >
+            {isFil ? '🇵🇭 FIL' : '🇵🇭 ENG'}
+          </button>
+        )}
 
         {/* Microphone button */}
         <div className="relative">
@@ -126,9 +161,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600',
             ].join(' ')}
           >
-            {uiState === 'processing' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : uiState === 'listening' ? (
+            {uiState === 'listening' ? (
               <Square className="h-4 w-4" />
             ) : (
               <Mic className="h-4 w-4" />
@@ -151,6 +184,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
           <Settings className="h-4 w-4" />
         </button>
       </div>
+      )}
 
       {/* Keyword manager link */}
       {showKeywordManager && (
@@ -160,7 +194,7 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
         >
           <span style={{ color: 'var(--color-text-secondary)' }}>Manage voice keywords</span>
           <Link
-            href="/settings/voice-keywords"
+            href="/settings?tab=voice"
             className="flex items-center gap-1 text-xs font-medium"
             style={{ color: 'var(--color-accent)' }}
           >
@@ -178,9 +212,11 @@ export default function MicrophoneButton({ onFill }: MicrophoneButtonProps) {
               : error === 'service-not-allowed'
               ? (isFil ? 'Hindi available ang speech recognition sa Safari. Kailangan ng HTTPS at Speech Recognition sa System/iOS Settings.' : 'Speech recognition unavailable in Safari. Requires HTTPS and Speech Recognition enabled in System/iOS Settings.')
               : error === 'network'
-              ? (isFil ? 'Network error. Suriin ang iyong koneksyon.' : 'Network error — check your internet connection.')
+              ? (isFil ? 'Network error. Suriin ang iyong koneksyon.' : 'Network error - check your internet connection.')
               : error === 'no-speech'
-              ? (isFil ? 'Walang narinig na boses. Subukan ulit.' : 'No speech detected — please try again.')
+              ? (isFil ? 'Walang narinig na boses. Subukan ulit.' : 'No speech detected - please try again.')
+              : error === 'language-not-supported'
+              ? 'Filipino not supported on this device - switched to English. Enable it in iOS Settings → General → Keyboard → Keyboards.'
               : (isFil ? `Error sa speech recognition: ${error}` : `Speech recognition error: ${error}`)}
           </p>
           <button

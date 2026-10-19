@@ -24,13 +24,10 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
-  const initialCurrency = (session?.user?.currency ?? 'USD') as CurrencyCode
+  const initialCurrency = (session?.user?.currency ?? 'PHP') as CurrencyCode
 
   return (
-    <html lang="en" className={`${geist.variable} ${playfair.variable} h-full antialiased dark`} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.classList.remove('light','dark');document.documentElement.classList.add(t);}})();` }} />
-      </head>
+    <html lang="en" className={`${geist.variable} ${playfair.variable} h-full antialiased light`} suppressHydrationWarning>
       <body className="min-h-full" suppressHydrationWarning>
         <ToastProvider>
           <LanguageProvider>

@@ -17,6 +17,12 @@ export default function GlobalError({ error, reset }: { error: Error; reset: () 
           An unexpected error occurred. Please try again.
         </p>
         <Button onClick={reset}>Try Again</Button>
+        <p className="text-gray-400 dark:text-gray-500 text-xs pt-2">
+          Still stuck? Email{' '}
+          <a href="mailto:waise.ka.official@gmail.com" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+            waise.ka.official@gmail.com
+          </a>
+        </p>
       </div>
     </div>
   )

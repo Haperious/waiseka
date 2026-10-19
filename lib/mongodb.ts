@@ -6,17 +6,16 @@ if (!uri) throw new Error('MONGODB_URI is not defined in environment variables')
 const options = {
   serverApi: {
     version: ServerApiVersion.v1,
-    strict: true,
+    strict: false,
     deprecationErrors: true,
   },
-  maxPoolSize: 1,
+  maxPoolSize: 5,
   serverSelectionTimeoutMS: 10000,
   connectTimeoutMS: 10000,
   socketTimeoutMS: 45000,
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var _mongoClient: MongoClient | undefined
 }
 

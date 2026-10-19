@@ -1,0 +1,10 @@
+{
+  "key": "multi-account-balance",
+  "title": "Track all your accounts in one place",
+  "description": "Wallet, bank, credit card, e-wallet - link them all and see your totoong total balance sa isang tingin. Add an account to get started.",
+  "imagePath": "/announcements/multi-account-balance.png",
+  "imageAlt": "Illustration of three stacked account cards with a running balance and a sparkle accent",
+  "ctaLabel": "Try it now",
+  "ctaHref": "/accounts",
+  "targetTier": "all"
+}

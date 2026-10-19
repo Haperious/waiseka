@@ -1,5 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { IUser, IConversationMessage } from '@/lib/models/User'
+import { ANTHROPIC_MODEL } from '@/lib/constants'
+import { getCurrencySymbol, type CurrencyCode } from '@/lib/currency'
+import { primaryCurrencyOf } from '@/lib/services/currencyScope'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -11,9 +14,13 @@ interface RecentSummary {
   activeGoals?: { title: string; targetAmount: number; savedAmount: number }[]
 }
 
-export function buildFinancialProfile(user: IUser, recentSummary: RecentSummary): string {
-  const currency = user.preferences.currency
-  const symbol = user.preferences.currencySymbol
+/**
+ * `currency` overrides the currency the figures are in (default: the user's primary),
+ * e.g. for a goal kept in a non-primary currency.
+ */
+export function buildFinancialProfile(user: IUser, recentSummary: RecentSummary, currency?: CurrencyCode): string {
+  const code = currency ?? primaryCurrencyOf(user)
+  const symbol = getCurrencySymbol(code)
   const income = recentSummary.totalIncome ?? 0
   const expenses = recentSummary.totalExpenses ?? 0
   const savingsRate = recentSummary.savingsRate ?? (income > 0 ? ((income - expenses) / income) * 100 : 0)
@@ -28,7 +35,7 @@ export function buildFinancialProfile(user: IUser, recentSummary: RecentSummary)
     .join('; ')
 
   return [
-    `Currency: ${currency} (${symbol})`,
+    `Currency: ${code} (${symbol})`,
     `Monthly income range: ~${symbol}${income.toFixed(2)}`,
     `Monthly expenses: ~${symbol}${expenses.toFixed(2)}`,
     `Savings rate: ${savingsRate.toFixed(1)}%`,
@@ -58,7 +65,7 @@ export async function callAnthropic({
   maxTokens?: number
 }): Promise<string> {
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: ANTHROPIC_MODEL,
     max_tokens: maxTokens,
     system: systemPrompt,
     messages,

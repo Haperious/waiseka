@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { INotification } from '@/lib/models/Notification'
 
 export async function PATCH() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()

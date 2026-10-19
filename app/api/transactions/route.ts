@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Db, ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { ObjectId } from 'mongodb'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { isPremium } from '@/lib/tier'
-import { FREE_HISTORY_DAYS } from '@/lib/constants'
+import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
-import type { IBudget } from '@/lib/models/Budget'
 import type { IUser } from '@/lib/models/User'
-import { sendSpendingAlertEmail } from '@/lib/email'
+import type { IAccount } from '@/lib/models/Account'
+import { parseTransactionDate } from '@/lib/utils'
+import { checkSpendingAlert } from '@/lib/notifications'
+import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
+import { resolveDefaultAccount } from '@/lib/services/defaultAccount'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
@@ -20,6 +22,9 @@ export async function GET(req: NextRequest) {
   const endDate = searchParams.get('endDate')
   const tags = searchParams.get('tags')
   const search = searchParams.get('search')
+  const accountId = searchParams.get('accountId')
+  // Optional: only the view-currency switcher sends it. Absent = every currency (as before).
+  const currency = searchParams.get('currency')
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '20')
 
@@ -34,45 +39,58 @@ export async function GET(req: NextRequest) {
   if (type) query.type = type
   if (category) query.category = category
 
-  if (!userIsPremium) {
-    const freeWindowStart = new Date()
-    freeWindowStart.setDate(freeWindowStart.getDate() - FREE_HISTORY_DAYS)
-    freeWindowStart.setHours(0, 0, 0, 0)
+  const retentionWindowStart = historyWindowStart(userIsPremium)
 
-    const callerStart = startDate ? new Date(startDate) : null
-    const effectiveStart = callerStart && callerStart > freeWindowStart ? callerStart : freeWindowStart
-
-    query.date = { $gte: effectiveStart }
-    if (endDate) query.date.$lte = new Date(endDate)
-  } else {
-    if (startDate || endDate) {
-      query.date = {}
-      if (startDate) query.date.$gte = new Date(startDate)
-      if (endDate) query.date.$lte = new Date(endDate)
-    }
-  }
+  // Always exclude archived transactions and enforce retention window
+  query.isArchived = { $ne: true }
+  const callerStart = startDate ? new Date(startDate) : null
+  const effectiveStart = callerStart && callerStart > retentionWindowStart ? callerStart : retentionWindowStart
+  query.date = { $gte: effectiveStart }
+  if (endDate) query.date.$lte = new Date(endDate)
 
   if (tags) query.tags = { $in: tags.split(',') }
+  if (accountId === 'unassigned') {
+    query.accountId = null
+  } else if (accountId && ObjectId.isValid(accountId)) {
+    // Match direct transactions on this account OR either leg of a transfer touching it
+    const accountObjectId = new ObjectId(accountId)
+    query.$and = [
+      ...(query.$and ?? []),
+      { $or: [
+        { accountId: accountObjectId },
+        { fromAccountId: accountObjectId },
+        { toAccountId: accountObjectId },
+      ] },
+    ]
+  }
   if (search) {
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    query.description = { $regex: escapedSearch, $options: 'i' }
+    const searchRegex = { $regex: escapedSearch, $options: 'i' }
+    query.$or = [
+      { description: searchRegex },
+      { category: searchRegex },
+    ]
+  }
+
+  if (isCurrencyCode(currency)) {
+    query.$and = [...(query.$and ?? []), currencyScope(currency, primaryCurrencyOf(user))]
   }
 
   const col = db.collection<ITransaction>('transactions')
   const [total, transactions] = await Promise.all([
     col.countDocuments(query),
-    col.find(query).sort({ date: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
+    col.find(query).sort({ date: -1, createdAt: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
   ])
 
   return NextResponse.json({ transactions, total, page, totalPages: Math.ceil(total / limit) })
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { amount, type, category, description, date, tags, isRecurring } = body
+  const { amount, type, category, description, date, tags, isRecurring, accountId } = body
 
   if (!type || !category || !date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -80,26 +98,53 @@ export async function POST(req: NextRequest) {
   if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
   }
+  if (accountId !== undefined && accountId !== null && !ObjectId.isValid(accountId)) {
+    return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
+  }
+
+  const db = await getDb()
+
+  // Fetch user once - used for the default account, currency resolution and spending alert below
+  const postUser = await db.collection<IUser>('users').findOne(
+    { _id: new ObjectId(session.user.id) as never },
+    { projection: { name: 1, email: 1, preferences: 1 } }
+  )
+
+  // Verify the account belongs to this user before linking it - never trust a client-supplied id blindly.
+  // Omitted accountId (form submitted before accounts loaded) = default account; explicit null = unassigned.
+  let account: IAccount | null = null
+  if (accountId) {
+    account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
+    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+  } else if (accountId === undefined) {
+    account = await resolveDefaultAccount(db, session.user.id, postUser?.preferences?.defaultAccountId)
+  }
+
+  // Currency always comes from the account (or the primary currency when unassigned),
+  // never from the client - a PHP account's expense must never be tagged QAR.
+  const resolvedCurrency = resolveTransactionCurrency(account, primaryCurrencyOf(postUser))
 
   const now = new Date()
-  const db = await getDb()
   const result = await db.collection<ITransaction>('transactions').insertOne({
     userId: session.user.id,
     amount,
+    currency: resolvedCurrency,
     type,
     category,
     description,
-    date: new Date(date),
+    date: parseTransactionDate(date),
     tags: tags ?? [],
     isRecurring: isRecurring ?? false,
+    accountId: account?._id ?? null,
+    isArchived: false,
     createdAt: now,
     updatedAt: now,
   } as ITransaction)
 
   const transaction = await db.collection<ITransaction>('transactions').findOne({ _id: result.insertedId })
 
-  if (type === 'expense') {
-    checkSpendingAlert(session.user.id, category, description ?? category, amount, db).catch(
+  if (type === 'expense' && postUser) {
+    checkSpendingAlert(session.user.id, category, resolvedCurrency, description ?? category, amount, db, postUser).catch(
       (err) => console.error('[transactions] spending alert error:', err)
     )
   }
@@ -107,67 +152,3 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(transaction, { status: 201 })
 }
 
-async function checkSpendingAlert(userId: string, category: string, merchantName: string, triggerAmount: number, db: Db) {
-  const budget = await db.collection<IBudget>('budgets').findOne({ userId, category })
-  if (!budget) return
-
-  const now = new Date()
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
-
-  const [spentAgg, recentTxns, user, allBudgetSpent] = await Promise.all([
-    db.collection<ITransaction>('transactions').aggregate([
-      { $match: { userId, category, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]).toArray(),
-    db.collection<ITransaction>('transactions')
-      .find({ userId, category, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } })
-      .sort({ date: -1 }).limit(3).toArray(),
-    db.collection<IUser>('users').findOne({ _id: userId } as never, { projection: { name: 1, email: 1, preferences: 1 } }),
-    db.collection<ITransaction>('transactions').aggregate([
-      { $match: { userId, type: 'expense', date: { $gte: monthStart, $lte: monthEnd } } },
-      { $group: { _id: '$category', total: { $sum: '$amount' } } },
-    ]).toArray(),
-  ])
-
-  const totalSpent = spentAgg[0]?.total ?? 0
-  if (totalSpent <= budget.limit) return
-
-  const previousTotal = totalSpent - triggerAmount
-  if (previousTotal >= budget.limit) return
-
-  if (!user) return
-
-  const sym = user.preferences?.currencySymbol ?? '₱'
-  const fmt = (n: number) => `${sym}${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
-
-  const allBudgets = await db.collection<IBudget>('budgets').find({ userId }).toArray()
-  const spentMap = Object.fromEntries(allBudgetSpent.map((r) => [(r as { _id: string; total: number })._id, (r as { _id: string; total: number }).total]))
-  const surplus = allBudgets
-    .filter((b: IBudget) => b.category !== category && (spentMap[b.category] ?? 0) < b.limit)
-    .sort((a: IBudget, b: IBudget) => (b.limit - (spentMap[b.category] ?? 0)) - (a.limit - (spentMap[a.category] ?? 0)))[0]
-
-  const daysRemaining = monthEnd.getUTCDate() - now.getUTCDate()
-  const monthName = now.toLocaleString('en-US', { month: 'long' })
-
-  await sendSpendingAlertEmail({
-    firstName: user.name.split(' ')[0],
-    email: user.email,
-    categoryName: category,
-    budgetLimit: fmt(budget.limit),
-    totalSpent: fmt(totalSpent),
-    overBy: fmt(totalSpent - budget.limit),
-    triggerAmount: fmt(triggerAmount),
-    triggerMerchant: merchantName,
-    monthName,
-    daysRemaining,
-    recentTxns: recentTxns.map((t: ITransaction) => ({
-      merchantName: t.description || t.category,
-      date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      label: t.amount === triggerAmount ? 'exceeded limit' : '',
-      amount: fmt(t.amount),
-    })),
-    surplusCategory: surplus?.category ?? 'Other',
-    surplusCategoryRemaining: surplus ? fmt(surplus.limit - (spentMap[surplus.category] ?? 0)) : fmt(0),
-  })
-}

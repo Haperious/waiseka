@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { Users, Crown, Bot, Mail, Bell, RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
+import { useResource } from '@/hooks/useFetch'
 
 interface Stats {
   totalUsers: number
@@ -15,28 +16,21 @@ interface Stats {
 }
 
 export default function AdminMonitoringPage() {
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-
+  // Errors are silent - the 60s auto-refresh retries
   const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/monitoring')
-      const data = await res.json()
-      setStats(data)
-      setLastUpdated(new Date())
-    } catch {
-      // silent - auto-refresh will retry
-    } finally {
-      setLoading(false)
-    }
+    const res = await fetch('/api/admin/monitoring')
+    if (!res.ok) throw new Error(`monitoring ${res.status}`)
+    return { stats: (await res.json()) as Stats, fetchedAt: new Date() }
   }, [])
 
+  const { data, loading, refetch } = useResource(fetchStats)
+  const stats = data?.stats ?? null
+  const lastUpdated = data?.fetchedAt ?? null
+
   useEffect(() => {
-    fetchStats()
-    const interval = setInterval(fetchStats, 60_000)
+    const interval = setInterval(refetch, 60_000)
     return () => clearInterval(interval)
-  }, [fetchStats])
+  }, [refetch])
 
   const cards = stats
     ? [
@@ -69,7 +63,7 @@ export default function AdminMonitoringPage() {
           </p>
         </div>
         <button
-          onClick={fetchStats}
+          onClick={refetch}
           className="flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />

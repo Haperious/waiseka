@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { getSettings } from '@/lib/models/GlobalSettings'
 import { aiGate } from '@/lib/ai-gate'
 import { buildFinancialProfile, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
-import type { ITransaction } from '@/lib/models/Transaction'
+import { getCurrencySymbol } from '@/lib/currency'
+import { primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { summarizeByCurrency, otherCurrencyBlock, MULTI_CURRENCY_RULE } from '@/lib/services/aiContext'
 
 export async function POST() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -27,50 +29,38 @@ export async function POST() {
 
   const threeMonthsAgo = new Date()
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-  const col = db.collection<ITransaction>('transactions')
+  // Per currency, primary first - the primary's figures fill the usual prompt; any
+  // other currency gets its own labelled block (never added to the primary's)
+  const [primarySummary, ...others] = await summarizeByCurrency(
+    db, session.user.id, primaryCurrencyOf(user), threeMonthsAgo,
+  )
 
-  const [[totals], topCategories] = await Promise.all([
-    col.aggregate([
-      { $match: { userId: session.user.id, date: { $gte: threeMonthsAgo } } },
-      {
-        $group: {
-          _id: null,
-          totalIncome: { $sum: { $cond: [{ $eq: ['$type', 'income'] }, '$amount', 0] } },
-          totalExpenses: { $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] } },
-        },
-      },
-    ]).toArray(),
-    col.aggregate([
-      { $match: { userId: session.user.id, type: 'expense', date: { $gte: threeMonthsAgo } } },
-      { $group: { _id: '$category', total: { $sum: '$amount' } } },
-      { $sort: { total: -1 } },
-      { $limit: 5 },
-    ]).toArray(),
-  ])
-
-  const symbol = user.preferences.currencySymbol
-  const avgIncome = totals ? totals.totalIncome / 3 : 0
-  const avgExpenses = totals ? totals.totalExpenses / 3 : 0
+  const symbol = getCurrencySymbol(primarySummary.currency)
+  const avgIncome = primarySummary.income / 3
+  const avgExpenses = primarySummary.expenses / 3
   const savingsRate = avgIncome > 0 ? ((avgIncome - avgExpenses) / avgIncome) * 100 : 0
+  const monthlyCategories = primarySummary.topCategories.map((c) => ({ category: c.category, amount: c.amount / 3 }))
 
   const recentSummary = {
     totalIncome: avgIncome,
     totalExpenses: avgExpenses,
     savingsRate,
-    topCategories: topCategories.map((c) => ({ category: c._id, amount: c.total / 3 })),
+    topCategories: monthlyCategories,
   }
 
-  const categorySummary = topCategories.length
-    ? `Top expense categories (3-month average):\n${topCategories
-        .map((c) => `- ${c._id}: ${symbol}${(c.total / 3).toFixed(2)}/month`)
+  const categorySummary = monthlyCategories.length
+    ? `Top expense categories (3-month average):\n${monthlyCategories
+        .map((c) => `- ${c.category}: ${symbol}${c.amount.toFixed(2)}/month`)
         .join('\n')}`
     : 'No expense data available.'
 
   const systemPrompt = [
     buildFinancialProfile(user, recentSummary),
     categorySummary,
+    ...others.map((s) => otherCurrencyBlock(s, 3, '3-month average')),
+    others.length ? MULTI_CURRENCY_RULE : '',
     'Suggest 3 specific, actionable ways this user can increase their savings based on their spending patterns.',
-  ].join('\n\n')
+  ].filter(Boolean).join('\n\n')
 
   const result = await callAnthropic({
     systemPrompt,

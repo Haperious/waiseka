@@ -2,11 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getDb } from '@/lib/mongodb'
 import { sendResetPasswordEmail } from '@/lib/email'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import type { IUser } from '@/lib/models/User'
+import { logEmail } from '@/lib/models/EmailLog'
+import { APP_URL } from '@/lib/app-url'
 
 const EXPIRY_MINUTES = 30
+// 3 requests per IP per 15 minutes
+const RATE_LIMIT = 3
+const RATE_WINDOW_MS = 15 * 60 * 1000
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const rl = rateLimit(`forgot-password:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    )
+  }
+
   const { email } = await req.json()
   if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
@@ -18,6 +33,12 @@ export async function POST(req: NextRequest) {
 
   const token = crypto.randomBytes(32).toString('hex')
   const expiresAt = new Date(Date.now() + EXPIRY_MINUTES * 60 * 1000)
+
+  // Invalidate any previous unused tokens for this user so only the latest link works
+  await db.collection('passwordResetTokens').updateMany(
+    { userId: user._id.toString(), used: false },
+    { $set: { used: true } }
+  )
 
   await db.collection('passwordResetTokens').insertOne({
     userId: user._id.toString(),
@@ -34,7 +55,7 @@ export async function POST(req: NextRequest) {
     hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
   })
 
-  const resetUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/reset-password?token=${token}`
+  const resetUrl = `${APP_URL}/reset-password?token=${token}`
   const firstName = user.name.split(' ')[0]
 
   sendResetPasswordEmail({
@@ -45,7 +66,9 @@ export async function POST(req: NextRequest) {
     requestedAt,
     deviceInfo,
     locationApprox: 'Location unavailable',
-  }).catch((err) => console.error('[forgot-password] email error:', err))
+  })
+    .then(() => logEmail(db, { userId: user._id.toString(), type: 'reset_password' }))
+    .catch((err) => console.error('[forgot-password] email error:', err))
 
   return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' })
 }

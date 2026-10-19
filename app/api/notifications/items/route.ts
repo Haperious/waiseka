@@ -1,18 +1,14 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { INotification } from '@/lib/models/Notification'
 
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
   const col = db.collection<INotification>('notifications')
-
-  // Ensure indexes exist (idempotent)
-  await col.createIndex({ userId: 1 })
-  await col.createIndex({ userId: 1, read: 1 })
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 

@@ -1,0 +1,11 @@
+{
+  "key": "desktop-ui-refresh",
+  "title": "A cleaner look on desktop",
+  "description": "We refreshed the desktop layout for a clearer, more polished experience. Take a look around!",
+  "imagePath": "/announcements/desktop-ui-refresh.png",
+  "imageAlt": "Screenshot of the refreshed WaiseKa desktop interface",
+  "ctaLabel": null,
+  "ctaHref": null,
+  "targetTier": "all",
+  "priority": 10
+}

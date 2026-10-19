@@ -35,22 +35,23 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
   const [pdfPassword, setPdfPassword] = useState('')
   const [wrongPassword, setWrongPassword] = useState(false)
 
-  useEffect(() => {
+  // Start each opening fresh (adjusted during render, not in an effect)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
     if (open) {
       setStage('idle')
       setExtracted([])
-      fetchUsage()
-    }
-  }, [open])
-
-  const fetchUsage = async () => {
-    try {
-      const res = await fetch('/api/import/usage')
-      if (res.ok) setUsage(await res.json())
-    } catch {
-      // non-fatal
     }
   }
+
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/import/usage')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ImportUsage | null) => { if (data) setUsage(data) })
+      .catch(() => { /* non-fatal */ })
+  }, [open])
 
   const uploadFile = async (file: File, password?: string) => {
     setStage('processing')
@@ -191,7 +192,7 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
         <div className="flex flex-col gap-4">
           <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4">
             <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-1">
-              {wrongPassword ? 'Incorrect password — try again' : 'This PDF is password protected'}
+              {wrongPassword ? 'Incorrect password - try again' : 'This PDF is password protected'}
             </p>
             <p className="text-xs text-amber-600 dark:text-amber-500">
               {wrongPassword

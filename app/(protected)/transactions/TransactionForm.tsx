@@ -1,14 +1,43 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { format } from 'date-fns'
+import { useState, useMemo, useRef } from 'react'
+import { format, subDays } from 'date-fns'
+import { CalendarDays, PiggyBank, TrendingDown, TrendingUp } from 'lucide-react'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { Transaction } from '@/hooks/useTransactions'
 import { useCategories } from '@/hooks/useCategories'
+import { useAccounts } from '@/hooks/useAccounts'
+import { useDefaultAccount } from '@/hooks/useDefaultAccount'
+import { useCurrency } from '@/context/CurrencyContext'
+import { accountIdForSubmit } from '@/lib/accountSelection'
+import { useLanguage } from '@/context/LanguageContext'
 import MicrophoneButton from '@/components/MicrophoneButton'
+import {
+  AmountField,
+  CategoryChips,
+  Field,
+  FormModalLayout,
+  Segmented,
+  ToggleRow,
+  moneyLabel,
+  type SegmentOption,
+} from '@/components/forms/FormParts'
+import formStyles from '@/components/forms/forms.module.css'
+
+const UNASSIGNED = ''
+
+type TxType = 'income' | 'expense' | 'savings'
+
+const TYPE_OPTIONS = [
+  { value: 'expense', icon: TrendingDown, color: 'var(--color-expense)' },
+  { value: 'income', icon: TrendingUp, color: 'var(--color-income)' },
+  { value: 'savings', icon: PiggyBank, color: 'var(--color-savings)' },
+] as const
+
+type DateChoice = 'today' | 'yesterday' | 'other'
 
 interface TransactionFormProps {
   transaction?: Transaction
@@ -16,26 +45,43 @@ interface TransactionFormProps {
   onCancel: () => void
 }
 
+/** Desktop add/edit transaction form. Render inside <Modal variant="form">. */
 export default function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast()
+  const { t } = useLanguage()
   const { categories } = useCategories()
+  const { accounts } = useAccounts()
+  const { currency: primaryCurrency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
-    type: (transaction?.type ?? 'expense') as 'income' | 'expense' | 'savings',
+    type: (transaction?.type ?? 'expense') as TxType,
     amount: transaction?.amount ? String(transaction.amount) : '',
     category: transaction?.category ?? '',
     description: transaction?.description ?? '',
     date: transaction?.date ? format(new Date(transaction.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
     isRecurring: transaction?.isRecurring ?? false,
+    // null = not chosen yet, so a new transaction falls back to the default account below
+    accountId: (transaction ? transaction.accountId ?? UNASSIGNED : null) as string | null,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+
+  // Pre-fill the account dropdown with the user's default account (or first debit
+  // account), but only for brand-new transactions the user hasn't picked one for.
+  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
+  const accountId = form.accountId ?? defaultAccountId
+  // Still loading and untouched: the server will apply the default on save
+  const accountPending = form.accountId === null && !defaultReady
+  const currency = activeAccounts.find((a) => a._id === accountId)?.currency ?? primaryCurrency
 
   const validate = () => {
     const e: Record<string, string> = {}
     if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0)
-      e.amount = 'Enter a valid positive amount'
-    if (!form.category) e.category = 'Category is required'
-    if (!form.date) e.date = 'Date is required'
+      e.amount = t('form.errAmount')
+    if (!form.category) e.category = t('form.errCategory')
+    if (!form.date) e.date = t('form.errDate')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -51,105 +97,156 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, amount: Number(form.amount) }),
+        body: JSON.stringify({
+          ...form,
+          amount: Number(form.amount),
+          accountId: accountIdForSubmit(form.accountId, defaultAccountId, defaultReady),
+        }),
       })
       if (!res.ok) {
         const data = await res.json()
-        toast(data.error ?? 'Failed to save transaction', 'error')
+        toast(data.error ?? t('quickAdd.saveFailedToast'), 'error')
       } else {
-        toast(transaction ? 'Transaction updated' : 'Transaction added', 'success')
+        toast(transaction ? t('form.txUpdated') : t('quickAdd.addedToast'), 'success')
         onSuccess()
       }
     } catch {
-      toast('Something went wrong', 'error')
+      toast(t('common.genericError'), 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const categoryOptions = useMemo(() => {
-    const filtered = categories.filter(
-      (c) => c.type === form.type || c.type === 'both' || form.type === 'savings'
-    )
-    return filtered.map((c) => ({ value: c.name, label: c.name }))
-  }, [categories, form.type])
+  const filteredCategories = useMemo(
+    () => categories.filter((c) => c.type === form.type || c.type === 'both' || form.type === 'savings'),
+    [categories, form.type]
+  )
 
-  const typeOptions = [
-    { value: 'expense', label: 'Expense' },
-    { value: 'income', label: 'Income' },
-    { value: 'savings', label: '🏦 Savings' },
+  const accountOptions = [
+    { value: UNASSIGNED, label: t('common.unassigned') },
+    ...activeAccounts.map((a) => ({ value: a._id, label: a.name })),
   ]
 
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+  const dateChoice: DateChoice = form.date === today ? 'today' : form.date === yesterday ? 'yesterday' : 'other'
+  const dateOptions: SegmentOption<DateChoice>[] = [
+    { value: 'today', label: t('common.today') },
+    { value: 'yesterday', label: t('form.yesterday') },
+    {
+      value: 'other',
+      icon: CalendarDays,
+      label: dateChoice === 'other' && form.date ? format(new Date(`${form.date}T00:00:00`), 'MMM d') : undefined,
+      ariaLabel: t('form.pickDate'),
+    },
+  ]
+  const pickDate = (choice: DateChoice) => {
+    if (choice === 'today') setForm({ ...form, date: today })
+    else if (choice === 'yesterday') setForm({ ...form, date: yesterday })
+    else {
+      try {
+        dateInputRef.current?.showPicker()
+      } catch {
+        dateInputRef.current?.focus()
+      }
+    }
+  }
+
+  const amountNumber = Number(form.amount)
+  const verb = transaction ? t(`form.update.${form.type}`) : t(`quickAdd.add.${form.type}`)
+  const submitLabel = form.amount && amountNumber > 0 ? `${verb} · ${moneyLabel(amountNumber, currency)}` : verb
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-        <MicrophoneButton
-          onFill={(data) =>
-            setForm((prev) => ({
-              ...prev,
-              ...(data.type && { type: data.type, category: '' }),
-              ...(data.amount !== undefined && { amount: String(data.amount) }),
-              ...(data.category && { category: data.category }),
-              ...(data.description && { description: data.description }),
-            }))
-          }
-        />
-      </div>
-      <Select
-        label="Type"
+    <FormModalLayout
+      onSubmit={handleSubmit}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" loading={loading} className={formStyles.money}>
+            {submitLabel}
+          </Button>
+        </>
+      }
+    >
+      <MicrophoneButton
+        variant="prompt"
+        currency={currency}
+        onFill={(data) =>
+          setForm((prev) => ({
+            ...prev,
+            ...(data.type && { type: data.type, category: '' }),
+            ...(data.amount !== undefined && { amount: String(data.amount) }),
+            ...(data.category && { category: data.category }),
+            ...(data.description && { description: data.description }),
+          }))
+        }
+      />
+
+      <Segmented
+        ariaLabel={t('common.type')}
+        options={TYPE_OPTIONS.map((o) => ({ ...o, label: t(`common.${o.value}`) }))}
         value={form.type}
-        onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense' | 'savings', category: '' })}
-        options={typeOptions}
+        onChange={(type) => setForm({ ...form, type, category: '' })}
       />
-      <Input
-        label="Amount"
-        type="number"
-        step="0.01"
-        min="0"
-        placeholder="0.00"
+
+      <AmountField
+        id="tx-amount"
+        label={t('common.amount')}
         value={form.amount}
-        onChange={(e) => setForm({ ...form, amount: e.target.value })}
+        onChange={(amount) => setForm({ ...form, amount })}
+        currency={currency}
         error={errors.amount}
+        autoFocus
       />
-      <Select
-        label="Category"
+
+      <CategoryChips
+        categories={filteredCategories}
         value={form.category}
-        onValueChange={(v) => setForm({ ...form, category: v })}
-        options={categoryOptions}
-        placeholder="Select category"
+        onChange={(category) => setForm({ ...form, category })}
         error={errors.category}
       />
+
+      <div className={formStyles.twoCol}>
+        <Select
+          tone="token"
+          label={t('form.account')}
+          value={accountId}
+          onValueChange={(v) => setForm({ ...form, accountId: v })}
+          options={accountOptions}
+          placeholder={accountPending ? t('common.defaultAccount') : t('common.unassigned')}
+        />
+        <Field label={t('common.date')} error={errors.date}>
+          <div style={{ position: 'relative' }}>
+            <Segmented ariaLabel={t('common.date')} options={dateOptions} value={dateChoice} onChange={pickDate} />
+            <input
+            ref={dateInputRef}
+            type="date"
+            value={form.date}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}
+            tabIndex={-1}
+            aria-hidden="true"
+              style={{ position: 'absolute', right: 0, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+            />
+          </div>
+        </Field>
+      </div>
+
       <Input
-        label="Description (optional)"
-        placeholder="What was this for?"
+        id="tx-note"
+        label={t('form.note')}
+        placeholder={t('form.notePlaceholder')}
         value={form.description}
         onChange={(e) => setForm({ ...form, description: e.target.value })}
       />
-      <Input
-        label="Date"
-        type="date"
-        value={form.date}
-        onChange={(e) => setForm({ ...form, date: e.target.value })}
-        error={errors.date}
-      />
-      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={form.isRecurring}
-          onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
-          className="rounded border-gray-300"
-        />
-        Recurring transaction
-      </label>
 
-      <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" className="flex-1" loading={loading}>
-          {transaction ? 'Update' : 'Add'} Transaction
-        </Button>
-      </div>
-    </form>
+      <ToggleRow
+        title={t('form.repeatsMonthly')}
+        sub={t('form.repeatsMonthlyHint')}
+        checked={form.isRecurring}
+        onChange={(isRecurring) => setForm({ ...form, isRecurring })}
+      />
+    </FormModalLayout>
   )
 }

@@ -11,6 +11,12 @@ export default function NotFound() {
         <Link href="/dashboard">
           <Button>Go to Dashboard</Button>
         </Link>
+        <p className="text-gray-400 dark:text-gray-500 text-xs pt-2">
+          Need help? Email{' '}
+          <a href="mailto:waise.ka.official@gmail.com" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+            waise.ka.official@gmail.com
+          </a>
+        </p>
       </div>
     </div>
   )

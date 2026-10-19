@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
 import { getMonthlyImportCount } from '@/lib/importUsage'
@@ -8,7 +8,7 @@ import { ObjectId } from 'mongodb'
 const FREE_IMPORT_LIMIT = 5
 
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = session.user.id

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
+import { getCategoryUsage } from '@/lib/services/categoryUsage'
 
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -24,15 +25,21 @@ export async function GET() {
       updatedAt: now,
     })) as Omit<ICategory, '_id'>[]
 
-    await col.insertMany(docs as ICategory[])
-    categories = await col.find({ userId: session.user.id }).sort({ name: 1 }).toArray()
+    const result = await col.insertMany(docs as ICategory[])
+    // Return the seeded docs directly - avoid a second round trip to the DB.
+    categories = docs.map((doc, i) => ({
+      ...doc,
+      _id: result.insertedIds[i],
+    } as ICategory)).sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  return NextResponse.json(categories)
+  // usageCount drives the "most used" order of category chips in the add-transaction forms
+  const usage = await getCategoryUsage(db, session.user.id)
+  return NextResponse.json(categories.map((c) => ({ ...c, usageCount: usage.get(c.name) ?? 0 })))
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()

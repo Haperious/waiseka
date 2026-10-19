@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import type { IUser } from '@/lib/models/User'
+import { MAX_HIDDEN_ACCOUNTS, MAX_VOICE_KEYWORDS } from '@/lib/constants'
 
 const VALID_CURRENCIES = ['PHP', 'QAR', 'USD']
 
+function isValidCutoffMode(mode: unknown): mode is 'semi-monthly' | 'monthly' | 'custom' {
+  return mode === 'semi-monthly' || mode === 'monthly' || mode === 'custom'
+}
+
+function isValidCutoffDays(days: unknown): days is number[] {
+  return (
+    Array.isArray(days) &&
+    days.length > 0 &&
+    days.length <= 4 &&
+    days.every((d) => typeof d === 'number' && Number.isInteger(d) && d >= 1 && d <= 31)
+  )
+}
+
 export async function GET() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -21,11 +35,23 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { currency, theme } = body
+  const {
+    currency,
+    theme,
+    defaultAccountId,
+    transactionsHiddenAccountIds,
+    transactionsAccountStripCollapsed,
+    cutoffMode,
+    cutoffDays,
+    cutoffAnchorDate,
+    cutoffByCurrency,
+    reportsDefaultView,
+    voiceKeywords,
+  } = body
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
 
@@ -44,10 +70,131 @@ export async function PUT(req: NextRequest) {
     update['preferences.theme'] = theme
   }
 
+  if (transactionsHiddenAccountIds !== undefined) {
+    if (
+      !Array.isArray(transactionsHiddenAccountIds) ||
+      transactionsHiddenAccountIds.some((id) => typeof id !== 'string' || !ObjectId.isValid(id))
+    ) {
+      return NextResponse.json({ error: 'Invalid transactionsHiddenAccountIds' }, { status: 400 })
+    }
+    if (transactionsHiddenAccountIds.length > MAX_HIDDEN_ACCOUNTS) {
+      return NextResponse.json(
+        { error: `Cannot hide more than ${MAX_HIDDEN_ACCOUNTS} accounts` },
+        { status: 400 }
+      )
+    }
+    update['preferences.transactionsHiddenAccountIds'] = transactionsHiddenAccountIds
+  }
+
+  if (transactionsAccountStripCollapsed !== undefined) {
+    if (typeof transactionsAccountStripCollapsed !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid transactionsAccountStripCollapsed' }, { status: 400 })
+    }
+    update['preferences.transactionsAccountStripCollapsed'] = transactionsAccountStripCollapsed
+  }
+
+  if (cutoffMode !== undefined) {
+    if (!isValidCutoffMode(cutoffMode)) {
+      return NextResponse.json({ error: 'Invalid cutoffMode' }, { status: 400 })
+    }
+    update['preferences.cutoffMode'] = cutoffMode
+  }
+
+  if (cutoffDays !== undefined) {
+    if (!isValidCutoffDays(cutoffDays)) {
+      return NextResponse.json({ error: 'Invalid cutoffDays' }, { status: 400 })
+    }
+    update['preferences.cutoffDays'] = cutoffDays
+  }
+
+  // Per-currency cutoff schedules, merged key by key: { PHP: { mode, days } } sets PHP's
+  // schedule, { PHP: null } removes it so PHP falls back to cutoffMode/cutoffDays.
+  const unset: Record<string, ''> = {}
+  if (cutoffByCurrency !== undefined) {
+    if (typeof cutoffByCurrency !== 'object' || cutoffByCurrency === null || Array.isArray(cutoffByCurrency)) {
+      return NextResponse.json({ error: 'Invalid cutoffByCurrency' }, { status: 400 })
+    }
+    for (const [code, entry] of Object.entries(cutoffByCurrency as Record<string, unknown>)) {
+      if (!VALID_CURRENCIES.includes(code)) {
+        return NextResponse.json({ error: 'Invalid cutoffByCurrency currency' }, { status: 400 })
+      }
+      if (entry === null) {
+        unset[`preferences.cutoffByCurrency.${code}`] = ''
+        continue
+      }
+      const { mode, days } = (entry ?? {}) as { mode?: unknown; days?: unknown }
+      if (!isValidCutoffMode(mode) || !isValidCutoffDays(days)) {
+        return NextResponse.json({ error: `Invalid cutoff schedule for ${code}` }, { status: 400 })
+      }
+      update[`preferences.cutoffByCurrency.${code}`] = { mode, days }
+    }
+  }
+
+  if (cutoffAnchorDate !== undefined) {
+    if (cutoffAnchorDate !== null && (typeof cutoffAnchorDate !== 'string' || Number.isNaN(Date.parse(cutoffAnchorDate)))) {
+      return NextResponse.json({ error: 'Invalid cutoffAnchorDate' }, { status: 400 })
+    }
+    update['preferences.cutoffAnchorDate'] = cutoffAnchorDate
+  }
+
+  if (reportsDefaultView !== undefined) {
+    if (reportsDefaultView !== 'chart' && reportsDefaultView !== 'table') {
+      return NextResponse.json({ error: 'Invalid reportsDefaultView' }, { status: 400 })
+    }
+    update['preferences.reportsDefaultView'] = reportsDefaultView
+  }
+
+  if (voiceKeywords !== undefined) {
+    if (
+      !Array.isArray(voiceKeywords) ||
+      voiceKeywords.some(
+        (k) =>
+          !k ||
+          typeof k.keyword !== 'string' ||
+          !k.keyword.trim() ||
+          k.keyword.length > 50 ||
+          typeof k.category !== 'string' ||
+          !k.category ||
+          k.category.length > 100 ||
+          (k.type !== undefined && !['income', 'expense', 'savings'].includes(k.type))
+      )
+    ) {
+      return NextResponse.json({ error: 'Invalid voiceKeywords' }, { status: 400 })
+    }
+    if (voiceKeywords.length > MAX_VOICE_KEYWORDS) {
+      return NextResponse.json(
+        { error: `Cannot save more than ${MAX_VOICE_KEYWORDS} voice keywords` },
+        { status: 400 }
+      )
+    }
+    update['preferences.voiceKeywords'] = voiceKeywords.map((k) => ({
+      keyword: k.keyword.trim().toLowerCase(),
+      category: k.category,
+      ...(k.type && { type: k.type }),
+    }))
+  }
+
   const db = await getDb()
+
+  if (defaultAccountId !== undefined) {
+    if (defaultAccountId === null) {
+      update['preferences.defaultAccountId'] = null
+    } else {
+      if (!ObjectId.isValid(defaultAccountId)) {
+        return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
+      }
+      const account = await db.collection('accounts').findOne({
+        _id: new ObjectId(defaultAccountId),
+        userId: session.user.id,
+      })
+      if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+      update['preferences.defaultAccountId'] = defaultAccountId
+    }
+  }
+
   const user = await db.collection<IUser>('users').findOneAndUpdate(
     { _id: new ObjectId(session.user.id) },
-    { $set: update },
+    Object.keys(unset).length > 0 ? { $set: update, $unset: unset } : { $set: update },
     { returnDocument: 'after', projection: { preferences: 1 } }
   )
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })

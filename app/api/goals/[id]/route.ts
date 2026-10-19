@@ -1,39 +1,118 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { ObjectId, Db } from 'mongodb'
-import { auth } from '@/auth'
-import { getDb } from '@/lib/mongodb'
-import type { IGoal } from '@/lib/models/Goal'
-import type { IUser } from '@/lib/models/User'
-import { sendSavingsMilestoneEmail } from '@/lib/email'
+import { NextRequest, NextResponse } from "next/server"
+import type { Db } from "mongodb"
+import { requireVerifiedSession } from "@/lib/auth-helpers"
+import { getDb } from "@/lib/mongodb"
+import { objectIdParam } from "@/lib/route-params"
+import type { IGoal } from "@/lib/models/Goal"
+import type { IUser } from "@/lib/models/User"
+import { sendSavingsMilestoneEmail } from "@/lib/email"
+import { getCurrencySymbol } from "@/lib/currency"
+import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from "@/lib/services/currencyScope"
+import { formatCurrency } from "@/lib/utils"
+import { computeGoalProjection } from "@/lib/utils/goalProjection"
 
 const MILESTONES = [25, 50, 75, 100]
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await requireVerifiedSession()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id } = await params
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const body = await req.json()
 
-  const db = await getDb()
-  const goal = await db.collection<IGoal>('goals').findOneAndUpdate(
-    { _id: new ObjectId(id), userId: session.user.id },
-    { $set: { ...body, updatedAt: new Date() } },
-    { returnDocument: 'after' }
-  )
-
-  if (!goal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  // Check if savedAmount crossed a milestone (only when savedAmount is being updated)
+  // Whitelist editable fields - never allow userId, _id, or system fields to be overwritten
+  const update: Partial<IGoal> & { updatedAt: Date } = { updatedAt: new Date() }
+  if (body.title !== undefined) update.title = body.title
+  if (body.targetAmount !== undefined) {
+    if (typeof body.targetAmount !== "number" || !isFinite(body.targetAmount) || body.targetAmount <= 0) {
+      return NextResponse.json({ error: "targetAmount must be a positive number" }, { status: 400 })
+    }
+    update.targetAmount = body.targetAmount
+  }
   if (body.savedAmount !== undefined) {
-    const prevPercent = Math.floor(((body.savedAmount - (body.savedAmount - (body.savedAmount - goal.savedAmount))) / goal.targetAmount) * 100)
-    const beforePercent = Math.floor(((goal.savedAmount - (body.savedAmount - goal.savedAmount)) / goal.targetAmount) * 100)
+    if (typeof body.savedAmount !== "number" || !isFinite(body.savedAmount) || body.savedAmount < 0) {
+      return NextResponse.json({ error: "savedAmount must be a non-negative number" }, { status: 400 })
+    }
+    update.savedAmount = body.savedAmount
+  }
+  if (body.deadline !== undefined) update.deadline = new Date(body.deadline)
+  if (body.currency !== undefined) {
+    if (!isCurrencyCode(body.currency)) {
+      return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
+    }
+    update.currency = body.currency
+  }
+  if (body.priority !== undefined) {
+    if (!["low", "medium", "high"].includes(body.priority)) {
+      return NextResponse.json({ error: "priority must be low, medium, or high" }, { status: 400 })
+    }
+    update.priority = body.priority
+  }
+  if (body.status !== undefined) {
+    if (!["active", "completed", "paused"].includes(body.status)) {
+      return NextResponse.json({ error: "status must be active, completed, or paused" }, { status: 400 })
+    }
+    update.status = body.status
+  }
+
+  const db = await getDb()
+
+  // Fetch before updating so we can accurately detect milestone crossings
+  const beforeGoal = await db.collection<IGoal>("goals").findOne({
+    _id,
+    userId: session.user.id,
+  })
+  if (!beforeGoal) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  // addAmount: atomic server-side increment - avoids client-side race conditions
+  if (body.addAmount !== undefined) {
+    if (typeof body.addAmount !== "number" || !isFinite(body.addAmount) || body.addAmount <= 0) {
+      return NextResponse.json({ error: "addAmount must be a positive number" }, { status: 400 })
+    }
+
+    const newSaved = beforeGoal.savedAmount + body.addAmount
+    const autoComplete = newSaved >= beforeGoal.targetAmount
+
+    const goal = await db.collection<IGoal>("goals").findOneAndUpdate(
+      { _id, userId: session.user.id },
+      {
+        $inc: { savedAmount: body.addAmount },
+        $set: {
+          ...(autoComplete ? { status: "completed" } : {}),
+          updatedAt: new Date(),
+        },
+      },
+      { returnDocument: "after" },
+    )
+    if (!goal) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+    const beforePercent = Math.floor((beforeGoal.savedAmount / beforeGoal.targetAmount) * 100)
     const afterPercent = Math.floor((goal.savedAmount / goal.targetAmount) * 100)
     const crossed = MILESTONES.find((m) => beforePercent < m && afterPercent >= m)
-    void prevPercent
     if (crossed) {
-      checkMilestone(session.user.id, goal, crossed, db).catch(
-        (err) => console.error('[goals] milestone email error:', err)
+      checkMilestone(session.user.id, goal, crossed, db).catch((err) =>
+        console.error("[goals] milestone email error:", err),
+      )
+    }
+
+    return NextResponse.json(goal)
+  }
+
+  const goal = await db
+    .collection<IGoal>("goals")
+    .findOneAndUpdate({ _id, userId: session.user.id }, { $set: update }, { returnDocument: "after" })
+
+  if (!goal) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  // Check if savedAmount crossed a milestone using accurate before/after values
+  if (body.savedAmount !== undefined) {
+    const beforePercent = Math.floor((beforeGoal.savedAmount / beforeGoal.targetAmount) * 100)
+    const afterPercent = Math.floor((goal.savedAmount / goal.targetAmount) * 100)
+    const crossed = MILESTONES.find((m) => beforePercent < m && afterPercent >= m)
+    if (crossed) {
+      checkMilestone(session.user.id, goal, crossed, db).catch((err) =>
+        console.error("[goals] milestone email error:", err),
       )
     }
   }
@@ -42,43 +121,55 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 async function checkMilestone(userId: string, goal: IGoal, reachedPercent: number, db: Db) {
-  const user = await db.collection<IUser>('users').findOne(
-    { _id: userId } as never,
-    { projection: { name: 1, email: 1, preferences: 1 } }
-  )
+  const user = await db
+    .collection<IUser>("users")
+    .findOne({ _id: userId } as never, { projection: { name: 1, email: 1, preferences: 1 } })
   if (!user) return
 
-  const sym = user.preferences?.currencySymbol ?? '₱'
-  const fmt = (n: number) => `${sym}${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+  // The goal's own currency (missing = primary)
+  const sym = getCurrencySymbol(goal.currency ?? primaryCurrencyOf(user))
+  const fmt = (n: number) => formatCurrency(n, sym)
 
-  const monthsSaving = Math.max(1, Math.round(
-    (Date.now() - new Date(goal.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30)
-  ))
-  const avgPerMonth = goal.savedAmount / monthsSaving
-  const remaining = goal.targetAmount - goal.savedAmount
-  const monthsToTarget = avgPerMonth > 0 ? Math.ceil(remaining / avgPerMonth) : 99
-
-  const completionDate = new Date()
-  completionDate.setMonth(completionDate.getMonth() + monthsToTarget)
-  const estCompletion = completionDate.toLocaleString('en-US', { month: 'short', year: '2-digit' })
+  const projection = computeGoalProjection(goal)
+  const monthsSaving = Math.max(
+    1,
+    Math.round((Date.now() - new Date(goal.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30)),
+  )
+  const avgPerMonth = projection.avgPerMonth
+  const monthsToTarget = projection.monthsToComplete ?? 99
+  const estCompletion = projection.estimatedCompletionDate
+    ? projection.estimatedCompletionDate.toLocaleString("en-US", { month: "short", year: "2-digit" })
+    : "Unknown"
 
   const nextMilestone = MILESTONES.find((m) => m > reachedPercent) ?? 100
   const nextMilestoneAmount = (goal.targetAmount * nextMilestone) / 100
 
   // Approximate rank: users at this milestone % or below / total users with goals
   const [totalGoalUsers, aheadCount] = await Promise.all([
-    db.collection<IGoal>('goals').distinct('userId', { status: 'active' }).then((ids: string[]) => ids.length),
-    db.collection<IGoal>('goals').aggregate([
-      { $match: { status: 'active' } },
-      { $group: { _id: '$userId', maxPct: { $max: { $multiply: [{ $divide: ['$savedAmount', '$targetAmount'] }, 100] } } } },
-      { $match: { maxPct: { $gte: reachedPercent } } },
-      { $count: 'n' },
-    ]).toArray().then((r) => (r[0] as { n: number } | undefined)?.n ?? 0),
+    db
+      .collection<IGoal>("goals")
+      .distinct("userId", { status: "active" })
+      .then((ids: string[]) => ids.length),
+    db
+      .collection<IGoal>("goals")
+      .aggregate([
+        { $match: { status: "active" } },
+        {
+          $group: {
+            _id: "$userId",
+            maxPct: { $max: { $multiply: [{ $divide: ["$savedAmount", "$targetAmount"] }, 100] } },
+          },
+        },
+        { $match: { maxPct: { $gte: reachedPercent } } },
+        { $count: "n" },
+      ])
+      .toArray()
+      .then((r) => (r[0] as { n: number } | undefined)?.n ?? 0),
   ])
   const userRankPercent = totalGoalUsers > 0 ? Math.max(5, Math.round((aheadCount / totalGoalUsers) * 100)) : 20
 
   await sendSavingsMilestoneEmail({
-    firstName: user.name.split(' ')[0],
+    firstName: user.name.split(" ")[0],
     email: user.email,
     goalName: goal.title,
     reachedPercent,
@@ -94,16 +185,17 @@ async function checkMilestone(userId: string, goal: IGoal, reachedPercent: numbe
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await requireVerifiedSession()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id } = await params
+  const _id = await objectIdParam(params)
+  if (_id instanceof NextResponse) return _id
   const db = await getDb()
-  const goal = await db.collection<IGoal>('goals').findOneAndDelete({
-    _id: new ObjectId(id),
+  const goal = await db.collection<IGoal>("goals").findOneAndDelete({
+    _id,
     userId: session.user.id,
   })
 
-  if (!goal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json({ message: 'Deleted successfully' })
+  if (!goal) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  return NextResponse.json({ message: "Deleted successfully" })
 }

@@ -1,0 +1,100 @@
+import { describe, it, expect } from 'vitest'
+import { currencyScope, INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency, sortCurrencies, viewCurrencyFrom, viewCurrencyOf, withCurrencyScope } from './currencyScope'
+
+describe('currencyScope', () => {
+  it('includes transactions with no currency when scoping to the primary currency', () => {
+    expect(currencyScope('QAR', 'QAR')).toEqual({
+      $or: [{ currency: 'QAR' }, { currency: null }, { currency: { $exists: false } }],
+    })
+  })
+
+  it('matches only the exact currency when it is not the primary', () => {
+    expect(currencyScope('PHP', 'QAR')).toEqual({ currency: 'PHP' })
+  })
+})
+
+describe('resolveTransactionCurrency', () => {
+  it('uses the account currency when the transaction has an account', () => {
+    expect(resolveTransactionCurrency({ currency: 'PHP' }, 'QAR')).toBe('PHP')
+  })
+
+  it('falls back to the primary currency when there is no account', () => {
+    expect(resolveTransactionCurrency(null, 'QAR')).toBe('QAR')
+    expect(resolveTransactionCurrency(undefined, 'USD')).toBe('USD')
+  })
+
+  it('falls back to the primary currency when the account currency is invalid', () => {
+    expect(resolveTransactionCurrency({ currency: 'EUR' }, 'QAR')).toBe('QAR')
+  })
+})
+
+describe('primaryCurrencyOf', () => {
+  it('reads preferences.currency', () => {
+    expect(primaryCurrencyOf({ preferences: { currency: 'QAR' } })).toBe('QAR')
+  })
+
+  it('defaults to PHP when unset or invalid', () => {
+    expect(primaryCurrencyOf(null)).toBe('PHP')
+    expect(primaryCurrencyOf({})).toBe('PHP')
+    expect(primaryCurrencyOf({ preferences: { currency: 'EUR' } })).toBe('PHP')
+  })
+})
+
+describe('isCurrencyCode', () => {
+  it('accepts supported codes only', () => {
+    expect(isCurrencyCode('PHP')).toBe(true)
+    expect(isCurrencyCode('EUR')).toBe(false)
+    expect(isCurrencyCode(undefined)).toBe(false)
+  })
+})
+
+describe('withCurrencyScope', () => {
+  it('appends the scope to $and without touching an existing $or', () => {
+    const match = { userId: 'u', $or: [{ description: 'x' }] }
+    expect(withCurrencyScope(match, 'PHP', 'QAR')).toEqual({
+      userId: 'u',
+      $or: [{ description: 'x' }],
+      $and: [{ currency: 'PHP' }],
+    })
+  })
+
+  it('keeps existing $and clauses', () => {
+    const match = { userId: 'u', $and: [{ a: 1 }] }
+    expect(withCurrencyScope(match, 'PHP', 'QAR').$and).toEqual([{ a: 1 }, { currency: 'PHP' }])
+  })
+})
+
+describe('viewCurrencyFrom', () => {
+  it('returns a supported requested currency', () => {
+    expect(viewCurrencyFrom(new URLSearchParams('currency=PHP'), 'QAR')).toBe('PHP')
+  })
+
+  it('falls back to the primary when missing or unsupported', () => {
+    expect(viewCurrencyFrom(new URLSearchParams(''), 'QAR')).toBe('QAR')
+    expect(viewCurrencyFrom(new URLSearchParams('currency=EUR'), 'QAR')).toBe('QAR')
+  })
+})
+
+describe('viewCurrencyOf', () => {
+  it("resolves the view currency against the user's primary", () => {
+    const user = { preferences: { currency: 'QAR' } }
+    expect(viewCurrencyOf(user, new URLSearchParams('currency=PHP'))).toEqual({ currency: 'PHP', primary: 'QAR' })
+    expect(viewCurrencyOf(user, new URLSearchParams(''))).toEqual({ currency: 'QAR', primary: 'QAR' })
+  })
+
+  it('falls back to the app default when there is no user', () => {
+    expect(viewCurrencyOf(null, new URLSearchParams(''))).toEqual({ currency: 'PHP', primary: 'PHP' })
+  })
+})
+
+describe('sortCurrencies', () => {
+  it('puts the primary first, de-duplicated, then alphabetical', () => {
+    expect(sortCurrencies(['USD', 'QAR', 'PHP', 'QAR'], 'QAR')).toEqual(['QAR', 'PHP', 'USD'])
+  })
+})
+
+describe('INVALID_CURRENCY_MESSAGE', () => {
+  it('lists every supported currency', () => {
+    expect(INVALID_CURRENCY_MESSAGE).toBe('currency must be PHP, QAR, or USD')
+  })
+})

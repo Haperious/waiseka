@@ -1,18 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
+import type { IAccount } from '@/lib/models/Account'
 import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import type { IEmailLog } from '@/lib/models/EmailLog'
+import { APP_URL } from '@/lib/app-url'
+
+// 5 registrations per IP per hour
+const RATE_LIMIT = 5
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const rl = rateLimit(`register:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    )
+  }
+
   try {
     const body = await req.json()
     const { name, email, password, confirmPassword } = body
-     
+
     if (!name || !email || !password || !confirmPassword) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
+    }
+
+    if (name.length > 100) {
+      return NextResponse.json({ error: 'Name must be 100 characters or fewer' }, { status: 400 })
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -38,10 +60,10 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    const resetDate = new Date()
-    resetDate.setMonth(resetDate.getMonth() + 1)
-    resetDate.setDate(1)
-    resetDate.setHours(0, 0, 0, 0)
+    // Midnight on the 1st of next month. Built directly - setMonth(+1) on the 29th-31st
+    // overflows (Jan 31 -> Mar 3), which then landed on Mar 1 and skipped February.
+    const today = new Date()
+    const resetDate = new Date(today.getFullYear(), today.getMonth() + 1, 1)
 
     const now = new Date()
     const result = await users.insertOne({
@@ -67,6 +89,11 @@ export async function POST(req: NextRequest) {
         push: { enabled: false, frequency: 'weekly', fcmToken: null },
         lastSeen: now,
       },
+      onboarding: {
+        completedAt: null,
+        stepsCompleted: [],
+        dismissed: false,
+      },
       createdAt: now,
       updatedAt: now,
     })
@@ -81,6 +108,28 @@ export async function POST(req: NextRequest) {
       })) as ICategory[]
     )
 
+    // Give every new user a starting account so the transaction form's account
+    // dropdown is never empty on first visit. Mirrors scripts/backfill-default-accounts.ts,
+    // which does the same for pre-existing users.
+    await db.collection<IAccount>('accounts').insertOne({
+      _id: new ObjectId(),
+      userId,
+      name: 'Cash on Hand',
+      type: 'debit',
+      openingBalance: 0,
+      currency: 'PHP',
+      creditLimit: null,
+      dueDay: null,
+      lowBalanceThreshold: null,
+      color: null,
+      icon: null,
+      displayOrder: 0,
+      isArchived: false,
+      includeInTotal: true,
+      createdAt: now,
+      updatedAt: now,
+    })
+
     const firstName = name.split(' ')[0]
     const lowerEmail = email.toLowerCase()
 
@@ -93,12 +142,16 @@ export async function POST(req: NextRequest) {
       createdAt: now,
     })
 
-    const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/auth/verify-email?token=${verifyToken}`
+    const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${verifyToken}`
+
+    const emailLogs = db.collection<Omit<IEmailLog, '_id'>>('email_logs')
 
     sendWelcomeEmail({ firstName, email: lowerEmail })
+      .then(() => emailLogs.insertOne({ userId, type: 'welcome', sentAt: new Date() } as unknown as Omit<IEmailLog, '_id'>))
       .catch((err) => console.error('[register] welcome email error:', err))
 
     sendVerificationEmail({ firstName, email: lowerEmail, verifyUrl })
+      .then(() => emailLogs.insertOne({ userId, type: 'email_verification', sentAt: new Date() } as unknown as Omit<IEmailLog, '_id'>))
       .catch((err) => console.error('[register] verification email error:', err))
 
     return NextResponse.json({ message: 'Account created successfully' }, { status: 201 })

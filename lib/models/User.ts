@@ -1,9 +1,23 @@
 import { ObjectId } from 'mongodb'
+import type { CurrencyCode } from '@/lib/currency'
 
 export interface IConversationMessage {
   role: string
   content: string
   createdAt: Date
+}
+
+export type OnboardingStepId =
+  | 'accounts'
+  | 'dashboard'
+  | 'transactions'
+  | 'categories'
+  | 'goals'
+
+export interface IOnboarding {
+  completedAt: Date | null
+  stepsCompleted: OnboardingStepId[]
+  dismissed: boolean
 }
 
 export interface IUser {
@@ -18,10 +32,28 @@ export interface IUser {
   premiumOverride: boolean
   isAdmin: boolean
   preferences: {
-    currency: 'PHP' | 'QAR' | 'USD'
+    currency: CurrencyCode
     currencySymbol: string
     theme?: 'light' | 'dark'
+    /** Account pre-selected on the transaction form. Null/unset falls back to the oldest debit account, if any. */
+    defaultAccountId?: string | null
+    /** Accounts excluded from the transactions-page balance strip. Exclusion list - empty/unset shows all non-archived accounts. */
+    transactionsHiddenAccountIds?: string[]
+    /** Whether the transactions-page balance strip is collapsed. */
+    transactionsAccountStripCollapsed?: boolean
+    /** Pay-cutoff schedule used to compute the dashboard's "safe to spend per day" period. */
+    cutoffMode?: 'semi-monthly' | 'monthly' | 'custom'
+    /** Day-of-month cutoffs, e.g. [15, 30] for semi-monthly. A value >=30 stands for "end of month". */
+    cutoffDays?: number[]
+    cutoffAnchorDate?: string
+    /** Per-currency cutoff schedules. A currency without an entry uses cutoffMode/cutoffDays above. */
+    cutoffByCurrency?: Partial<Record<CurrencyCode, { mode: 'semi-monthly' | 'monthly' | 'custom'; days: number[]; anchorDate?: string }>>
+    /** Default view shown on the monthly reports page. */
+    reportsDefaultView?: 'chart' | 'table'
+    /** Custom voice-input keywords mapping a spoken word to a category (and optionally a transaction type). */
+    voiceKeywords?: { keyword: string; category: string; type?: 'income' | 'expense' | 'savings' }[]
   }
+  onboarding: IOnboarding
   ai: {
     enabled: boolean
     queriesUsed: number
@@ -34,7 +66,11 @@ export interface IUser {
       enabled: boolean
       frequency: 'daily' | 'weekly' | 'monthly'
       count?: number
+      /** @deprecated use lastSentBudget / lastSentReEngage / lastSentMonthly */
       lastSent?: Date
+      lastSentBudget?: Date
+      lastSentReEngage?: Date
+      lastSentMonthly?: Date
     }
     push: {
       enabled: boolean
@@ -43,10 +79,19 @@ export interface IUser {
     }
     lastSeen: Date
   }
+  mfa?: {
+    enabled: boolean
+    secret: string        // TOTP secret (base32)
+    backupCodes: string[] // hashed backup codes
+    enabledAt: Date
+    /** One-time proof of a passed MFA step - see lib/mfa-ticket.ts. */
+    pendingTicket?: { tokenHash: string; expiresAt: Date }
+  }
   importUsage?: {
     count: number
     resetAt: Date
   }
+  passwordChangedAt?: Date
   lastLogin?: Date
   createdAt: Date
   updatedAt: Date

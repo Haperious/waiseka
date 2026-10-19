@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { auth } from '@/auth'
+import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { getSettings } from '@/lib/models/GlobalSettings'
 import { aiGate } from '@/lib/ai-gate'
 import { buildFinancialProfile, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
-import type { ITransaction } from '@/lib/models/Transaction'
+import { getCurrencySymbol } from '@/lib/currency'
+import { primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { summarizeByCurrency, otherCurrencyBlock, MULTI_CURRENCY_RULE } from '@/lib/services/aiContext'
 
 export async function POST() {
-  const session = await auth()
+  const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getDb()
@@ -26,39 +28,24 @@ export async function POST() {
   if (gateError) return gateError
 
   const now = new Date()
-  const startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-  const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-  const col = db.collection<ITransaction>('transactions')
+  const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
+  // Per currency, primary first - the primary's figures fill the usual report; any
+  // other currency gets its own labelled block (never added to the primary's)
+  const [primarySummary, ...others] = await summarizeByCurrency(
+    db, session.user.id, primaryCurrencyOf(user), startDate, endDate,
+  )
 
-  const [[summary], categoryBreakdown] = await Promise.all([
-    col.aggregate([
-      { $match: { userId: session.user.id, date: { $gte: startDate, $lte: endDate } } },
-      {
-        $group: {
-          _id: null,
-          totalIncome: { $sum: { $cond: [{ $eq: ['$type', 'income'] }, '$amount', 0] } },
-          totalExpenses: { $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] } },
-        },
-      },
-    ]).toArray(),
-    col.aggregate([
-      { $match: { userId: session.user.id, type: 'expense', date: { $gte: startDate, $lte: endDate } } },
-      { $group: { _id: '$category', total: { $sum: '$amount' } } },
-      { $sort: { total: -1 } },
-      { $limit: 5 },
-    ]).toArray(),
-  ])
-
-  const symbol = user.preferences.currencySymbol
-  const income = summary?.totalIncome ?? 0
-  const expenses = summary?.totalExpenses ?? 0
+  const symbol = getCurrencySymbol(primarySummary.currency)
+  const income = primarySummary.income
+  const expenses = primarySummary.expenses
   const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0
 
   const recentSummary = {
     totalIncome: income,
     totalExpenses: expenses,
     savingsRate,
-    topCategories: categoryBreakdown.map((c) => ({ category: c._id, amount: c.total })),
+    topCategories: primarySummary.topCategories,
   }
 
   const transactionSummary = [
@@ -67,8 +54,8 @@ export async function POST() {
     `Total Expenses: ${symbol}${expenses.toFixed(2)}`,
     `Net Savings: ${symbol}${(income - expenses).toFixed(2)}`,
     `Savings Rate: ${savingsRate.toFixed(1)}%`,
-    categoryBreakdown.length
-      ? `Top Categories: ${categoryBreakdown.map((c) => `${c._id} (${symbol}${c.total.toFixed(2)})`).join(', ')}`
+    primarySummary.topCategories.length
+      ? `Top Categories: ${primarySummary.topCategories.map((c) => `${c.category} (${symbol}${c.amount.toFixed(2)})`).join(', ')}`
       : '',
   ]
     .filter(Boolean)
@@ -77,8 +64,10 @@ export async function POST() {
   const systemPrompt = [
     buildFinancialProfile(user, recentSummary),
     transactionSummary,
+    ...others.map((s) => otherCurrencyBlock(s)),
+    others.length ? MULTI_CURRENCY_RULE : '',
     'Generate a concise monthly budget report with 3 actionable tips.',
-  ].join('\n\n')
+  ].filter(Boolean).join('\n\n')
 
   const report = await callAnthropic({
     systemPrompt,

@@ -1,8 +1,8 @@
 /**
- * WaiseKa — global app constants
+ * WaiseKa - global app constants
  *
  * All tier limits and feature caps live here.
- * Never hardcode these values elsewhere — import from this file.
+ * Never hardcode these values elsewhere - import from this file.
  */
 
 // ── Import limits ────────────────────────────────────────────────────────────
@@ -14,16 +14,65 @@ export const PREMIUM_IMPORT_LIMIT = 20
 
 // ── Budget limits ────────────────────────────────────────────────────────────
 /** Max active budgets a free-tier user may create. */
-export const FREE_BUDGET_LIMIT = 3
+export const FREE_BUDGET_LIMIT = 10
+
+/** Max active budgets a premium user may create. */
+export const PREMIUM_BUDGET_LIMIT = 20
 
 // ── Goal limits ──────────────────────────────────────────────────────────────
 /** Max active goals a free-tier user may have at one time. */
 export const FREE_GOAL_LIMIT = 3
 
+// ── Account limits ───────────────────────────────────────────────────────────
+/** Max non-archived accounts a free-tier user may have at one time. */
+export const FREE_ACCOUNT_LIMIT = 5
+
+/** Payload-size guard on preferences.transactionsHiddenAccountIds - not a tier limit. */
+export const MAX_HIDDEN_ACCOUNTS = 50
+
+/** Payload-size guard on preferences.voiceKeywords - not a tier limit. */
+export const MAX_VOICE_KEYWORDS = 100
+
 // ── Transaction history ──────────────────────────────────────────────────────
-/** Rolling look-back window (in days) for free-tier transaction queries. */
-export const FREE_HISTORY_DAYS = 90
+/** Rolling retention window (in days) for free-tier transactions. 3 years = 1095 days. */
+export const FREE_HISTORY_DAYS = 1095
+
+/** Rolling retention window (in days) for premium-tier transactions. 7 years = 2555 days. */
+export const PREMIUM_HISTORY_DAYS = 2555
+
+// ── Calendar ─────────────────────────────────────────────────────────────────
+export const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+export const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
 
 // ── AI query cap ─────────────────────────────────────────────────────────────
-/** Default monthly AI query cap for premium users (overridable per user in DB). */
-export const DEFAULT_AI_QUERY_CAP = 30
+// The monthly AI query cap is stored in the database, not here.
+// Source of truth: GlobalSettings.aiQueryCap, overridable per user via
+// User.ai.queriesCapOverride. See lib/models/GlobalSettings.ts and lib/ai-gate.ts.
+
+// ── AI model ─────────────────────────────────────────────────────────────────
+/** Anthropic model used for all AI features. Update here to change globally. */
+export const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514'
+
+// ── Announcements ────────────────────────────────────────────────────────────
+/** Max announcement cards shown in one carousel session. */
+export const MAX_PENDING_ANNOUNCEMENTS = 3
+
+/** Max characters in an announcement title. */
+export const ANNOUNCEMENT_TITLE_MAX_LENGTH = 45
+
+/** Max characters in an announcement description. */
+export const ANNOUNCEMENT_DESCRIPTION_MAX_LENGTH = 220
+
+/** Default lifetime of an announcement, in days, from publishedAt. */
+export const ANNOUNCEMENT_DEFAULT_TTL_DAYS = 30
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+/**
+ * `code` returned by next-auth signIn() when the credentials login is rate
+ * limited. Shared by auth.ts (server) and the login page (client).
+ */
+export const LOGIN_RATE_LIMITED_CODE = 'rate_limited'

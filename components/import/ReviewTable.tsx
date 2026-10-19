@@ -136,7 +136,8 @@ export default function ReviewTable({ transactions, onConfirm, loading }: Review
                     onChange={() =>
                       setChecked((prev) => {
                         const next = new Set(prev)
-                        next.has(row._key) ? next.delete(row._key) : next.add(row._key)
+                        if (next.has(row._key)) next.delete(row._key)
+                        else next.add(row._key)
                         return next
                       })
                     }
@@ -144,7 +145,7 @@ export default function ReviewTable({ transactions, onConfirm, loading }: Review
                   />
                 </td>
                 <td className="px-2 py-1.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {row.date ? String(row.date).split('T')[0] : '—'}
+                  {row.date ? String(row.date).split('T')[0] : '-'}
                 </td>
                 <td className="px-2 py-1.5">
                   <input

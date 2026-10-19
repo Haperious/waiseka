@@ -1,0 +1,1024 @@
+/* Shared pieces for the redesigned desktop form modals (transactions, budgets, goals, accounts). */
+
+/* ── Modal shell (Modal variant="form") ─────────────────────────────────── */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 24px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.footer > :first-child {
+  flex: 1;
+}
+
+.footer > :last-child {
+  flex: 2;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Labels ─────────────────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.eyebrow {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.errorText {
+  font-size: 0.75rem;
+  color: var(--color-expense);
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.threeCol {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 520px) {
+  .twoCol,
+  .threeCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Big amount field ───────────────────────────────────────────────────── */
+
+.amountBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--color-elevated);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.amountBox:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+.amountBoxError {
+  border-color: var(--color-expense);
+}
+
+.amountSymbol {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.amountInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.amountInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ── Segmented control ──────────────────────────────────────────────────── */
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--color-elevated);
+}
+
+.segment {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segment:hover {
+  color: var(--color-text-primary);
+}
+
+.segmentOn {
+  background: var(--color-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.segmentIcon {
+  flex: 0 0 auto;
+  padding: 0 12px;
+}
+
+/* ── Chips ──────────────────────────────────────────────────────────────── */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--color-text-muted);
+}
+
+.chipOn {
+  background: var(--color-sage);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.chipOn:hover {
+  border-color: var(--color-accent);
+}
+
+.chipDashed {
+  border-style: dashed;
+  color: var(--color-text-secondary);
+}
+
+/* ── Toggle row + switch ────────────────────────────────────────────────── */
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.toggleText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggleTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.toggleSub {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  background: var(--color-elevated);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.switchOn {
+  background: var(--color-accent);
+  box-shadow: none;
+}
+
+.switchOn::after {
+  transform: translateX(16px);
+}
+
+/* ── Pale info block ────────────────────────────────────────────────────── */
+
+.paleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--color-pale);
+}
+
+/* ── Voice prompt row (3a) ──────────────────────────────────────────────── */
+
+.voiceRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-sage);
+  background: var(--color-pale);
+}
+
+.voiceTile {
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.voiceTileListening {
+  background: var(--color-expense);
+}
+
+.voiceText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.voiceTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.voiceExample {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.voiceAction {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+/* ── Colour swatches (budgets) ──────────────────────────────────────────── */
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-left: 4px;
+  min-height: 40px;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.swatch:hover {
+  transform: scale(1.12);
+}
+
+/* ── Budget bar (preview) ───────────────────────────────────────────────── */
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.barHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.barName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.barDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.barNums {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.barPct {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.barTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-elevated);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* ── Suggestion chips (goal names) ──────────────────────────────────────── */
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.suggestChip {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--color-elevated);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.suggestChip:hover {
+  color: var(--color-text-primary);
+}
+
+/* ── Projection (goals) ─────────────────────────────────────────────────── */
+
+.projection {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-income-bg);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.projection svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-income);
+}
+
+.projection strong {
+  color: var(--color-income);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Account type tiles ─────────────────────────────────────────────────── */
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.typeTile {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.typeTile:hover {
+  border-color: var(--color-text-muted);
+}
+
+.typeTileOn {
+  border-color: var(--color-accent);
+  background: var(--color-pale);
+  box-shadow: 0 0 0 2px var(--color-sage);
+  font-weight: 600;
+}
+
+.typeTileOn:hover {
+  border-color: var(--color-accent);
+}
+
+.typeIcon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--color-elevated);
+  color: var(--color-text-secondary);
+}
+
+.typeTileOn .typeIcon {
+  background: var(--color-sage);
+  color: var(--color-accent);
+}
+
+@media (max-width: 520px) {
+  .typeGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Transfer account cards ─────────────────────────────────────────────── */
+
+.transferPair {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.accountCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-elevated);
+  font-family: inherit;
+  text-align: left;
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+button.accountCard {
+  cursor: pointer;
+}
+
+button.accountCard:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+  position: relative;
+  z-index: 1;
+}
+
+.accountCardTop {
+  border-radius: 12px 12px 0 0;
+}
+
+.accountCardBottom {
+  border-radius: 0 0 12px 12px;
+  border-top: 0;
+}
+
+.accountCardError {
+  border-color: var(--color-expense);
+}
+
+.accountChip {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+}
+
+.accountMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.accountName {
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accountPlaceholder {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.accountBalance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.accountBalanceValue {
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.accountBalanceLabel {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.seamBadge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.pickerContent {
+  z-index: 60;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.pickerItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  outline: none;
+}
+
+.pickerItem[data-highlighted] {
+  background: var(--color-sage);
+}
+
+.pickerItem[data-state='checked'] {
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.warningBlock {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/* ── Bulk table (desktop Add Multiple) ──────────────────────────────────── */
+
+.sharedRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sharedField {
+  width: 200px;
+}
+
+.sharedHint {
+  padding-bottom: 11px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.table {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 28px 112px 128px 1fr 1.2fr 36px 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.tableHead {
+  border-top: 0;
+  background: var(--color-elevated);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.tableRowInvalid {
+  background: var(--color-expense-bg);
+}
+
+.rowNum {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--color-elevated);
+  min-width: 0;
+}
+
+.cell:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+.cellInvalid {
+  border-color: #ef4444;
+}
+
+.cellInput {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+}
+
+.cellInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.cellPrefix {
+  padding-left: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.cellAmount {
+  padding-left: 4px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cellSelect {
+  appearance: none;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.cellSelect option {
+  background: var(--color-card);
+  color: var(--color-text-primary);
+}
+
+.cellChevron {
+  position: absolute;
+  right: 9px;
+  pointer-events: none;
+  color: var(--color-text-muted);
+}
+
+.miniSeg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  height: 34px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--color-elevated);
+}
+
+.miniSegBtn {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.miniSegOn {
+  background: var(--color-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.iconToggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-elevated);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.iconToggleOn {
+  background: var(--color-sage);
+  color: var(--color-accent);
+}
+
+.iconButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.iconButton:hover:not(:disabled) {
+  color: var(--color-expense);
+  background: var(--color-expense-bg);
+}
+
+.iconButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.tableFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.addLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.lineErrors {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--color-expense);
+}
+
+.footerSplit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.net {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-right: auto;
+}
+
+.netValue {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── "All categories" search picker ─────────────────────────────────────── */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-pale);
+}
+
+.pickerSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text-muted);
+}
+
+.pickerSearch:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+.pickerInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+}
+
+.pickerInput::placeholder {
+  color: var(--color-text-muted);
+}
