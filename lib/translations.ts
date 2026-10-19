@@ -450,6 +450,7 @@ export const translations = {
     "quickAdd.add.expense": "Add expense",
     "quickAdd.add.income": "Add income",
     "quickAdd.add.savings": "Add savings",
+    "quickAdd.saveChanges": "Save changes",
 
     // ── Bulk add sheet (mobile) ─────────────────────────────────────
     "bulk.title": "Add Multiple",
@@ -1052,6 +1053,7 @@ export const translations = {
     "quickAdd.add.expense": "Idagdag ang gastos",
     "quickAdd.add.income": "Idagdag ang kita",
     "quickAdd.add.savings": "Idagdag ang ipon",
+    "quickAdd.saveChanges": "I-save ang mga pagbabago",
 
     // ── Bulk add sheet (mobile) ─────────────────────────────────────
     "bulk.title": "Magdagdag ng Marami",

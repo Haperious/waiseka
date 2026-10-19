@@ -21,6 +21,7 @@ import AccountStrip from '@/components/accounts/AccountStrip'
 import TransactionForm from './TransactionForm'
 import BulkTransactionForm from './BulkTransactionForm'
 import BulkAddSheet from './BulkAddSheet'
+import QuickAddSheet from '@/components/quick-add/QuickAddSheet'
 import TransactionFilters, { NO_FILTERS, type TransactionFilterValues } from './TransactionFilters'
 import { MobileTransactionList, TransactionTable } from './TransactionList'
 import Pagination from './Pagination'
@@ -271,16 +272,21 @@ export default function TransactionsPage() {
         </Modal>
       )}
 
-      {/* ── Edit modal ───────────────────────────────────────────────────────── */}
-      <Modal open={!!editTx} onClose={() => setEditTx(null)} title={t('tx.editTitle')} variant="form">
-        {editTx && (
-          <TransactionForm
-            transaction={editTx}
-            onSuccess={() => { setEditTx(null); refetch(); refetchAccounts() }}
-            onCancel={() => setEditTx(null)}
-          />
-        )}
-      </Modal>
+      {/* ── Edit ─────────────────────────────────────────────────────────────── */}
+      {/* Mobile edits in the FAB's quick-add sheet; saving emits transaction-saved, which refetches above */}
+      {isBelowLg ? (
+        <QuickAddSheet open={!!editTx} transaction={editTx} onClose={() => setEditTx(null)} />
+      ) : (
+        <Modal open={!!editTx} onClose={() => setEditTx(null)} title={t('tx.editTitle')} variant="form">
+          {editTx && (
+            <TransactionForm
+              transaction={editTx}
+              onSuccess={() => { setEditTx(null); refetch(); refetchAccounts() }}
+              onCancel={() => setEditTx(null)}
+            />
+          )}
+        </Modal>
+      )}
 
       {/* ── Delete confirm modal ─────────────────────────────────────────────── */}
       <Modal open={!!deleteTx} onClose={() => setDeleteTx(null)} title={t('tx.deleteTitle')}>

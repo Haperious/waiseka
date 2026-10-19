@@ -15,6 +15,7 @@ import { useSpeechToText } from "@/hooks/useSpeechToText"
 import { useVoiceKeywords } from "@/hooks/useVoiceKeywords"
 import { parseSpeechToTransaction, ParsedTransaction } from "@/lib/parseSpeechToTransaction"
 import { emitTransactionSaved } from "@/lib/transactionEvents"
+import type { Transaction } from "@/hooks/useTransactions"
 import Badge from "@/components/ui/Badge"
 import { cn } from "@/lib/utils"
 import Keypad from "@/components/quick-add/Keypad"
@@ -38,14 +39,18 @@ interface QuickAddSheetProps {
   onClose: () => void
   /** Opens the Add Multiple sheet; the header link is hidden when not provided. */
   onAddMultiple?: () => void
+  /** Edits this transaction instead of adding one: keypad only, pre-filled, saves with PUT. */
+  transaction?: Transaction | null
 }
 
 const MODE_ICONS = { keypad: Calculator, voice: Mic, receipt: Receipt } as const
 
 const SWIPE_CLOSE_THRESHOLD = 100
 
-export default function QuickAddSheet({ open, onClose, onAddMultiple }: QuickAddSheetProps) {
+export default function QuickAddSheet({ open, onClose, onAddMultiple, transaction }: QuickAddSheetProps) {
   const { t } = useLanguage()
+  const isEdit = !!transaction
+  const title = isEdit ? t("tx.editTitle") : t("quickAdd.title")
   const [mode, setMode] = useState<Mode>("keypad")
   const [visible, setVisible] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
@@ -118,7 +123,7 @@ export default function QuickAddSheet({ open, onClose, onAddMultiple }: QuickAdd
         style={{ transform: visible ? `translateY(${dragOffset}px)` : "translateY(100%)" }}
         role="dialog"
         aria-modal="true"
-        aria-label={t("quickAdd.title")}
+        aria-label={title}
       >
         <div
           className={styles.handleArea}
@@ -138,8 +143,8 @@ export default function QuickAddSheet({ open, onClose, onAddMultiple }: QuickAdd
           onPointerCancel={handleDragEnd}
         >
           <div className={styles.header}>
-            <h2 className={styles.title}>{t("quickAdd.title")}</h2>
-            {onAddMultiple && (
+            <h2 className={styles.title}>{title}</h2>
+            {onAddMultiple && !isEdit && (
               <button
                 type="button"
                 className={styles.multipleLink}
@@ -154,7 +159,7 @@ export default function QuickAddSheet({ open, onClose, onAddMultiple }: QuickAdd
               </button>
             )}
           </div>
-          <div className={styles.modes} role="tablist">
+          {!isEdit && <div className={styles.modes} role="tablist">
             {(["keypad", "voice", "receipt"] as Mode[]).map((m) => {
               const Icon = MODE_ICONS[m]
               return (
@@ -172,16 +177,19 @@ export default function QuickAddSheet({ open, onClose, onAddMultiple }: QuickAdd
                 </button>
               )
             })}
-          </div>
+          </div>}
         </div>
 
-        {mode === "keypad" && <KeypadMode onDone={handleClosed} />}
-        {mode === "voice" && (
+        {isEdit ? (
+          // Keyed so switching to another transaction re-seeds the form
+          <KeypadMode key={transaction._id} transaction={transaction} onDone={handleClosed} />
+        ) : mode === "keypad" && <KeypadMode onDone={handleClosed} />}
+        {!isEdit && mode === "voice" && (
           <div className={styles.body}>
             <VoiceMode onDone={handleClosed} />
           </div>
         )}
-        {mode === "receipt" && (
+        {!isEdit && mode === "receipt" && (
           <div className={styles.body}>
             <ReceiptMode />
           </div>
@@ -193,24 +201,29 @@ export default function QuickAddSheet({ open, onClose, onAddMultiple }: QuickAdd
 
 // ── Keypad mode ──────────────────────────────────────────────────────────
 
-function KeypadMode({ onDone }: { onDone: () => void }) {
+function KeypadMode({ onDone, transaction }: { onDone: () => void; transaction?: Transaction }) {
   const { t } = useLanguage()
   const { categories } = useCategories()
   const { accounts } = useAccounts()
   const { currency: primaryCurrency } = useCurrency()
   const { toast } = useToast()
 
-  const [type, setType] = useState<TxType>("expense")
-  const [amountStr, setAmountStr] = useState("")
-  const [category, setCategory] = useState("")
-  // null = not picked yet, so the entry falls back to the default account
-  const [chosenAccountId, setAccountId] = useState<string | null>(null)
-  const [description, setDescription] = useState("")
-  const [date, setDate] = useState(() => format(new Date(), "yyyy-MM-dd"))
+  // Transfers have no edit action, so an edited transaction is always one of these types
+  const [type, setType] = useState<TxType>((transaction?.type as TxType | undefined) ?? "expense")
+  const [amountStr, setAmountStr] = useState(transaction ? String(transaction.amount) : "")
+  const [category, setCategory] = useState(transaction?.category ?? "")
+  // null = not picked yet, so the entry falls back to the default account ('' = unassigned)
+  const [chosenAccountId, setAccountId] = useState<string | null>(transaction ? transaction.accountId ?? "" : null)
+  const [description, setDescription] = useState(transaction?.description ?? "")
+  const [date, setDate] = useState(() => format(transaction ? new Date(transaction.date) : new Date(), "yyyy-MM-dd"))
   const [saving, setSaving] = useState(false)
   const dateInputRef = useRef<HTMLInputElement>(null)
 
-  const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+  // Keep an edited transaction's archived account selectable so it isn't silently moved
+  const activeAccounts = useMemo(
+    () => accounts.filter((a) => !a.isArchived || a._id === transaction?.accountId),
+    [accounts, transaction?.accountId],
+  )
   const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
   const accountId = chosenAccountId ?? defaultAccountId
   const accountPending = chosenAccountId === null && !defaultReady
@@ -247,25 +260,32 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
     if (!canSave || saving) return
     setSaving(true)
     try {
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type,
-          amount: amountValue,
-          category,
-          description: description.trim(),
-          date,
-          isRecurring: false,
-          accountId: accountIdForSubmit(chosenAccountId, defaultAccountId, defaultReady),
-        }),
-      })
+      const fields = {
+        type,
+        amount: amountValue,
+        category,
+        description: description.trim(),
+        date,
+        accountId: accountIdForSubmit(chosenAccountId, defaultAccountId, defaultReady),
+      }
+      // Edits leave isRecurring/tags as they are (PUT only updates the fields it's sent)
+      const res = transaction
+        ? await fetch(`/api/transactions/${transaction._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(fields),
+          })
+        : await fetch("/api/transactions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...fields, isRecurring: false }),
+          })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         toast(data.error ?? t("quickAdd.saveFailedToast"), "error")
         return
       }
-      toast(t("quickAdd.addedToast"), "success")
+      toast(transaction ? t("form.txUpdated") : t("quickAdd.addedToast"), "success")
       emitTransactionSaved()
       onDone()
     } catch {
@@ -364,7 +384,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
         <button type="button" onClick={handleSave} disabled={!canSave || saving} className={styles.cta}>
           {saving
             ? t("quickAdd.saving")
-            : `${t(`quickAdd.add.${type}` as const)}${amountLabel ? ` · ${amountLabel}` : ""}`}
+            : `${transaction ? t("quickAdd.saveChanges") : t(`quickAdd.add.${type}` as const)}${amountLabel ? ` · ${amountLabel}` : ""}`}
         </button>
       </div>
     </>
