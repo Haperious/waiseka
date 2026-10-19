@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Search, Filter, X } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { useLanguage } from '@/context/LanguageContext'
+import { historyWindowStart } from '@/lib/tier'
+import { FREE_HISTORY_DAYS, PREMIUM_HISTORY_DAYS } from '@/lib/constants'
 import type { Account } from '@/hooks/useAccounts'
 
 export interface TransactionFilterValues {
@@ -25,6 +28,7 @@ interface TransactionFiltersProps {
   accounts: Account[]
   onChange: (patch: Partial<TransactionFilterValues>) => void
   onClear: () => void
+  isPremium: boolean
 }
 
 const cardStyle: React.CSSProperties = {
@@ -48,8 +52,13 @@ const dateLabelStyle: React.CSSProperties = {
   fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em',
 }
 
-export default function TransactionFilters({ filters, accounts, onChange, onClear }: TransactionFiltersProps) {
+export default function TransactionFilters({ filters, accounts, onChange, onClear, isPremium }: TransactionFiltersProps) {
   const { t } = useLanguage()
+  // Earliest date the API will return for this tier (it clamps anyway) - keeps the pickers honest
+  const minDate = historyWindowStart(isPremium).toISOString().slice(0, 10)
+  const clampDate = (value: string) => (value && value < minDate ? minDate : value)
+  const planYears = Math.round((isPremium ? PREMIUM_HISTORY_DAYS : FREE_HISTORY_DAYS) / 365)
+  const premiumYears = Math.round(PREMIUM_HISTORY_DAYS / 365)
   // What's typed in the search box - applied to `filters.search` on Enter
   const [searchInput, setSearchInput] = useState(filters.search)
   const [showDateFilters, setShowDateFilters] = useState(false)
@@ -189,7 +198,8 @@ export default function TransactionFilters({ filters, accounts, onChange, onClea
             <input
               type="date"
               value={filters.startDate}
-              onChange={(e) => onChange({ startDate: e.target.value })}
+              min={minDate}
+              onChange={(e) => onChange({ startDate: clampDate(e.target.value) })}
               className="w-full sm:w-auto"
               style={dateInputStyle}
             />
@@ -199,7 +209,8 @@ export default function TransactionFilters({ filters, accounts, onChange, onClea
             <input
               type="date"
               value={filters.endDate}
-              onChange={(e) => onChange({ endDate: e.target.value })}
+              min={minDate}
+              onChange={(e) => onChange({ endDate: clampDate(e.target.value) })}
               className="w-full sm:w-auto"
               style={dateInputStyle}
             />
@@ -218,6 +229,19 @@ export default function TransactionFilters({ filters, accounts, onChange, onClea
           >
             {t('tx.clearFilters')}
           </button>
+          <p className="w-full" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+            {isPremium
+              ? t('tx.historyPremium').replace('{n}', String(planYears))
+              : t('tx.historyFree').replace('{n}', String(planYears)).replace('{m}', String(premiumYears))}
+            {!isPremium && (
+              <>
+                {' '}
+                <Link href="/premium" style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
+                  {t('tx.historyUpgrade')}
+                </Link>
+              </>
+            )}
+          </p>
         </div>
       )}
     </div>

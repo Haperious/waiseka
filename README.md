@@ -140,7 +140,7 @@ yarn start
 
 | Feature             | Free     | Premium   |
 | ------------------- | -------- | --------- |
-| Transaction history | 3 months | Full      |
+| Transaction history | 3 years  | 7 years   |
 | Budgets             | Up to 3  | Unlimited |
 | Goals               | Up to 3  | Unlimited |
 | Imports / month     | 3        | 20        |

@@ -213,6 +213,7 @@ export default function TransactionsPage() {
         accounts={accounts}
         onChange={updateFilters}
         onClear={() => updateFilters(NO_FILTERS)}
+        isPremium={userIsPremium}
       />
 
       {/* ── Table ────────────────────────────────────────────────────────────── */}
