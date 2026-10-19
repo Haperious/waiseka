@@ -531,3 +531,135 @@
     display: none;
   }
 }
+
+/* ── Secondary auth screens (MFA, password, verify) ─────────────────────── */
+
+.tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--color-sage);
+  color: var(--color-accent);
+}
+
+.tileError {
+  background: var(--color-expense-bg);
+  color: var(--color-expense);
+}
+
+.tileWarning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.tileSuccess {
+  background: var(--color-income-bg);
+  color: var(--color-income);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 20px;
+  margin-top: auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.textButton {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.textButton:hover {
+  text-decoration: underline;
+}
+
+.textButtonMuted {
+  composes: textButton;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.otp {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.otpBox {
+  width: 100%;
+  min-width: 0;
+  height: 56px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-elevated);
+  color: var(--color-text-primary);
+  text-align: center;
+  font-family: inherit;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.otpBox:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+.otpError .otpBox {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.codeInput {
+  width: 100%;
+  height: 56px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-elevated);
+  color: var(--color-text-primary);
+  text-align: center;
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  outline: none;
+}
+
+.codeInput:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+@media (max-width: 860px) {
+  .title {
+    font-size: 1.9rem;
+  }
+
+  .otp {
+    gap: 6px;
+  }
+
+  .otpBox {
+    height: 52px;
+  }
+}

@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Activity, CalendarDays, Users } from 'lucide-react'
@@ -118,5 +119,21 @@ export function RegisterPanel() {
         </li>
       ))}
     </ul>
+  )
+}
+
+const TILE_VARIANT_CLASS = {
+  default: '',
+  error: styles.tileError,
+  warning: styles.tileWarning,
+  success: styles.tileSuccess,
+} as const
+
+/** 44px icon tile at the top of the secondary auth screens. */
+export function AuthIconTile({ icon: Icon, variant = 'default' }: { icon: LucideIcon; variant?: keyof typeof TILE_VARIANT_CLASS }) {
+  return (
+    <span className={`${styles.tile} ${TILE_VARIANT_CLASS[variant]}`}>
+      <Icon size={22} />
+    </span>
   )
 }
