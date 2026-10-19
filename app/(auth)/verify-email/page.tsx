@@ -127,7 +127,7 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <div className="w-full max-w-md">
+    <div className="mx-auto flex min-h-screen w-full max-w-[30rem] flex-col justify-center px-4 py-8">
       <div className="flex flex-col items-center mb-8">
         <div className="flex items-center gap-3 mb-2">
           <WKIcon size={48} scope="light" className="rounded-xl" />

@@ -4,21 +4,21 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LegalLinks } from '@/components/legal/LegalLinks'
-import { WKIcon } from '@/components/ui/WKIcon'
+import { CircleAlert } from 'lucide-react'
+import { AuthShell, BuiltForPill, LoginPanel } from '@/components/auth/AuthShell'
+import styles from '@/components/auth/auth.module.css'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import PasswordInput from '@/components/ui/PasswordInput'
-import { Card, CardContent } from '@/components/ui/Card'
-import { useTheme } from '@/context/ThemeContext'
 import { LOGIN_RATE_LIMITED_CODE } from '@/lib/constants'
+
+type LoginError = '' | 'credentials' | 'rate-limited'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { theme } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState<LoginError>('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,9 +35,9 @@ export default function LoginPage() {
     setLoading(false)
 
     if (result?.code === LOGIN_RATE_LIMITED_CODE) {
-      setError('Too many sign-in attempts. Please wait a few minutes and try again.')
+      setError('rate-limited')
     } else if (result?.error) {
-      setError('Invalid email or password')
+      setError('credentials')
     } else {
       // Check if MFA is enabled for this user before proceeding to dashboard
       try {
@@ -58,70 +58,86 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-md">
-      <div className="flex flex-col items-center mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <WKIcon size={48} scope={theme} className="rounded-xl" />
-          <span className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>WaiseKa</span>
+    <AuthShell
+      kicker={<BuiltForPill />}
+      headline={<>Your sweldo, <br className={styles.desktopOnly} /><em>sorted.</em></>}
+      panel={<LoginPanel />}
+    >
+      <div className={styles.titleBlock}>
+        <div className={styles.desktopOnly}>
+          <h2 className={styles.title}>Welcome <em>back.</em></h2>
+          <p className={styles.sub} style={{ marginTop: 8 }}>
+            Kumusta ang pera mo? Sign in to see this cutoff&apos;s numbers.
+          </p>
         </div>
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Sign in to your account</p>
+        <div className={styles.mobileOnly}>
+          <h2 className={styles.mobileTitle}>Sign in</h2>
+          <p className={styles.mobileSub}>Kumusta ang pera mo?</p>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              id="email"
-              label="Email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-
-            <div>
-              <PasswordInput
-                id="password"
-                label="Password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-              <div className="mt-1 text-right">
-                <Link href="/forgot-password" className="text-xs hover:underline" style={{ color: 'var(--color-accent)' }}>
-                  Forgot password?
+      {error && (
+        <div className={styles.error} role="alert">
+          <CircleAlert size={16} />
+          {error === 'rate-limited' ? (
+            <span>Too many sign-in attempts. Please wait a few minutes and try again.</span>
+          ) : (
+            <span>
+              <span className={styles.errorFull}>
+                That email and password don&apos;t match. Check for typos, or{' '}
+                <Link href="/forgot-password" className={styles.link} style={{ color: 'inherit', textDecoration: 'underline' }}>
+                  reset your password
                 </Link>
-              </div>
-            </div>
+                .
+              </span>
+              <span className={styles.errorShort}>That email and password don&apos;t match.</span>
+            </span>
+          )}
+        </div>
+      )}
 
-            {error && (
-              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-600 dark:text-red-400">
-                {error}
-              </div>
-            )}
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <Input
+          id="email"
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
 
-            <Button type="submit" size="lg" loading={loading} className="w-full">
-              Sign In
-            </Button>
-          </form>
+        <div>
+          <PasswordInput
+            id="password"
+            label="Password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+          <div className={styles.fieldLink}>
+            <Link href="/forgot-password" className={styles.smallLink}>
+              Forgot password?
+            </Link>
+          </div>
+        </div>
 
-          <p className="mt-4 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="hover:underline font-medium" style={{ color: 'var(--color-accent)' }}>
-              Register
+        <div className={styles.bottom}>
+          <Button type="submit" size="lg" loading={loading} style={{ width: '100%' }}>
+            Sign in
+          </Button>
+          <hr className={`${styles.hairline} ${styles.desktopOnly}`} />
+          <p className={styles.switch}>
+            New to WaiseKa?{' '}
+            <Link href="/register" className={styles.link}>
+              Create a free account
             </Link>
           </p>
-        </CardContent>
-      </Card>
-      <LegalLinks
-        className="mt-6 flex justify-center gap-5 text-xs"
-        linkClassName="hover:underline"
-        linkStyle={{ color: 'var(--color-text-secondary)' }}
-      />
-    </div>
+        </div>
+      </form>
+    </AuthShell>
   )
 }
