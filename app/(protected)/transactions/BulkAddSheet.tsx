@@ -234,7 +234,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
   const pillStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 6,
     flex: 1, minWidth: 0,
-    height: 38, padding: '0 12px',
+    height: 40, padding: '0 12px',
     borderRadius: 999,
     border: '1px solid var(--color-border)',
     backgroundColor: 'var(--color-elevated)',
@@ -480,7 +480,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('bulk.descPlaceholder')}
               style={{
-                width: '100%', height: 38, borderRadius: 8, border: 'none',
+                width: '100%', height: 40, borderRadius: 8, border: 'none',
                 paddingLeft: 34, paddingRight: 12,
                 backgroundColor: 'var(--color-elevated)', color: 'var(--color-text-primary)',
                 fontSize: '0.82rem', outline: 'none',
@@ -493,7 +493,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
             aria-pressed={isRecurring}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-              height: 38, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
+              height: 40, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
               border: isRecurring ? '1px solid var(--color-accent)' : '1px solid transparent',
               backgroundColor: isRecurring ? 'var(--color-sage)' : 'var(--color-elevated)',
               color: isRecurring ? 'var(--color-accent)' : 'var(--color-text-secondary)',
