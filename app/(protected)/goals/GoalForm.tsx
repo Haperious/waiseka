@@ -12,7 +12,8 @@ import { useViewCurrency } from '@/context/ViewCurrencyContext'
 import { useCurrency } from '@/context/CurrencyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { getAllCurrencies, type CurrencyCode } from '@/lib/currency'
-import { countCutoffsBetween, cutoffPrefsFor } from '@/lib/services/cutoff'
+import { cutoffPrefsFor } from '@/lib/services/cutoff'
+import { goalDeadlineToIso, parseGoalDeadline, projectGoal } from '@/lib/goalProjection'
 import { usePreferences } from '@/hooks/usePreferences'
 import {
   AmountField,
@@ -26,9 +27,6 @@ import formStyles from '@/components/forms/forms.module.css'
 
 
 const NAME_SUGGESTIONS = ['Emergency Fund', 'Boracay trip', 'New laptop', 'Pang-Pasko']
-
-/** Round up to the next ₱50 so the per-cutoff amount is easy to set aside. */
-const ROUND_TO = 50
 
 interface GoalFormProps {
   goal?: Goal
@@ -93,7 +91,7 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
         targetAmount: Number(form.targetAmount),
         priority: form.priority,
         status: form.status,
-        deadline: new Date(`${form.deadline}T23:59:59`).toISOString(),
+        deadline: goalDeadlineToIso(form.deadline),
       }
       // Single-currency users never pick one: the server defaults new goals to the primary
       if (isMultiCurrency) payload.currency = form.currency
@@ -127,15 +125,9 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
   // Projection: how much to set aside each payday to hit the target by the deadline
   const target = Number(form.targetAmount) || 0
   const current = Number(form.savedAmount) || 0
-  const deadline = form.deadline ? new Date(`${form.deadline}T00:00:00`) : null
-  const remaining = target - current
+  const deadline = parseGoalDeadline(form.deadline)
   // Paydays follow the user's own cutoff schedule for this goal's currency (Settings → Money)
-  const cutoffs =
-    deadline && !isNaN(deadline.getTime())
-      ? countCutoffsBetween(cutoffPrefsFor(preferences, goalCurrency), new Date(), deadline)
-      : 0
-  const showProjection = target > 0 && remaining > 0 && cutoffs > 0
-  const perCutoff = showProjection ? Math.ceil(remaining / cutoffs / ROUND_TO) * ROUND_TO : 0
+  const projection = projectGoal(target, current, deadline, cutoffPrefsFor(preferences, goalCurrency))
 
   return (
     <FormModalLayout
@@ -239,19 +231,19 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
         </Field>
       )}
 
-      {showProjection && deadline && (
+      {projection && deadline && (
         <div className={formStyles.projection} aria-live="polite">
           <Lightbulb size={16} />
           <span>
             {t('goalForm.projectionLead')}{' '}
             <strong>
-              {t('goalForm.projectionPer').replace('{amount}', moneyLabel(perCutoff, goalCurrency, { whole: true }))}
+              {t('goalForm.projectionPer').replace('{amount}', moneyLabel(projection.perCutoff, goalCurrency, { whole: true }))}
             </strong>{' '}
             {t('goalForm.projectionRest')
               .replace('{target}', moneyLabel(target, goalCurrency, { whole: Number.isInteger(target) }))
               .replace('{date}', format(deadline, 'MMM d, yyyy'))
-              .replace('{n}', String(cutoffs))
-              .replace('{unit}', cutoffs === 1 ? t('goalForm.sweldo') : t('goalForm.sweldos'))}
+              .replace('{n}', String(projection.cutoffs))
+              .replace('{unit}', projection.cutoffs === 1 ? t('goalForm.sweldo') : t('goalForm.sweldos'))}
           </span>
         </div>
       )}

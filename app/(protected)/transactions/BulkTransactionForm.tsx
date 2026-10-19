@@ -16,6 +16,7 @@ import { accountIdForSubmit } from '@/lib/accountSelection'
 import { getCurrencySymbol } from '@/lib/currency'
 import { moneyLabel, sanitizeAmount } from '@/components/forms/FormParts'
 import { orderCategoryChips } from '@/lib/categoryChips'
+import { lineErrorMessage, type RowErrors } from '@/lib/bulkLineError'
 import styles from '@/components/forms/forms.module.css'
 
 const UNASSIGNED = ''
@@ -34,7 +35,6 @@ interface TransactionRow {
   isRecurring: boolean
 }
 
-type RowErrors = Record<string, string>
 
 const TYPE_OPTIONS: { value: TransactionRow['type']; Icon: LucideIcon; color: string }[] = [
   { value: 'expense', Icon: TrendingDown, color: 'var(--color-expense)' },
@@ -51,19 +51,6 @@ function createEmptyRow(): TransactionRow {
     description: '',
     isRecurring: false,
   }
-}
-
-type Translate = ReturnType<typeof useLanguage>['t']
-
-/** "Line 2 needs a category before you can save." - one sentence per invalid line. */
-function lineErrorMessage(lineNumber: number, errors: RowErrors, t: Translate): string {
-  const needs = [errors.amount && t('bulkForm.anAmount'), errors.category && t('bulkForm.aCategory')].filter(Boolean)
-  if (needs.length > 0) {
-    return t('bulkForm.lineNeeds')
-      .replace('{n}', String(lineNumber))
-      .replace('{what}', needs.join(` ${t('bulkForm.and')} `))
-  }
-  return `${lineNumber}: ${Object.values(errors).join(', ')}`
 }
 
 /** Desktop Add Multiple table. Render inside <Modal variant="form" className="max-w-[820px]">. */
