@@ -1,4 +1,4 @@
-/* Mobile quick-add sheet (keypad / voice / receipt) and the shared chip + keypad styles. */
+/* Mobile quick-add sheet (keypad / voice / receipt) and the shared category picker + keypad styles. */
 
 .sheet {
   position: absolute;
@@ -264,42 +264,21 @@
   color: var(--color-text-muted);
 }
 
-/* ── Shared: horizontal chip scroller ───────────────────────────────────── */
+/* ── Shared: category picker pill ───────────────────────────────────────── */
 
-.chipRow {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-bottom: 2px;
-}
-
-.chipRow::-webkit-scrollbar {
-  display: none;
-}
-
-.chip {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  height: 34px;
-  padding: 0 13px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  font-family: inherit;
-  font-size: 0.83rem;
-  font-weight: 500;
-  white-space: nowrap;
-  color: var(--color-text-primary);
-  cursor: pointer;
-}
-
-.chipOn {
+.pillOn {
   background: var(--color-sage);
-  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
   color: var(--color-accent);
   font-weight: 600;
+}
+
+.pillOn > svg {
+  color: var(--color-accent);
+}
+
+.pillPlaceholder {
+  color: var(--color-text-muted);
 }
 
 .emptyHint {

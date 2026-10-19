@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { format } from "date-fns"
-import { Calculator, CalendarDays, Camera, ChevronDown, Layers, Mic, PenLine, Receipt, Square, Wallet } from "lucide-react"
+import { Calculator, CalendarDays, Camera, ChevronDown, Layers, Mic, PenLine, Receipt, Square, Tag, Wallet } from "lucide-react"
 import { useCategories } from "@/hooks/useCategories"
 import { useAccounts } from "@/hooks/useAccounts"
 import { useDefaultAccount } from "@/hooks/useDefaultAccount"
@@ -222,7 +222,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
     () => categories.filter((c) => c.type === type || c.type === "both" || type === "savings"),
     [categories, type],
   )
-  // Most used first. Ordered per type, not per selection, so chips don't jump when tapped.
+  // Most used first, ordered per type
   const orderedCategories = useMemo(() => orderCategoryChips(categoryOptions, ""), [categoryOptions])
 
   const handleType = (next: TxType) => {
@@ -301,13 +301,7 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
           <span className={styles.caret} aria-hidden="true" />
         </div>
 
-        <ChipScroller
-          items={orderedCategories.map((c) => ({ id: c.name, label: c.name }))}
-          selected={category}
-          onSelect={setCategory}
-          emptyLabel={t("quickAdd.selectCategory")}
-          bleed={16}
-        />
+        <CategoryPicker categories={orderedCategories} value={category} onChange={setCategory} />
 
         <div className={styles.pills}>
           <label className={styles.pill}>
@@ -377,43 +371,47 @@ function KeypadMode({ onDone }: { onDone: () => void }) {
   )
 }
 
-export function ChipScroller({
-  items,
-  selected,
-  onSelect,
-  emptyLabel,
-  bleed = 0,
+/**
+ * Full-width category dropdown pill. Opens the OS picker so every category is
+ * reachable at once, instead of a sideways-scrolling chip row that hides most of them.
+ */
+export function CategoryPicker({
+  categories,
+  value,
+  onChange,
 }: {
-  items: { id: string; label: string }[]
-  selected: string
-  onSelect: (id: string) => void
-  emptyLabel?: string
-  /** Horizontal padding of the parent; the row extends into it so chips scroll edge to edge. */
-  bleed?: number
+  /** Already filtered for the current type and ordered (most used first). */
+  categories: { _id: string; name: string }[]
+  value: string
+  onChange: (name: string) => void
 }) {
-  if (items.length === 0) {
-    return emptyLabel ? <p className={styles.emptyHint}>{emptyLabel}</p> : null
+  const { t } = useLanguage()
+  if (categories.length === 0) {
+    return <p className={styles.emptyHint}>{t("form.noCategoriesForType")}</p>
   }
   return (
-    <div
-      className={styles.chipRow}
-      style={bleed ? { marginLeft: -bleed, marginRight: -bleed, paddingLeft: bleed, paddingRight: bleed } : undefined}
-    >
-      {items.map((item) => {
-        const isSelected = item.id === selected
-        return (
-          <button
-            key={item.id || "__unassigned__"}
-            type="button"
-            aria-pressed={isSelected}
-            onClick={() => onSelect(item.id)}
-            className={cn(styles.chip, isSelected && styles.chipOn)}
-          >
-            {item.label}
-          </button>
-        )
-      })}
-    </div>
+    <label className={cn(styles.pill, value && styles.pillOn)}>
+      <Tag size={15} />
+      <span className={cn(styles.pillLabel, !value && styles.pillPlaceholder)}>
+        {value || t("quickAdd.selectCategory")}
+      </span>
+      <ChevronDown size={14} />
+      <select
+        className={styles.pillNative}
+        aria-label={t("common.category")}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="" disabled>
+          {t("quickAdd.selectCategory")}
+        </option>
+        {categories.map((c) => (
+          <option key={c._id} value={c.name}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 

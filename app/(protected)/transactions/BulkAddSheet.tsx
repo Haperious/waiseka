@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/Toast'
 import { useLanguage } from '@/context/LanguageContext'
 import { emitTransactionSaved } from '@/lib/transactionEvents'
 import Keypad from '@/components/quick-add/Keypad'
-import { ChipScroller } from '@/components/quick-add/QuickAddSheet'
+import { CategoryPicker } from '@/components/quick-add/QuickAddSheet'
 import { orderCategoryChips } from '@/lib/categoryChips'
 
 type TxType = 'expense' | 'income' | 'savings'
@@ -98,7 +98,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
   const currencySymbol = getCurrencySymbol(entryCurrency)
   const formatAmount = (v: number) => formatAmountIn(v, entryCurrency)
 
-  // Most used first; ordered per type (not per selection) so chips don't jump when tapped
+  // Most used first, ordered per type
   const categoryOptions = useMemo(
     () => orderCategoryChips(categories.filter((c) => c.type === type || c.type === 'both' || type === 'savings'), ''),
     [categories, type]
@@ -465,13 +465,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
         </div>
 
         <div style={{ marginBottom: 8 }}>
-          <ChipScroller
-            items={categoryOptions.map((c) => ({ id: c.name, label: c.name }))}
-            selected={category}
-            onSelect={setCategory}
-            emptyLabel={t('quickAdd.selectCategory')}
-            bleed={14}
-          />
+          <CategoryPicker categories={categoryOptions} value={category} onChange={setCategory} />
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
