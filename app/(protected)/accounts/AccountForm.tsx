@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { Banknote, CreditCard, Landmark, Lock, PiggyBank, Smartphone, type LucideIcon } from 'lucide-react'
 import Input from '@/components/ui/Input'
-import Select from '@/components/ui/Select'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useLanguage } from '@/context/LanguageContext'
@@ -10,6 +10,8 @@ import { TranslationKey } from '@/lib/translations'
 import { Account } from '@/hooks/useAccounts'
 import { useCurrency } from '@/context/CurrencyContext'
 import { getAllCurrencies, CurrencyCode } from '@/lib/currency'
+import { Field, FormModalLayout, Segmented, type SegmentOption } from '@/components/forms/FormParts'
+import formStyles from '@/components/forms/forms.module.css'
 
 const TYPE_KEYS: Record<Account['type'], TranslationKey> = {
   debit: 'account.typeDebit',
@@ -20,6 +22,15 @@ const TYPE_KEYS: Record<Account['type'], TranslationKey> = {
   e_wallet: 'account.typeEWallet',
 }
 
+const TYPE_ICONS: Record<Account['type'], LucideIcon> = {
+  debit: Landmark,
+  credit: CreditCard,
+  savings: PiggyBank,
+  time_deposit: Lock,
+  cash: Banknote,
+  e_wallet: Smartphone,
+}
+
 interface AccountFormProps {
   account?: Account
   onSuccess: () => void
@@ -28,6 +39,7 @@ interface AccountFormProps {
   onCapHit?: () => void
 }
 
+/** Add/edit account form. Render inside <Modal variant="form">. */
 export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: AccountFormProps) {
   const { toast } = useToast()
   const { t } = useLanguage()
@@ -46,14 +58,9 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const typeOptions = (Object.keys(TYPE_KEYS) as Account['type'][]).map((value) => ({
-    value,
-    label: t(TYPE_KEYS[value]),
-  }))
-
-  const currencyOptions = getAllCurrencies().map((c) => ({
+  const currencyOptions: SegmentOption<CurrencyCode>[] = getAllCurrencies().map((c) => ({
     value: c.code,
-    label: `${c.flag} ${c.code} (${c.symbol})`,
+    label: `${c.flag} ${c.code}`,
   }))
 
   const validate = () => {
@@ -122,87 +129,136 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
     }
   }
 
+  const openingBalanceInput = (
+    <Input
+      id="account-opening"
+      label="Opening balance"
+      type="number"
+      step="0.01"
+      placeholder="0.00"
+      value={form.openingBalance}
+      onChange={(e) => setForm({ ...form, openingBalance: e.target.value })}
+      error={errors.openingBalance}
+    />
+  )
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        label="Account Name"
-        placeholder="e.g. BDO, GCash, Cash on Hand"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-        error={errors.name}
-      />
-      <Select
-        label="Type"
-        value={form.type}
-        onValueChange={(v) => setForm({ ...form, type: v as Account['type'] })}
-        options={typeOptions}
-      />
-      {!account && (
-        <Select
-          label="Currency"
-          value={form.currency}
-          onValueChange={(v) => setForm({ ...form, currency: v as CurrencyCode })}
-          options={currencyOptions}
-        />
-      )}
-      <Input
-        label="Institution (optional)"
-        placeholder="e.g. Banco de Oro"
-        value={form.institution}
-        onChange={(e) => setForm({ ...form, institution: e.target.value })}
-      />
-      <Input
-        label="Opening Balance"
-        type="number"
-        step="0.01"
-        placeholder="0.00"
-        value={form.openingBalance}
-        onChange={(e) => setForm({ ...form, openingBalance: e.target.value })}
-        error={errors.openingBalance}
-      />
-      {form.type === 'credit' && (
+    <FormModalLayout
+      onSubmit={handleSubmit}
+      footer={
         <>
-          <Input
-            label="Credit Limit"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={form.creditLimit}
-            onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
-            error={errors.creditLimit}
-          />
-          <Input
-            label="Payment Due Day (optional)"
-            type="number"
-            min="1"
-            max="31"
-            placeholder="e.g. 15"
-            value={form.dueDay}
-            onChange={(e) => setForm({ ...form, dueDay: e.target.value })}
-            error={errors.dueDay}
-          />
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={loading}>
+            {account ? 'Update account' : 'Add account'}
+          </Button>
         </>
-      )}
-      {form.type !== 'credit' && (
+      }
+    >
+      <Field label="Type">
+        <div className={formStyles.typeGrid} role="radiogroup" aria-label="Type">
+          {(Object.keys(TYPE_KEYS) as Account['type'][]).map((type) => {
+            const Icon = TYPE_ICONS[type]
+            const on = form.type === type
+            return (
+              <button
+                key={type}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                className={`${formStyles.typeTile} ${on ? formStyles.typeTileOn : ''}`}
+                onClick={() => setForm({ ...form, type })}
+              >
+                <span className={formStyles.typeIcon}>
+                  <Icon size={15} />
+                </span>
+                {t(TYPE_KEYS[type])}
+              </button>
+            )
+          })}
+        </div>
+      </Field>
+
+      <div className={formStyles.twoCol}>
         <Input
-          label="Low-balance alert (optional)"
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="Notify me when balance drops below this"
-          value={form.lowBalanceThreshold}
-          onChange={(e) => setForm({ ...form, lowBalanceThreshold: e.target.value })}
-          error={errors.lowBalanceThreshold}
+          id="account-name"
+          label="Account name"
+          placeholder="e.g. BDO, GCash, Cash on Hand"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          error={errors.name}
         />
+        <Input
+          id="account-bank"
+          label="Bank (optional)"
+          placeholder="e.g. Banco de Oro"
+          value={form.institution}
+          onChange={(e) => setForm({ ...form, institution: e.target.value })}
+        />
+      </div>
+
+      {!account && (
+        <Field label="Currency" hint="Currency locks once this account has transactions.">
+          <Segmented
+            ariaLabel="Currency"
+            options={currencyOptions}
+            value={form.currency}
+            onChange={(currency) => setForm({ ...form, currency })}
+          />
+        </Field>
       )}
 
-      <div className="flex gap-3 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" className="flex-1" loading={loading}>
-          {account ? 'Update' : 'Add'} Account
-        </Button>
-      </div>
-    </form>
+      {form.type === 'credit' ? (
+        <div className={formStyles.paleBlock}>
+          <span className={formStyles.eyebrow}>Credit card details</span>
+          <div className={formStyles.threeCol}>
+            {openingBalanceInput}
+            <Input
+              id="account-limit"
+              label="Credit limit"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={form.creditLimit}
+              onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
+              error={errors.creditLimit}
+            />
+            <Field hint={errors.dueDay ? undefined : 'of each month'}>
+              <Input
+                id="account-due"
+                label="Due day"
+                type="number"
+                min="1"
+                max="31"
+                placeholder="e.g. 15"
+                value={form.dueDay}
+                onChange={(e) => setForm({ ...form, dueDay: e.target.value })}
+                error={errors.dueDay}
+              />
+            </Field>
+          </div>
+        </div>
+      ) : (
+        <div className={formStyles.paleBlock}>
+          <span className={formStyles.eyebrow}>Balance</span>
+          <div className={formStyles.twoCol}>
+            {openingBalanceInput}
+            <Input
+              id="account-alert"
+              label="Low-balance alert (optional)"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Alert me below…"
+              value={form.lowBalanceThreshold}
+              onChange={(e) => setForm({ ...form, lowBalanceThreshold: e.target.value })}
+              error={errors.lowBalanceThreshold}
+            />
+          </div>
+        </div>
+      )}
+    </FormModalLayout>
   )
 }

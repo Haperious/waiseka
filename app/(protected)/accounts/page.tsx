@@ -464,7 +464,7 @@ export default function AccountsPage() {
       </Modal>
 
       {/* ── Add modal ────────────────────────────────────────────────────────── */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('account.create')}>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('account.create')} variant="form">
         <AccountForm
           onSuccess={() => { setAddOpen(false); refetch() }}
           onCancel={() => setAddOpen(false)}
@@ -473,7 +473,7 @@ export default function AccountsPage() {
       </Modal>
 
       {/* ── Edit modal ───────────────────────────────────────────────────────── */}
-      <Modal open={!!editAccount} onClose={() => setEditAccount(null)} title={t('account.editTitle')}>
+      <Modal open={!!editAccount} onClose={() => setEditAccount(null)} title={t('account.editTitle')} variant="form">
         {editAccount && (
           <AccountForm
             account={editAccount}

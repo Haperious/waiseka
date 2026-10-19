@@ -516,3 +516,65 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Account type tiles ─────────────────────────────────────────────────── */
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.typeTile {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.typeTile:hover {
+  border-color: var(--color-text-muted);
+}
+
+.typeTileOn {
+  border-color: var(--color-accent);
+  background: var(--color-pale);
+  box-shadow: 0 0 0 2px var(--color-sage);
+  font-weight: 600;
+}
+
+.typeTileOn:hover {
+  border-color: var(--color-accent);
+}
+
+.typeIcon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--color-elevated);
+  color: var(--color-text-secondary);
+}
+
+.typeTileOn .typeIcon {
+  background: var(--color-sage);
+  color: var(--color-accent);
+}
+
+@media (max-width: 520px) {
+  .typeGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
