@@ -48,9 +48,17 @@ export function rateLimit(
   return { allowed: true }
 }
 
-/** Extract the client IP from a Next.js request. */
+/**
+ * Extract the client IP from a Next.js request.
+ *
+ * On Netlify, x-nf-client-connection-ip is set by Netlify itself and is the only IP header
+ * it guarantees. x-forwarded-for can carry a value the client sent, so trusting it first
+ * would let anyone dodge the per-IP rate limits by sending a different header each request.
+ * The fallbacks cover local dev and other hosts.
+ */
 export function getClientIp(req: Request): string {
   return (
+    req.headers.get('x-nf-client-connection-ip')?.trim() ||
     (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
     req.headers.get('x-real-ip') ||
     'unknown'

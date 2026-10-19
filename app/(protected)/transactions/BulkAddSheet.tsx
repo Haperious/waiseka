@@ -298,7 +298,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
             fontVariantNumeric: 'tabular-nums', minWidth: 64, textAlign: 'right', paddingRight: 12,
           }}
         >
-          {t('bulk.lineCount').replace('{n}', String(lines.length))}
+          {lines.length === 1 ? t('bulk.lineCountOne') : t('bulk.lineCount').replace('{n}', String(lines.length))}
         </span>
       </div>
 
@@ -640,7 +640,7 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
             backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)',
           }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 8 }}>
-              {t('bulk.discardTitle').replace('{n}', String(lines.length))}
+              {lines.length === 1 ? t('bulk.discardTitleOne') : t('bulk.discardTitle').replace('{n}', String(lines.length))}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
               {t('bulk.discardBody')}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useId, useRef } from 'react'
 import * as RadixSelect from '@radix-ui/react-select'
 import { ChevronDown, ChevronUp, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -37,6 +37,8 @@ export default function Select({
 }: SelectProps) {
   const token = tone === 'token'
   const openRef = useRef(false)
+  // The trigger is a button, not a form control, so <label> alone doesn't name it for screen readers
+  const labelId = useId()
 
   const handleValueChange = (next: string) => {
     if (isEmptyValueEcho(next, value, openRef.current)) return
@@ -47,6 +49,7 @@ export default function Select({
     <div className={cn('flex flex-col', token ? 'gap-1.5' : 'gap-1')}>
       {label && (
         <label
+          id={labelId}
           className={cn('text-sm font-medium', !token && 'text-gray-700 dark:text-gray-300')}
           style={token ? { color: 'var(--color-text-secondary)' } : undefined}
         >
@@ -60,6 +63,8 @@ export default function Select({
         disabled={disabled}
       >
         <RadixSelect.Trigger
+          aria-labelledby={label ? labelId : undefined}
+          aria-invalid={error ? true : undefined}
           className={cn(
             'flex h-10 w-full items-center justify-between rounded-lg border px-3 text-sm',
             token
