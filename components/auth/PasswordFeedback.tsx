@@ -1,15 +1,6 @@
 import { CircleCheck } from 'lucide-react'
+import { scorePassword } from '@/lib/passwordStrength'
 import styles from './auth.module.css'
-
-/** 1-4. Length 8+, mixed case, a digit, and a symbol (or 12+ characters) each add a point. */
-function scorePassword(password: string): number {
-  let score = 0
-  if (password.length >= 8) score++
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++
-  if (/\d/.test(password)) score++
-  if (/[^A-Za-z0-9]/.test(password) || password.length >= 12) score++
-  return Math.max(score, 1)
-}
 
 /** 4-segment strength meter. The label is hidden on mobile. Renders nothing for an empty password. */
 export function PasswordStrength({ password }: { password: string }) {

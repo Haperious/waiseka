@@ -1,9 +1,9 @@
 'use client'
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { OTP_LENGTH as LENGTH, fillOtp } from '@/lib/otp'
 import styles from './auth.module.css'
 
-const LENGTH = 6
 
 interface OtpInputProps {
   value: string
@@ -41,7 +41,7 @@ const OtpInput = forwardRef<{ focus: () => void }, OtpInputProps>(
 
     /** Write digits starting at a box, keeping any digits after them, then focus the next box. */
     const fill = (from: number, digits: string) => {
-      const next = (value.slice(0, from) + digits + value.slice(from + digits.length)).slice(0, LENGTH)
+      const next = fillOtp(value, from, digits)
       focusAfterUpdate(from + digits.length)
       onChange(next)
       if (next.length === LENGTH) onComplete?.(next)

@@ -4,12 +4,15 @@ import { useRef } from 'react'
 import * as RadixSelect from '@radix-ui/react-select'
 import { ChevronDown } from 'lucide-react'
 import type { Account } from '@/hooks/useAccounts'
+import { useLanguage } from '@/context/LanguageContext'
 import { formatAmount } from '@/lib/currency'
+import { isEmptyValueEcho } from '@/lib/selectEcho'
 import { ACCOUNT_TYPE_ICONS } from './accountTypes'
 import styles from './forms.module.css'
 
 /** Balance shown on the right of an account card: available for assets, outstanding (red) for cards. */
 function AccountBalance({ account }: { account: Account }) {
+  const { t } = useLanguage()
   const isCredit = account.type === 'credit'
   const value = isCredit ? account.outstandingBalance ?? 0 : account.computedBalance ?? account.openingBalance
   return (
@@ -20,7 +23,7 @@ function AccountBalance({ account }: { account: Account }) {
       >
         {formatAmount(value, account.currency)}
       </span>
-      <span className={styles.accountBalanceLabel}>{isCredit ? 'outstanding' : 'available'}</span>
+      <span className={styles.accountBalanceLabel}>{isCredit ? t('transferForm.outstanding') : t('transferForm.available')}</span>
     </span>
   )
 }
@@ -58,6 +61,7 @@ interface AccountCardProps {
 
 /** One half of the From/To block in the transfer form; doubles as the account picker. */
 export function AccountCard({ eyebrow, position, value, options, accounts, onChange, placeholder, locked, invalid }: AccountCardProps) {
+  const { t } = useLanguage()
   const account = accounts.find((a) => a._id === value)
   const openRef = useRef(false)
   const className = [
@@ -77,9 +81,8 @@ export function AccountCard({ eyebrow, position, value, options, accounts, onCha
   return (
     <RadixSelect.Root
       value={value || undefined}
-      // Ignore the hidden native select's "" echo (see components/ui/Select.tsx)
       onValueChange={(next) => {
-        if (next === '' && value && !openRef.current) return
+        if (isEmptyValueEcho(next, value, openRef.current)) return
         onChange(next)
       }}
       onOpenChange={(open) => { openRef.current = open }}
@@ -98,7 +101,7 @@ export function AccountCard({ eyebrow, position, value, options, accounts, onCha
           style={{ width: 'var(--radix-select-trigger-width)', maxHeight: 'min(var(--radix-select-content-available-height), 300px)' }}
         >
           <RadixSelect.Viewport style={{ padding: 4 }}>
-            {options.length === 0 && <div className={styles.hint} style={{ padding: 10 }}>No matching accounts</div>}
+            {options.length === 0 && <div className={styles.hint} style={{ padding: 10 }}>{t('transferForm.noMatching')}</div>}
             {options.map((a) => {
               const Icon = ACCOUNT_TYPE_ICONS[a.type]
               return (

@@ -50,7 +50,7 @@ export async function runAccountAlerts(db: Db): Promise<{ usersChecked: number; 
 
       if (account.type === 'credit') {
         if (account.creditLimit == null || account.creditLimit <= 0) continue
-        const outstanding = computeOutstanding(activity)
+        const outstanding = computeOutstanding(account.openingBalance ?? 0, activity)
         const utilization = (outstanding / account.creditLimit) * 100
 
         if (utilization >= CREDIT_CRITICAL_PCT) {

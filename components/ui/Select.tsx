@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import * as RadixSelect from '@radix-ui/react-select'
 import { ChevronDown, ChevronUp, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isEmptyValueEcho } from '@/lib/selectEcho'
 
 export interface SelectOption {
   value: string
@@ -37,12 +38,8 @@ export default function Select({
   const token = tone === 'token'
   const openRef = useRef(false)
 
-  // Inside a <form>, Radix mirrors the value into a hidden native <select>. When the value
-  // changes before its option has registered (e.g. a default account pre-filled as accounts
-  // load), that select falls back to "" and reports it as a change, wiping the value.
-  // Picking an option happens while open, so a "" arriving while closed is that echo.
   const handleValueChange = (next: string) => {
-    if (next === '' && value && !openRef.current) return
+    if (isEmptyValueEcho(next, value, openRef.current)) return
     onValueChange(next)
   }
 

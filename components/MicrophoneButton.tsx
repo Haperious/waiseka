@@ -98,7 +98,7 @@ export default function MicrophoneButton({ onFill, currency, variant = 'default'
       </button>
       <button type="button" onClick={handleMicClick} className={formStyles.voiceText}>
         <span className={formStyles.voiceTitle}>
-          {uiState === 'listening' ? (isFil ? 'Nakikinig…' : 'Listening… tap to stop') : 'Say it instead'}
+          {uiState === 'listening' ? (isFil ? 'Nakikinig…' : 'Listening… tap to stop') : isFil ? 'Sabihin na lang' : 'Say it instead'}
         </span>
         <span className={formStyles.voiceExample}>&ldquo;Jollibee lunch, 245, GCash&rdquo;</span>
       </button>

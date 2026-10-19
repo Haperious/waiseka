@@ -13,6 +13,7 @@ import { useAccounts } from '@/hooks/useAccounts'
 import { useDefaultAccount } from '@/hooks/useDefaultAccount'
 import { useCurrency } from '@/context/CurrencyContext'
 import { accountIdForSubmit } from '@/lib/accountSelection'
+import { useLanguage } from '@/context/LanguageContext'
 import MicrophoneButton from '@/components/MicrophoneButton'
 import {
   AmountField,
@@ -30,11 +31,11 @@ const UNASSIGNED = ''
 
 type TxType = 'income' | 'expense' | 'savings'
 
-const TYPE_OPTIONS: SegmentOption<TxType>[] = [
-  { value: 'expense', label: 'Expense', icon: TrendingDown, color: 'var(--color-expense)' },
-  { value: 'income', label: 'Income', icon: TrendingUp, color: 'var(--color-income)' },
-  { value: 'savings', label: 'Savings', icon: PiggyBank, color: 'var(--color-savings)' },
-]
+const TYPE_OPTIONS = [
+  { value: 'expense', icon: TrendingDown, color: 'var(--color-expense)' },
+  { value: 'income', icon: TrendingUp, color: 'var(--color-income)' },
+  { value: 'savings', icon: PiggyBank, color: 'var(--color-savings)' },
+] as const
 
 type DateChoice = 'today' | 'yesterday' | 'other'
 
@@ -47,6 +48,7 @@ interface TransactionFormProps {
 /** Desktop add/edit transaction form. Render inside <Modal variant="form">. */
 export default function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast()
+  const { t } = useLanguage()
   const { categories } = useCategories()
   const { accounts } = useAccounts()
   const { currency: primaryCurrency } = useCurrency()
@@ -77,9 +79,9 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   const validate = () => {
     const e: Record<string, string> = {}
     if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0)
-      e.amount = 'Enter a valid positive amount'
-    if (!form.category) e.category = 'Category is required'
-    if (!form.date) e.date = 'Date is required'
+      e.amount = t('form.errAmount')
+    if (!form.category) e.category = t('form.errCategory')
+    if (!form.date) e.date = t('form.errDate')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -103,13 +105,13 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       })
       if (!res.ok) {
         const data = await res.json()
-        toast(data.error ?? 'Failed to save transaction', 'error')
+        toast(data.error ?? t('quickAdd.saveFailedToast'), 'error')
       } else {
-        toast(transaction ? 'Transaction updated' : 'Transaction added', 'success')
+        toast(transaction ? t('form.txUpdated') : t('quickAdd.addedToast'), 'success')
         onSuccess()
       }
     } catch {
-      toast('Something went wrong', 'error')
+      toast(t('common.genericError'), 'error')
     } finally {
       setLoading(false)
     }
@@ -121,7 +123,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   )
 
   const accountOptions = [
-    { value: UNASSIGNED, label: 'Unassigned' },
+    { value: UNASSIGNED, label: t('common.unassigned') },
     ...activeAccounts.map((a) => ({ value: a._id, label: a.name })),
   ]
 
@@ -129,13 +131,13 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd')
   const dateChoice: DateChoice = form.date === today ? 'today' : form.date === yesterday ? 'yesterday' : 'other'
   const dateOptions: SegmentOption<DateChoice>[] = [
-    { value: 'today', label: 'Today' },
-    { value: 'yesterday', label: 'Yesterday' },
+    { value: 'today', label: t('common.today') },
+    { value: 'yesterday', label: t('form.yesterday') },
     {
       value: 'other',
       icon: CalendarDays,
       label: dateChoice === 'other' && form.date ? format(new Date(`${form.date}T00:00:00`), 'MMM d') : undefined,
-      ariaLabel: 'Pick a date',
+      ariaLabel: t('form.pickDate'),
     },
   ]
   const pickDate = (choice: DateChoice) => {
@@ -151,11 +153,8 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   }
 
   const amountNumber = Number(form.amount)
-  const verb = transaction ? 'Update' : 'Add'
-  const submitLabel =
-    form.amount && amountNumber > 0
-      ? `${verb} ${form.type} · ${moneyLabel(amountNumber, currency)}`
-      : `${verb} ${form.type}`
+  const verb = transaction ? t(`form.update.${form.type}`) : t(`quickAdd.add.${form.type}`)
+  const submitLabel = form.amount && amountNumber > 0 ? `${verb} · ${moneyLabel(amountNumber, currency)}` : verb
 
   return (
     <FormModalLayout
@@ -163,7 +162,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       footer={
         <>
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" loading={loading} className={formStyles.money}>
             {submitLabel}
@@ -186,15 +185,15 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       />
 
       <Segmented
-        ariaLabel="Type"
-        options={TYPE_OPTIONS}
+        ariaLabel={t('common.type')}
+        options={TYPE_OPTIONS.map((o) => ({ ...o, label: t(`common.${o.value}`) }))}
         value={form.type}
         onChange={(type) => setForm({ ...form, type, category: '' })}
       />
 
       <AmountField
         id="tx-amount"
-        label="Amount"
+        label={t('common.amount')}
         value={form.amount}
         onChange={(amount) => setForm({ ...form, amount })}
         currency={currency}
@@ -212,15 +211,15 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
       <div className={formStyles.twoCol}>
         <Select
           tone="token"
-          label="Account"
+          label={t('form.account')}
           value={accountId}
           onValueChange={(v) => setForm({ ...form, accountId: v })}
           options={accountOptions}
-          placeholder={accountPending ? 'Default account' : 'Unassigned'}
+          placeholder={accountPending ? t('common.defaultAccount') : t('common.unassigned')}
         />
-        <Field label="Date" error={errors.date}>
+        <Field label={t('common.date')} error={errors.date}>
           <div style={{ position: 'relative' }}>
-            <Segmented ariaLabel="Date" options={dateOptions} value={dateChoice} onChange={pickDate} />
+            <Segmented ariaLabel={t('common.date')} options={dateOptions} value={dateChoice} onChange={pickDate} />
             <input
             ref={dateInputRef}
             type="date"
@@ -236,15 +235,15 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
 
       <Input
         id="tx-note"
-        label="Note (optional)"
-        placeholder="What was this for?"
+        label={t('form.note')}
+        placeholder={t('form.notePlaceholder')}
         value={form.description}
         onChange={(e) => setForm({ ...form, description: e.target.value })}
       />
 
       <ToggleRow
-        title="Repeats every month"
-        sub="For rent, Netflix, load promos"
+        title={t('form.repeatsMonthly')}
+        sub={t('form.repeatsMonthlyHint')}
         checked={form.isRecurring}
         onChange={(isRecurring) => setForm({ ...form, isRecurring })}
       />

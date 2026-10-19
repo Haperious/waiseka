@@ -8,6 +8,8 @@ export interface Category {
   name: string
   type: 'income' | 'expense' | 'both'
   color: string
+  /** Transactions in this category over the last 90 days (from GET /api/categories). */
+  usageCount?: number
 }
 
 interface CategoriesContextValue {

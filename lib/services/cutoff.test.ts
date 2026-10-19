@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveCutoffPeriod, cutoffPrefsFor } from './cutoff'
+import { resolveCutoffPeriod, cutoffPrefsFor, countCutoffsBetween } from './cutoff'
 
 function utc(year: number, month1: number, day: number): Date {
   return new Date(Date.UTC(year, month1 - 1, day))
@@ -98,5 +98,37 @@ describe('cutoffPrefsFor', () => {
 
   it('handles missing preferences', () => {
     expect(cutoffPrefsFor(undefined, 'PHP')).toEqual({ cutoffMode: undefined, cutoffDays: undefined, cutoffAnchorDate: undefined })
+  })
+})
+
+describe('countCutoffsBetween', () => {
+  const d = (y: number, m: number, day: number) => new Date(y, m - 1, day)
+
+  it('counts semi-monthly paydays (15th and month end) after today, through the target', () => {
+    // Oct 19 -> Dec 31: Oct 31, Nov 15, Nov 30, Dec 15, Dec 31
+    expect(countCutoffsBetween({}, d(2026, 10, 19), d(2026, 12, 31))).toBe(5)
+  })
+
+  it('does not count a payday on the start date, but counts one on the target date', () => {
+    expect(countCutoffsBetween({}, d(2026, 10, 15), d(2026, 10, 31))).toBe(1)
+    expect(countCutoffsBetween({}, d(2026, 10, 19), d(2026, 11, 15))).toBe(2)
+  })
+
+  it('uses the real month end in February', () => {
+    expect(countCutoffsBetween({}, d(2027, 2, 16), d(2027, 3, 1))).toBe(1)
+  })
+
+  it('counts once a month for a monthly schedule', () => {
+    expect(countCutoffsBetween({ cutoffMode: 'monthly', cutoffDays: [30] }, d(2026, 10, 19), d(2027, 4, 30))).toBe(7)
+  })
+
+  it('follows a custom mid-month day', () => {
+    // Semi-monthly on the 10th: Nov 10, Nov 30
+    expect(countCutoffsBetween({ cutoffMode: 'semi-monthly', cutoffDays: [10, 30] }, d(2026, 10, 31), d(2026, 11, 30))).toBe(2)
+  })
+
+  it('returns 0 when no payday falls before the target', () => {
+    expect(countCutoffsBetween({}, d(2026, 10, 19), d(2026, 10, 25))).toBe(0)
+    expect(countCutoffsBetween({}, d(2026, 10, 19), d(2026, 9, 1))).toBe(0)
   })
 })

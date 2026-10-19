@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { LockKeyhole, Unlink } from 'lucide-react'
@@ -46,8 +46,24 @@ function ResetPasswordForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [tokenRejected, setTokenRejected] = useState(false)
+  // null while checking the link. If the check itself fails (offline, rate limited)
+  // the form shows anyway and the submit re-checks the token.
+  const [linkValid, setLinkValid] = useState<boolean | null>(token ? null : false)
 
-  if (!token || tokenRejected) return <InvalidLink />
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    fetch(`/api/auth/reset-password?token=${encodeURIComponent(token)}`)
+      .then((res) => (res.ok ? res.json() : { valid: true }))
+      .then((data: { valid?: boolean }) => !cancelled && setLinkValid(data.valid !== false))
+      .catch(() => !cancelled && setLinkValid(true))
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  if (!token || tokenRejected || linkValid === false) return <InvalidLink />
+  if (linkValid === null) return null
 
   const validate = () => {
     const e: Record<string, string> = {}

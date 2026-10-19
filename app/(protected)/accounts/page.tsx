@@ -242,6 +242,8 @@ export default function AccountsPage() {
 
   const [addOpen, setAddOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
+  // Title follows the form: picking a card as the destination makes it a payment
+  const [transferIsCardPayment, setTransferIsCardPayment] = useState(false)
   const [payCardAccount, setPayCardAccount] = useState<Account | null>(null)
   const [showCapBanner, setShowCapBanner] = useState(false)
   const [editAccount, setEditAccount] = useState<Account | null>(null)
@@ -310,7 +312,7 @@ export default function AccountsPage() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           {activeAccounts.length >= 2 && (
-            <Button size="sm" variant="outline" onClick={() => setTransferOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => { setTransferIsCardPayment(false); setTransferOpen(true) }}>
               <ArrowLeftRight style={{ width: 14, height: 14, marginRight: 4 }} />
               <span className="hidden sm:inline">Transfer</span>
             </Button>
@@ -443,9 +445,10 @@ export default function AccountsPage() {
       )}
 
       {/* ── Transfer modal ───────────────────────────────────────────────────── */}
-      <Modal open={transferOpen} onClose={() => setTransferOpen(false)} title="Transfer" variant="form">
+      <Modal open={transferOpen} onClose={() => setTransferOpen(false)} title={transferIsCardPayment ? "Pay card" : "Transfer"} variant="form">
         <TransferForm
           accounts={accounts}
+          onCardPaymentChange={setTransferIsCardPayment}
           onSuccess={() => { setTransferOpen(false); refetch() }}
           onCancel={() => setTransferOpen(false)}
         />

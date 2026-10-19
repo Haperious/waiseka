@@ -13,8 +13,8 @@ export interface CutoffPreferences {
   cutoffMode?: CutoffMode
   cutoffDays?: number[]
   cutoffAnchorDate?: string
-  /** Per-currency overrides. A currency without an entry uses the top-level schedule. */
-  cutoffByCurrency?: Partial<Record<string, CurrencyCutoff>>
+  /** Per-currency overrides. A currency without an entry (or a null one) uses the top-level schedule. */
+  cutoffByCurrency?: Partial<Record<string, CurrencyCutoff | null>>
 }
 
 /**
@@ -103,4 +103,32 @@ export function resolveCutoffPeriod(prefs: CutoffPreferences, date: Date): Cutof
   const label = `${startDay}–${endDay} ${MONTH_LABELS[monthIndex0]}`
 
   return { index: index + 1, label, start, end, daysTotal, daysLeft }
+}
+
+/**
+ * How many cutoff periods end after `from` and on or before `to` - i.e. how many
+ * sweldos are left before a deadline under the user's schedule. Calendar dates
+ * are compared as given (local y/m/d), so time of day and timezone don't matter.
+ */
+export function countCutoffsBetween(prefs: CutoffPreferences, from: Date, to: Date): number {
+  const key = (y: number, m: number, d: number) => y * 10000 + m * 100 + d
+  const fromKey = key(from.getFullYear(), from.getMonth(), from.getDate())
+  const toKey = key(to.getFullYear(), to.getMonth(), to.getDate())
+  const cutoffDays = resolveCutoffDays(prefs)
+
+  let count = 0
+  let year = from.getFullYear()
+  let month = from.getMonth()
+  while (key(year, month, 1) <= toKey) {
+    for (const day of boundariesForMonth(cutoffDays, year, month)) {
+      const k = key(year, month, day)
+      if (k > fromKey && k <= toKey) count++
+    }
+    month++
+    if (month === 12) {
+      month = 0
+      year++
+    }
+  }
+  return count
 }

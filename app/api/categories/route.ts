@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
+import { getCategoryUsage } from '@/lib/services/categoryUsage'
 
 export async function GET() {
   const session = await requireVerifiedSession()
@@ -32,7 +33,9 @@ export async function GET() {
     } as ICategory)).sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  return NextResponse.json(categories)
+  // usageCount drives the "most used" order of category chips in the add-transaction forms
+  const usage = await getCategoryUsage(db, session.user.id)
+  return NextResponse.json(categories.map((c) => ({ ...c, usageCount: usage.get(c.name) ?? 0 })))
 }
 
 export async function POST(req: NextRequest) {

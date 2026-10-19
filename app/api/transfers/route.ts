@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   let overpayment = false
   if (toAccount.type === 'credit') {
     const activityMap = await getAccountActivityMap(db, session.user.id)
-    const currentOutstanding = computeOutstanding(activityMap.get(toAccount._id.toString()))
+    const currentOutstanding = computeOutstanding(toAccount.openingBalance ?? 0, activityMap.get(toAccount._id.toString()))
     if (amount > currentOutstanding) overpayment = true
   }
 

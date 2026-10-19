@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { format } from "date-fns"
 import { ArrowDown } from "lucide-react"
 import Input from "@/components/ui/Input"
 import Button from "@/components/ui/Button"
 import { useToast } from "@/components/ui/Toast"
 import { useCurrency } from "@/context/CurrencyContext"
+import { useLanguage } from "@/context/LanguageContext"
 import { Account } from "@/hooks/useAccounts"
 import { AccountCard } from "@/components/forms/AccountCard"
 import { AmountField, Chip, FormModalLayout, moneyLabel } from "@/components/forms/FormParts"
@@ -18,11 +19,14 @@ interface TransferFormProps {
   onCancel: () => void
   /** Pre-selects and locks the destination account (used by the credit card payment flow). */
   lockedToAccountId?: string
+  /** Called when the destination switches between a card (a payment) and anything else, so the modal title can follow. */
+  onCardPaymentChange?: (isCardPayment: boolean) => void
 }
 
 /** Transfer / pay-card form. Render inside <Modal variant="form">. */
-export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAccountId }: TransferFormProps) {
+export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAccountId, onCardPaymentChange }: TransferFormProps) {
   const { toast } = useToast()
+  const { t } = useLanguage()
   const { currency: primaryCurrency } = useCurrency()
   const [loading, setLoading] = useState(false)
 
@@ -55,18 +59,21 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
   const isCardPayment = toAccount?.type === "credit"
   const countsAsSavings = toAccount?.type === "savings" || toAccount?.type === "time_deposit"
   const outstanding = toAccount?.outstandingBalance ?? 0
+  useEffect(() => {
+    onCardPaymentChange?.(isCardPayment)
+  }, [isCardPayment, onCardPaymentChange])
   const willOverpay = isCardPayment && form.amount !== "" && Number(form.amount) > outstanding
   const currency = fromAccount?.currency ?? toAccount?.currency ?? primaryCurrency
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.fromAccountId) e.fromAccountId = "Select a source account"
-    if (!form.toAccountId) e.toAccountId = "Select a destination account"
+    if (!form.fromAccountId) e.fromAccountId = t('transferForm.errFrom')
+    if (!form.toAccountId) e.toAccountId = t('transferForm.errTo')
     if (form.fromAccountId && form.toAccountId && form.fromAccountId === form.toAccountId)
-      e.toAccountId = "Source and destination must differ"
+      e.toAccountId = t('transferForm.errSame')
     if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0)
-      e.amount = "Enter a valid positive amount"
-    if (currencyMismatch) e.toAccountId = "Both accounts must use the same currency"
+      e.amount = t('form.errAmount')
+    if (currencyMismatch) e.toAccountId = t('transferForm.errCurrency')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -89,20 +96,17 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
       })
       const data = await res.json()
       if (!res.ok) {
-        toast(data.error ?? "Failed to record transfer", "error")
+        toast(data.error ?? t('transferForm.failed'), "error")
         return
       }
       if (data.overpayment) {
-        toast(
-          "Transfer saved. Payment exceeds the outstanding balance - the card now shows a credit balance.",
-          "success",
-        )
+        toast(t('transferForm.overpaidToast'), "success")
       } else {
-        toast("Transfer recorded", "success")
+        toast(t('transferForm.recorded'), "success")
       }
       onSuccess()
     } catch {
-      toast("Something went wrong", "error")
+      toast(t('common.genericError'), "error")
     } finally {
       setLoading(false)
     }
@@ -113,7 +117,7 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
   const halfValue = Math.round((outstanding / 2) * 100) / 100
   const halfAmount = outstanding > 0 ? String(halfValue) : ""
   const amountNumber = Number(form.amount)
-  const verb = isCardPayment ? "Pay card" : "Transfer"
+  const verb = isCardPayment ? t('transferForm.payCard') : t('common.transfer')
   const submitLabel = form.amount && amountNumber > 0 ? `${verb} · ${moneyLabel(amountNumber, currency)}` : verb
   const pairError = errors.fromAccountId ?? errors.toAccountId
 
@@ -123,7 +127,7 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
       footer={
         <>
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" loading={loading} className={formStyles.money}>
             {submitLabel}
@@ -134,12 +138,12 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
       <div className={formStyles.field}>
         <div className={formStyles.transferPair}>
           <AccountCard
-            eyebrow="From"
+            eyebrow={t('transferForm.from')}
             position="top"
             value={form.fromAccountId}
             options={fromOptions}
             accounts={activeAccounts}
-            placeholder="Choose source account"
+            placeholder={t('transferForm.chooseFrom')}
             invalid={!!errors.fromAccountId}
             onChange={(v) =>
               setForm({ ...form, fromAccountId: v, toAccountId: v === form.toAccountId ? "" : form.toAccountId })
@@ -149,12 +153,12 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
             <ArrowDown size={15} />
           </span>
           <AccountCard
-            eyebrow="To"
+            eyebrow={t('transferForm.to')}
             position="bottom"
             value={form.toAccountId}
             options={toOptions}
             accounts={activeAccounts}
-            placeholder="Choose destination account"
+            placeholder={t('transferForm.chooseTo')}
             invalid={!!errors.toAccountId}
             locked={!!lockedToAccountId}
             onChange={(v) => setForm({ ...form, toAccountId: v })}
@@ -166,7 +170,7 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
       <div className={formStyles.field}>
         <AmountField
           id="transfer-amount"
-          label="Amount"
+          label={t('common.amount')}
           value={form.amount}
           onChange={(amount) => setForm({ ...form, amount })}
           currency={currency}
@@ -175,10 +179,10 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
         {isCardPayment && outstanding > 0 && (
           <div className={formStyles.chips}>
             <Chip selected={form.amount === fullAmount} onClick={() => setForm({ ...form, amount: fullAmount })}>
-              Pay full balance
+              {t('transferForm.payFull')}
             </Chip>
             <Chip selected={form.amount === halfAmount} onClick={() => setForm({ ...form, amount: halfAmount })}>
-              Half · {moneyLabel(halfValue, currency)}
+              {t('transferForm.half').replace('{amount}', moneyLabel(halfValue, currency))}
             </Chip>
           </div>
         )}
@@ -186,24 +190,24 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
 
       {willOverpay && (
         <div className={formStyles.warningBlock} role="status">
-          This is more than the outstanding balance. The card will show a credit balance after this payment.
+          {t('transferForm.overpayWarning')}
         </div>
       )}
       {countsAsSavings && (
-        <span className={formStyles.hint}>This transfer will count toward your total savings and health score.</span>
+        <span className={formStyles.hint}>{t('transferForm.savingsNote')}</span>
       )}
 
       <div className={formStyles.twoCol}>
         <Input
           id="transfer-note"
-          label="Note (optional)"
-          placeholder="e.g. Move savings, pay card"
+          label={t('form.note')}
+          placeholder={t('transferForm.notePlaceholder')}
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
         <Input
           id="transfer-date"
-          label="Date"
+          label={t('common.date')}
           type="date"
           value={form.date}
           onChange={(e) => setForm({ ...form, date: e.target.value })}

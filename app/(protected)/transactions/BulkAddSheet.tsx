@@ -17,6 +17,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { emitTransactionSaved } from '@/lib/transactionEvents'
 import Keypad from '@/components/quick-add/Keypad'
 import { ChipScroller } from '@/components/quick-add/QuickAddSheet'
+import { orderCategoryChips } from '@/lib/categoryChips'
 
 type TxType = 'expense' | 'income' | 'savings'
 
@@ -97,8 +98,9 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
   const currencySymbol = getCurrencySymbol(entryCurrency)
   const formatAmount = (v: number) => formatAmountIn(v, entryCurrency)
 
+  // Most used first; ordered per type (not per selection) so chips don't jump when tapped
   const categoryOptions = useMemo(
-    () => categories.filter((c) => c.type === type || c.type === 'both' || type === 'savings'),
+    () => orderCategoryChips(categories.filter((c) => c.type === type || c.type === 'both' || type === 'savings'), ''),
     [categories, type]
   )
 
@@ -413,22 +415,6 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
               )
             })}
           </ul>
-        )}
-        {lines.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '8px 2px 2px' }}>
-            <span style={{
-              fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.09em',
-              color: 'var(--color-text-muted)', textTransform: 'uppercase',
-            }}>
-              {t('bulk.runningNet')}
-            </span>
-            <span style={{
-              fontSize: '0.82rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums',
-              color: net >= 0 ? 'var(--color-income)' : 'var(--color-expense)',
-            }}>
-              {net >= 0 ? '+' : '−'}{formatAmount(Math.abs(net))}
-            </span>
-          </div>
         )}
       </div>
 

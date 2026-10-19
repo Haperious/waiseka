@@ -8,6 +8,7 @@ import { Budget } from '@/hooks/useBudgets'
 import { useCategories } from '@/hooks/useCategories'
 import { useViewCurrency } from '@/context/ViewCurrencyContext'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { formatAmount, getAllCurrencies, type CurrencyCode } from '@/lib/currency'
 import { AmountField, Field, FormModalLayout, Segmented, type SegmentOption } from '@/components/forms/FormParts'
 import { BudgetBar } from '@/components/forms/BudgetBar'
@@ -17,10 +18,6 @@ const COLORS = ['#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899'
 
 type Period = 'monthly' | 'weekly'
 
-const PERIOD_OPTIONS: SegmentOption<Period>[] = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'weekly', label: 'Weekly' },
-]
 
 /** Same windows the budgets API uses for `spent`: the UTC calendar month, or the UTC week starting Sunday. */
 function periodRange(period: Period): { start: Date; end: Date } {
@@ -84,6 +81,11 @@ interface BudgetFormProps {
 /** Create/edit budget form. Render inside <Modal variant="form">. */
 export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: BudgetFormProps) {
   const { toast } = useToast()
+  const { t } = useLanguage()
+  const periodOptions: SegmentOption<Period>[] = [
+    { value: 'monthly', label: t('budgetForm.monthly') },
+    { value: 'weekly', label: t('budgetForm.weekly') },
+  ]
   const { categories } = useCategories()
   const { viewCurrency, currencies, isMultiCurrency } = useViewCurrency()
   const { currency: primaryCurrency } = useCurrency()
@@ -104,9 +106,9 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.category) e.category = 'Category is required'
+    if (!form.category) e.category = t('form.errCategory')
     if (!form.limit || isNaN(Number(form.limit)) || Number(form.limit) <= 0)
-      e.limit = 'Enter a valid positive limit'
+      e.limit = t('budgetForm.errLimit')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -135,14 +137,14 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
           onCancel()
           onCapHit()
         } else {
-          toast(data.error ?? 'Failed to save budget', 'error')
+          toast(data.error ?? t('budgetForm.failed'), 'error')
         }
       } else {
-        toast(budget ? 'Budget updated' : 'Budget created', 'success')
+        toast(budget ? t('budgetForm.updated') : t('budgetForm.created'), 'success')
         onSuccess()
       }
     } catch {
-      toast('Something went wrong', 'error')
+      toast(t('common.genericError'), 'error')
     } finally {
       setLoading(false)
     }
@@ -170,10 +172,10 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
       footer={
         <>
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" loading={loading}>
-            {budget ? 'Update budget' : 'Create budget'}
+            {budget ? t('budgetForm.update') : t('budgetForm.create')}
           </Button>
         </>
       }
@@ -181,7 +183,7 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
       {isMultiCurrency && (
         <Select
           tone="token"
-          label="Currency"
+          label={t('form.currency')}
           value={form.currency}
           onValueChange={(v) => setForm({ ...form, currency: v as CurrencyCode })}
           options={currencyOptions}
@@ -190,17 +192,17 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
 
       <Select
         tone="token"
-        label="Category"
+        label={t('common.category')}
         value={form.category}
         onValueChange={(v) => setForm({ ...form, category: v })}
         options={categoryOptions}
-        placeholder="Select category"
+        placeholder={t('form.selectCategory')}
         error={errors.category}
       />
 
       <AmountField
         id="budget-limit"
-        label="Spending limit"
+        label={t('budgetForm.limit')}
         value={form.limit}
         onChange={(limit) => setForm({ ...form, limit })}
         currency={budgetCurrency}
@@ -208,16 +210,16 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
       />
 
       <div className={formStyles.twoCol}>
-        <Field label="Period">
+        <Field label={t('budgetForm.period')}>
           <Segmented
-            ariaLabel="Period"
-            options={PERIOD_OPTIONS}
+            ariaLabel={t('budgetForm.period')}
+            options={periodOptions}
             value={form.period}
             onChange={(period) => setForm({ ...form, period })}
           />
         </Field>
-        <Field label="Colour">
-          <div className={formStyles.swatches} role="radiogroup" aria-label="Colour">
+        <Field label={t('budgetForm.colour')}>
+          <div className={formStyles.swatches} role="radiogroup" aria-label={t('budgetForm.colour')}>
             {COLORS.map((c) => (
               <button
                 key={c}
@@ -239,7 +241,7 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
 
       <div className={formStyles.paleBlock}>
         <span className={formStyles.eyebrow}>
-          Preview · spent so far this {form.period === 'weekly' ? 'week' : 'month'}
+          {form.period === 'weekly' ? t('budgetForm.previewWeek') : t('budgetForm.previewMonth')}
         </span>
         {form.category ? (
           <BudgetBar
@@ -250,7 +252,7 @@ export default function BudgetForm({ budget, onSuccess, onCancel, onCapHit }: Bu
             formatAmount={money}
           />
         ) : (
-          <span className={formStyles.hint}>Pick a category to see what you&apos;ve spent on it.</span>
+          <span className={formStyles.hint}>{t('budgetForm.previewEmpty')}</span>
         )}
       </div>
     </FormModalLayout>

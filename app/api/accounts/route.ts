@@ -27,7 +27,7 @@ export async function GET() {
   const accountsWithBalance = accounts.map((account) => {
     const activity = activityMap.get(account._id.toString())
     if (account.type === 'credit') {
-      const outstandingBalance = computeOutstanding(activity)
+      const outstandingBalance = computeOutstanding(account.openingBalance ?? 0, activity)
       return {
         ...account,
         outstandingBalance,

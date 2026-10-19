@@ -94,7 +94,7 @@ export async function GET() {
       const daysUntilDue = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
       if (daysUntilDue < 0 || daysUntilDue > CREDIT_DUE_WITHIN_DAYS) continue
 
-      const outstanding = computeOutstanding(activityMap.get(account._id.toString()))
+      const outstanding = computeOutstanding(account.openingBalance ?? 0, activityMap.get(account._id.toString()))
       if (outstanding <= 0) continue
 
       items.push({

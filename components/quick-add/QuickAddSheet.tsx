@@ -18,7 +18,7 @@ import { emitTransactionSaved } from "@/lib/transactionEvents"
 import Badge from "@/components/ui/Badge"
 import { cn } from "@/lib/utils"
 import Keypad from "@/components/quick-add/Keypad"
-import { orderCategoryChips } from "@/components/forms/categoryChips"
+import { orderCategoryChips } from "@/lib/categoryChips"
 import styles from "./quickAdd.module.css"
 
 type Mode = "keypad" | "voice" | "receipt"

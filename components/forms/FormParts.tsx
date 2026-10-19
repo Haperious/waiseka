@@ -3,7 +3,8 @@
 import { forwardRef, useState, type ReactNode } from 'react'
 import { Search, type LucideIcon } from 'lucide-react'
 import { getCurrencySymbol } from '@/lib/currency'
-import { orderCategoryChips } from './categoryChips'
+import { orderCategoryChips } from '@/lib/categoryChips'
+import { useLanguage } from '@/context/LanguageContext'
 import styles from './forms.module.css'
 
 /**
@@ -143,36 +144,90 @@ const CATEGORY_CHIP_LIMIT = 7
  * Wrapping category chips: selected first, then most used, ending with a dashed
  * "All categories" chip that reveals every category.
  */
-export function CategoryChips({ categories, value, onChange, label = 'Category', error }: {
-  categories: { name: string }[]
+export function CategoryChips({ categories, value, onChange, label, error }: {
+  categories: { name: string; usageCount?: number }[]
   value: string
   onChange: (name: string) => void
   label?: string
   error?: string
 }) {
-  const [showAll, setShowAll] = useState(false)
+  const { t } = useLanguage()
+  label ??= t('common.category')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const ordered = orderCategoryChips(categories, value)
-  const visible = showAll ? ordered : ordered.slice(0, CATEGORY_CHIP_LIMIT)
+  const visible = ordered.slice(0, CATEGORY_CHIP_LIMIT)
   const hasMore = ordered.length > CATEGORY_CHIP_LIMIT
+  const q = query.trim().toLowerCase()
+  const matches = q ? ordered.filter((c) => c.name.toLowerCase().includes(q)) : ordered
+
+  const closePicker = () => {
+    setPickerOpen(false)
+    setQuery('')
+  }
+  const pick = (name: string) => {
+    onChange(name)
+    closePicker()
+  }
 
   return (
     <Field label={label} error={error}>
       {categories.length === 0 ? (
-        <span className={styles.hint}>No categories for this type yet.</span>
+        <span className={styles.hint}>{t('form.noCategoriesForType')}</span>
       ) : (
-        <div className={styles.chips} role="group" aria-label={label}>
-          {visible.map((c) => (
-            <Chip key={c.name} selected={c.name === value} onClick={() => onChange(c.name)}>
-              {c.name}
-            </Chip>
-          ))}
-          {hasMore && (
-            <Chip dashed onClick={() => setShowAll((v) => !v)}>
-              <Search size={13} />
-              {showAll ? 'Fewer categories' : 'All categories'}
-            </Chip>
+        <>
+          <div className={styles.chips} role="group" aria-label={label}>
+            {visible.map((c) => (
+              <Chip key={c.name} selected={c.name === value} onClick={() => onChange(c.name)}>
+                {c.name}
+              </Chip>
+            ))}
+            {hasMore && (
+              <Chip dashed selected={pickerOpen} onClick={() => (pickerOpen ? closePicker() : setPickerOpen(true))}>
+                <Search size={13} />
+                {t('form.allCategories')}
+              </Chip>
+            )}
+          </div>
+          {pickerOpen && (
+            <div className={styles.picker}>
+              <div className={styles.pickerSearch}>
+                <Search size={14} />
+                <input
+                  autoFocus
+                  type="text"
+                  className={styles.pickerInput}
+                  placeholder={t('form.searchCategories')}
+                  aria-label={t('form.searchCategories')}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      // Close the picker, not the whole modal
+                      e.preventDefault()
+                      e.stopPropagation()
+                      closePicker()
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (matches.length > 0) pick(matches[0].name)
+                    }
+                  }}
+                />
+              </div>
+              {matches.length === 0 ? (
+                <span className={styles.hint}>{t('form.noCategoryMatch').replace('{q}', query)}</span>
+              ) : (
+                <div className={styles.chips}>
+                  {matches.map((c) => (
+                    <Chip key={c.name} selected={c.name === value} onClick={() => pick(c.name)}>
+                      {c.name}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </Field>
   )

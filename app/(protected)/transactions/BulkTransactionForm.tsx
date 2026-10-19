@@ -11,9 +11,11 @@ import { useCategories } from '@/hooks/useCategories'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useDefaultAccount } from '@/hooks/useDefaultAccount'
 import { useCurrency } from '@/context/CurrencyContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { accountIdForSubmit } from '@/lib/accountSelection'
 import { getCurrencySymbol } from '@/lib/currency'
 import { moneyLabel, sanitizeAmount } from '@/components/forms/FormParts'
+import { orderCategoryChips } from '@/lib/categoryChips'
 import styles from '@/components/forms/forms.module.css'
 
 const UNASSIGNED = ''
@@ -34,10 +36,10 @@ interface TransactionRow {
 
 type RowErrors = Record<string, string>
 
-const TYPE_OPTIONS: { value: TransactionRow['type']; label: string; Icon: LucideIcon; color: string }[] = [
-  { value: 'expense', label: 'Expense', Icon: TrendingDown, color: 'var(--color-expense)' },
-  { value: 'income', label: 'Income', Icon: TrendingUp, color: 'var(--color-income)' },
-  { value: 'savings', label: 'Savings', Icon: PiggyBank, color: 'var(--color-savings)' },
+const TYPE_OPTIONS: { value: TransactionRow['type']; Icon: LucideIcon; color: string }[] = [
+  { value: 'expense', Icon: TrendingDown, color: 'var(--color-expense)' },
+  { value: 'income', Icon: TrendingUp, color: 'var(--color-income)' },
+  { value: 'savings', Icon: PiggyBank, color: 'var(--color-savings)' },
 ]
 
 function createEmptyRow(): TransactionRow {
@@ -51,23 +53,30 @@ function createEmptyRow(): TransactionRow {
   }
 }
 
+type Translate = ReturnType<typeof useLanguage>['t']
+
 /** "Line 2 needs a category before you can save." - one sentence per invalid line. */
-function lineErrorMessage(lineNumber: number, errors: RowErrors): string {
-  const needs = [errors.amount && 'an amount', errors.category && 'a category'].filter(Boolean)
-  if (needs.length > 0) return `Line ${lineNumber} needs ${needs.join(' and ')} before you can save.`
-  return `Line ${lineNumber}: ${Object.values(errors).join(', ')}`
+function lineErrorMessage(lineNumber: number, errors: RowErrors, t: Translate): string {
+  const needs = [errors.amount && t('bulkForm.anAmount'), errors.category && t('bulkForm.aCategory')].filter(Boolean)
+  if (needs.length > 0) {
+    return t('bulkForm.lineNeeds')
+      .replace('{n}', String(lineNumber))
+      .replace('{what}', needs.join(` ${t('bulkForm.and')} `))
+  }
+  return `${lineNumber}: ${Object.values(errors).join(', ')}`
 }
 
 /** Desktop Add Multiple table. Render inside <Modal variant="form" className="max-w-[820px]">. */
 export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransactionFormProps) {
   const { toast } = useToast()
+  const { t } = useLanguage()
   const { categories } = useCategories()
   const { accounts } = useAccounts()
   const { currency: primaryCurrency } = useCurrency()
 
   const activeAccounts = accounts.filter((a) => !a.isArchived)
   const accountOptions = [
-    { value: UNASSIGNED, label: 'Unassigned' },
+    { value: UNASSIGNED, label: t('common.unassigned') },
     ...activeAccounts.map((a) => ({ value: a._id, label: a.name })),
   ]
 
@@ -93,7 +102,7 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
 
   const categoryOptionsFor = useCallback(
     (type: TransactionRow['type']) =>
-      categories.filter((c) => c.type === type || c.type === 'both' || type === 'savings'),
+      orderCategoryChips(categories.filter((c) => c.type === type || c.type === 'both' || type === 'savings'), ''),
     [categories]
   )
 
@@ -134,8 +143,8 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
     for (const row of rows) {
       const e: RowErrors = {}
       if (!row.amount || isNaN(Number(row.amount)) || Number(row.amount) <= 0)
-        e.amount = 'Required'
-      if (!row.category) e.category = 'Required'
+        e.amount = t('bulkForm.required')
+      if (!row.category) e.category = t('bulkForm.required')
       if (Object.keys(e).length > 0) errors[row.id] = e
     }
     setRowErrors(errors)
@@ -144,11 +153,11 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
 
   const handleSubmit = async () => {
     if (!date) {
-      toast('Please select a date', 'error')
+      toast(t('bulkForm.selectDate'), 'error')
       return
     }
     if (!validate()) {
-      toast('Fix the highlighted fields before submitting', 'error')
+      toast(t('bulkForm.fixFields'), 'error')
       return
     }
     setLoading(true)
@@ -178,17 +187,17 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
             if (row) errors[row.id] = ve.fields
           }
           setRowErrors(errors)
-          toast('Fix the highlighted fields before submitting', 'error')
+          toast(t('bulkForm.fixFields'), 'error')
         } else {
-          toast(data.error ?? 'Failed to save transactions', 'error')
+          toast(data.error ?? t('bulk.saveFailedToast'), 'error')
         }
         return
       }
 
-      toast(`${data.inserted} transaction${data.inserted !== 1 ? 's' : ''} added`, 'success')
+      toast(data.inserted === 1 ? t('bulk.addedToastOne') : t('bulk.addedToast').replace('{n}', String(data.inserted)), 'success')
       onSuccess()
     } catch {
-      toast('Something went wrong', 'error')
+      toast(t('common.genericError'), 'error')
     } finally {
       setLoading(false)
     }
@@ -196,7 +205,7 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
 
   const errorMessages = rows.flatMap((row, i) => {
     const errors = rowErrors[row.id]
-    return errors && Object.keys(errors).length > 0 ? [lineErrorMessage(i + 1, errors)] : []
+    return errors && Object.keys(errors).length > 0 ? [lineErrorMessage(i + 1, errors, t)] : []
   })
 
   // Net: income in, expense and savings out of spendable money (same as the mobile sheet)
@@ -211,31 +220,31 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
       <div className={styles.body}>
         <div className={styles.sharedRow}>
           <div className={styles.sharedField}>
-            <Input id="bulk-date" label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Input id="bulk-date" label={t('common.date')} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className={styles.sharedField}>
             <Select
               tone="token"
-              label="Account"
+              label={t('form.account')}
               value={accountId}
               onValueChange={setAccountId}
               options={accountOptions}
-              placeholder={accountPending ? 'Default account' : 'Unassigned'}
+              placeholder={accountPending ? t('common.defaultAccount') : t('common.unassigned')}
             />
           </div>
-          <span className={styles.sharedHint}>Applies to every line</span>
+          <span className={styles.sharedHint}>{t('bulkForm.applies')}</span>
         </div>
 
         <div>
-          <div className={styles.table} role="table" aria-label="Transactions">
+          <div className={styles.table} role="table" aria-label={t('nav.transactions')}>
             <div className={`${styles.tableRow} ${styles.tableHead}`} role="row">
               <span role="columnheader" style={{ textAlign: 'center' }}>#</span>
-              <span role="columnheader">Type</span>
-              <span role="columnheader">Amount</span>
-              <span role="columnheader">Category</span>
-              <span role="columnheader">Description</span>
-              <span role="columnheader" aria-label="Recurring" />
-              <span role="columnheader" aria-label="Remove" />
+              <span role="columnheader">{t('common.type')}</span>
+              <span role="columnheader">{t('common.amount')}</span>
+              <span role="columnheader">{t('common.category')}</span>
+              <span role="columnheader">{t('common.description')}</span>
+              <span role="columnheader" aria-label={t('tx.recurring')} />
+              <span role="columnheader" aria-label={t('common.delete')} />
             </div>
 
             {rows.map((row, index) => {
@@ -252,7 +261,8 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
                   <span className={styles.rowNum}>{lineNo}</span>
 
                   <div className={styles.miniSeg} role="radiogroup" aria-label={`Line ${lineNo} type`}>
-                    {TYPE_OPTIONS.map(({ value, label, Icon, color }) => {
+                    {TYPE_OPTIONS.map(({ value, Icon, color }) => {
+                      const label = t(`common.${value}`)
                       const on = row.type === value
                       return (
                         <button
@@ -300,7 +310,7 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
                       style={row.category ? undefined : { color: 'var(--color-text-muted)' }}
                     >
                       <option value="" disabled>
-                        Select category
+                        {t('form.selectCategory')}
                       </option>
                       {categoryOptionsFor(row.type).map((c) => (
                         <option key={c._id} value={c.name}>
@@ -315,7 +325,7 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
                     <input
                       className={styles.cellInput}
                       type="text"
-                      placeholder="What was this for?"
+                      placeholder={t('form.notePlaceholder')}
                       aria-label={`Line ${lineNo} description`}
                       value={row.description}
                       onChange={(e) => updateRow(row.id, { description: e.target.value })}
@@ -333,7 +343,7 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
                     type="button"
                     aria-pressed={row.isRecurring}
                     aria-label={`Line ${lineNo} repeats every month`}
-                    title="Repeats every month"
+                    title={t('form.repeatsMonthly')}
                     className={`${styles.iconToggle} ${row.isRecurring ? styles.iconToggleOn : ''}`}
                     onClick={() => updateRow(row.id, { isRecurring: !row.isRecurring })}
                   >
@@ -356,9 +366,9 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
             <div className={styles.tableFoot}>
               <button type="button" onClick={addRow} className={styles.addLine}>
                 <Plus size={15} />
-                Add another line
+                {t('bulkForm.addLine')}
               </button>
-              <span className={styles.hint}>Enter on the last field adds a line</span>
+              <span className={styles.hint}>{t('bulkForm.enterHint')}</span>
             </div>
           </div>
 
@@ -374,7 +384,7 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
 
       <div className={styles.footerSplit}>
         <div className={styles.net}>
-          <span className={styles.eyebrow}>Net</span>
+          <span className={styles.eyebrow}>{t('bulk.net')}</span>
           <span
             className={styles.netValue}
             style={{ color: net < 0 ? 'var(--color-expense)' : net > 0 ? 'var(--color-income)' : 'var(--color-text-primary)' }}
@@ -384,10 +394,10 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
           </span>
         </div>
         <Button type="button" variant="outline" onClick={onCancel} style={{ minWidth: 110 }}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="button" loading={loading} onClick={handleSubmit} style={{ minWidth: 200 }}>
-          Save {rows.length} transaction{rows.length !== 1 ? 's' : ''}
+          {rows.length === 1 ? t('bulk.saveOne') : t('bulk.save').replace('{n}', String(rows.length))}
         </Button>
       </div>
     </div>

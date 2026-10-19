@@ -46,17 +46,17 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.name.trim()) e.name = 'Name is required'
+    if (!form.name.trim()) e.name = t('accountForm.errName')
     if (form.openingBalance !== '' && isNaN(Number(form.openingBalance)))
-      e.openingBalance = 'Enter a valid amount'
+      e.openingBalance = t('accountForm.errAmount')
     if (form.type === 'credit' && form.creditLimit && (isNaN(Number(form.creditLimit)) || Number(form.creditLimit) <= 0))
-      e.creditLimit = 'Enter a valid credit limit'
+      e.creditLimit = t('accountForm.errLimit')
     if (form.type === 'credit' && form.dueDay) {
       const d = Number(form.dueDay)
-      if (!Number.isInteger(d) || d < 1 || d > 31) e.dueDay = 'Enter a day between 1 and 31'
+      if (!Number.isInteger(d) || d < 1 || d > 31) e.dueDay = t('accountForm.errDueDay')
     }
     if (form.type !== 'credit' && form.lowBalanceThreshold && (isNaN(Number(form.lowBalanceThreshold)) || Number(form.lowBalanceThreshold) < 0))
-      e.lowBalanceThreshold = 'Enter a valid amount'
+      e.lowBalanceThreshold = t('accountForm.errAmount')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -97,14 +97,14 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
           onCancel()
           onCapHit()
         } else {
-          toast(data.error ?? 'Failed to save account', 'error')
+          toast(data.error ?? t('accountForm.failed'), 'error')
         }
       } else {
-        toast(account ? 'Account updated' : 'Account added', 'success')
+        toast(account ? t('accountForm.updated') : t('accountForm.added'), 'success')
         onSuccess()
       }
     } catch {
-      toast('Something went wrong', 'error')
+      toast(t('common.genericError'), 'error')
     } finally {
       setLoading(false)
     }
@@ -113,7 +113,8 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
   const openingBalanceInput = (
     <Input
       id="account-opening"
-      label="Opening balance"
+      // For cards this is what's owed when the card is added; it counts toward the outstanding balance
+      label={form.type === 'credit' ? t('accountForm.balanceOwed') : t('accountForm.openingBalance')}
       type="number"
       step="0.01"
       placeholder="0.00"
@@ -129,16 +130,16 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
       footer={
         <>
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" loading={loading}>
-            {account ? 'Update account' : 'Add account'}
+            {account ? t('accountForm.update') : t('accountForm.add')}
           </Button>
         </>
       }
     >
-      <Field label="Type">
-        <div className={formStyles.typeGrid} role="radiogroup" aria-label="Type">
+      <Field label={t('common.type')}>
+        <div className={formStyles.typeGrid} role="radiogroup" aria-label={t('common.type')}>
           {(Object.keys(ACCOUNT_TYPE_KEYS) as Account['type'][]).map((type) => {
             const Icon = ACCOUNT_TYPE_ICONS[type]
             const on = form.type === type
@@ -164,25 +165,25 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
       <div className={formStyles.twoCol}>
         <Input
           id="account-name"
-          label="Account name"
-          placeholder="e.g. BDO, GCash, Cash on Hand"
+          label={t('accountForm.name')}
+          placeholder={t('accountForm.namePlaceholder')}
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           error={errors.name}
         />
         <Input
           id="account-bank"
-          label="Bank (optional)"
-          placeholder="e.g. Banco de Oro"
+          label={t('accountForm.bank')}
+          placeholder={t('accountForm.bankPlaceholder')}
           value={form.institution}
           onChange={(e) => setForm({ ...form, institution: e.target.value })}
         />
       </div>
 
       {!account && (
-        <Field label="Currency" hint="Currency locks once this account has transactions.">
+        <Field label={t('form.currency')} hint={t('accountForm.currencyHint')}>
           <Segmented
-            ariaLabel="Currency"
+            ariaLabel={t('form.currency')}
             options={currencyOptions}
             value={form.currency}
             onChange={(currency) => setForm({ ...form, currency })}
@@ -192,12 +193,12 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
 
       {form.type === 'credit' ? (
         <div className={formStyles.paleBlock}>
-          <span className={formStyles.eyebrow}>Credit card details</span>
+          <span className={formStyles.eyebrow}>{t('accountForm.cardDetails')}</span>
           <div className={formStyles.threeCol}>
             {openingBalanceInput}
             <Input
               id="account-limit"
-              label="Credit limit"
+              label={t('accountForm.creditLimit')}
               type="number"
               step="0.01"
               min="0"
@@ -206,14 +207,14 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
               onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
               error={errors.creditLimit}
             />
-            <Field hint={errors.dueDay ? undefined : 'of each month'}>
+            <Field hint={errors.dueDay ? undefined : t('accountForm.dueDayHint')}>
               <Input
                 id="account-due"
-                label="Due day"
+                label={t('accountForm.dueDay')}
                 type="number"
                 min="1"
                 max="31"
-                placeholder="e.g. 15"
+                placeholder={t('accountForm.dueDayPlaceholder')}
                 value={form.dueDay}
                 onChange={(e) => setForm({ ...form, dueDay: e.target.value })}
                 error={errors.dueDay}
@@ -223,16 +224,16 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
         </div>
       ) : (
         <div className={formStyles.paleBlock}>
-          <span className={formStyles.eyebrow}>Balance</span>
+          <span className={formStyles.eyebrow}>{t('accountForm.balance')}</span>
           <div className={formStyles.twoCol}>
             {openingBalanceInput}
             <Input
               id="account-alert"
-              label="Low-balance alert (optional)"
+              label={t('accountForm.lowAlert')}
               type="number"
               step="0.01"
               min="0"
-              placeholder="Alert me below…"
+              placeholder={t('accountForm.lowAlertPlaceholder')}
               value={form.lowBalanceThreshold}
               onChange={(e) => setForm({ ...form, lowBalanceThreshold: e.target.value })}
               error={errors.lowBalanceThreshold}

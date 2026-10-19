@@ -106,7 +106,8 @@ export async function getAccountActivityMap(db: Db, userId: string): Promise<Map
  *   balance = openingBalance + income - expense - savings + transferIn - transferOut
  *
  * Credit accounts:
- *   outstanding = expense - income - savings - transferIn + transferOut
+ *   outstanding = openingBalance + expense - income - savings - transferIn + transferOut
+ *     - openingBalance is the balance owed when the card was added to WaiseKa
  *     - a transfer INTO a card is a payment, so it reduces what you owe
  *     - a transfer OUT of a card (e.g. cash advance) increases what you owe
  *   availableCredit = creditLimit - outstanding (null if no creditLimit set)
@@ -121,9 +122,10 @@ export function computeAssetBalance(openingBalance: number, activity: AccountAct
     - activity.transferOut
 }
 
-export function computeOutstanding(activity: AccountActivity | undefined): number {
-  if (!activity) return 0
-  return activity.expense
+export function computeOutstanding(openingBalance: number, activity: AccountActivity | undefined): number {
+  if (!activity) return openingBalance
+  return openingBalance
+    + activity.expense
     - activity.income
     - activity.savings
     - activity.transferIn
