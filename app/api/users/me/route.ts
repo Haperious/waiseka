@@ -6,10 +6,12 @@ import { getDb } from '@/lib/mongodb'
 import type { IUser, OnboardingStepId } from '@/lib/models/User'
 
 const ONBOARDING_STEPS: OnboardingStepId[] = [
+  'accounts',
   'dashboard',
   'transactions',
   'categories',
   'goals',
+  'reports',
 ]
 
 const EXCLUDE = {

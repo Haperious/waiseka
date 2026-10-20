@@ -13,6 +13,7 @@ export type OnboardingStepId =
   | 'transactions'
   | 'categories'
   | 'goals'
+  | 'reports'
 
 export interface IOnboarding {
   completedAt: Date | null

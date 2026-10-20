@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   FolderPlus,
   Target,
+  PieChart,
   CheckCircle2,
   Circle,
   X,
@@ -70,6 +71,14 @@ const STEPS: OnboardingStep[] = [
     href: '/goals',
     matchPaths: ['/goals'],
     icon: Target,
+  },
+  {
+    id: 'reports',
+    label: 'View your Reports',
+    description: 'See where your money goes month to month.',
+    href: '/reports',
+    matchPaths: ['/reports'],
+    icon: PieChart,
   },
 ]
 
@@ -344,13 +353,13 @@ export default function OnboardingChecklist({
         </ul>
       )}
 
-      {/* Footer note for mobile - categories is in More → Sidebar */}
+      {/* Footer note for mobile - these pages are in More → Sidebar */}
       {!collapsed && (
         <p
           className="lg:hidden px-4 pb-3 text-[10px] leading-tight"
           style={{ color: 'var(--color-text-muted)' }}
         >
-          Tip: Categories is under <strong>More</strong> in the bottom menu.
+          Tip: Accounts, Categories, Goals and Reports are under <strong>More</strong> in the bottom menu.
         </p>
       )}
     </div>

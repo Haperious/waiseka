@@ -91,7 +91,7 @@ async function create(execute: boolean) {
       push: { enabled: false, frequency: 'weekly', fcmToken: null },
       lastSeen: now,
     },
-    onboarding: { completedAt: now, stepsCompleted: ['accounts', 'dashboard', 'transactions', 'categories', 'goals'], dismissed: true },
+    onboarding: { completedAt: now, stepsCompleted: ['accounts', 'dashboard', 'transactions', 'categories', 'goals', 'reports'], dismissed: true },
     createdAt: now,
     updatedAt: now,
   })
