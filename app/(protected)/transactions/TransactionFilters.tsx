@@ -231,8 +231,8 @@ export default function TransactionFilters({ filters, accounts, onChange, onClea
           </button>
           <p className="w-full" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
             {isPremium
-              ? t('tx.historyPremium').replace('{n}', String(planYears))
-              : t('tx.historyFree').replace('{n}', String(planYears)).replace('{m}', String(premiumYears))}
+              ? planYears === 1 ? t('tx.historyPremiumOne') : t('tx.historyPremium').replace('{n}', String(planYears))
+              : (planYears === 1 ? t('tx.historyFreeOne') : t('tx.historyFree').replace('{n}', String(planYears))).replace('{m}', String(premiumYears))}
             {!isPremium && (
               <>
                 {' '}
