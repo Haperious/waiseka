@@ -1,77 +1,71 @@
 /*
- * GET /api/summary/export?format=csv
+ * GET /api/summary/export?format=csv&range=3m|fy|yoy&year=2025&currency=PHP
  *
- * CSV export of the same 3-month report data as /api/summary/range, for the
- * /reports page's Export button. CSV only for v1 - PDF is a later fast-follow.
+ * CSV export for the /reports page's Download button, matching whichever range is on
+ * screen: the last 3 months (everyone, the default), a full year or year-on-year
+ * (Premium only - 403 otherwise; `year` is validated like the matching report route).
+ * CSV only for v1 - PDF is a later fast-follow.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { buildRangeReport, monthsBack } from '@/lib/services/monthlyStats'
-import { getRequestCurrencyScope } from '@/lib/services/requestCurrency'
+import { buildYearReport, buildYoyReport } from '@/lib/services/yearReport'
+import { parseReportYear } from '@/lib/reportYears'
+import { getReportViewer, PREMIUM_REPORT_ERROR } from '@/lib/services/reportViewer'
+import { rangeReportCsv, yearReportCsv, yoyReportCsv } from '@/lib/services/reportCsv'
 
 const RANGE_MONTHS = 3
 
-function escapeCsvField(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return ''
-  const str = String(value)
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-  return str
+function csvResponse(csv: string, filename: string) {
+  return new NextResponse(csv, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  })
 }
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { searchParams } = new URL(req.url)
+  const { searchParams } = req.nextUrl
   const format = searchParams.get('format') ?? 'csv'
   if (format !== 'csv') {
     return NextResponse.json({ error: 'Unsupported format - only "csv" is available' }, { status: 400 })
   }
+  const range = searchParams.get('range') ?? '3m'
+  if (range !== '3m' && range !== 'fy' && range !== 'yoy') {
+    return NextResponse.json({ error: 'range must be 3m, fy, or yoy' }, { status: 400 })
+  }
 
   const db = await getDb()
-  const months = monthsBack(new Date(), RANGE_MONTHS)
-  const { currency, scope } = await getRequestCurrencyScope(db, session.user.id, req)
-  const report = await buildRangeReport(db, session.user.id, months, scope)
+  const { premium, currency, scope } = await getReportViewer(db, session.user.id, req)
+  const now = new Date()
 
-  const monthLabels = report.months.map((m) => m.label)
+  if (range === '3m') {
+    const report = await buildRangeReport(db, session.user.id, monthsBack(now, RANGE_MONTHS), scope)
+    const from = report.months[0].label
+    const to = report.months[report.months.length - 1].label
+    return csvResponse(rangeReportCsv(report, currency), `waiseka-report-${currency}-${from}-${to}.csv`)
+  }
 
-  // Amounts are in one currency only (no conversion) - say which in the header
-  const summaryHeader = [`Metric (${currency})`, ...monthLabels, 'Total']
-  const summaryRows: string[][] = [
-    ['Income', ...report.months.map((m) => m.income), report.totals.income],
-    ['Expenses', ...report.months.map((m) => m.expenses), report.totals.expenses],
-    ['Savings', ...report.months.map((m) => m.savings), report.totals.savings],
-    ['Leftover', ...report.months.map((m) => m.leftover), report.totals.leftover],
-    ['Savings Rate %', ...report.months.map((m) => m.savingsRate), report.totals.savingsRate],
-  ].map((row) => row.map((v) => escapeCsvField(v as string | number)))
+  if (!premium) return NextResponse.json({ error: PREMIUM_REPORT_ERROR }, { status: 403 })
 
-  const categoryHeader = [`Category (${currency})`, ...monthLabels, '3-mo Avg', 'vs Avg %']
-  const categoryRows = report.categories.map((c) =>
-    [c.name, ...c.byMonth, Math.round(c.average * 100) / 100, c.currentVsAverage].map((v) =>
-      escapeCsvField(v as string | number)
-    )
+  const parsed = parseReportYear(searchParams.get('year'), premium, now, range)
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+
+  if (range === 'fy') {
+    const report = await buildYearReport(db, session.user.id, parsed.year, premium, scope, now)
+    return csvResponse(yearReportCsv(report, currency), `waiseka-report-${currency}-${parsed.year}.csv`)
+  }
+
+  const report = await buildYoyReport(db, session.user.id, parsed.year, premium, scope, now)
+  return csvResponse(
+    yoyReportCsv(report, currency),
+    `waiseka-report-${currency}-${report.previousYear}-vs-${report.year}.csv`
   )
-
-  const csv = [
-    summaryHeader.join(','),
-    ...summaryRows.map((r) => r.join(',')),
-    '',
-    categoryHeader.join(','),
-    ...categoryRows.map((r) => r.join(',')),
-  ].join('\n')
-
-  const from = report.months[0].label
-  const to = report.months[report.months.length - 1].label
-
-  return new NextResponse(csv, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="waiseka-report-${currency}-${from}-${to}.csv"`,
-    },
-  })
 }

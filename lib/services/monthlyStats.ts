@@ -7,7 +7,7 @@ import { MONTH_LABELS } from '@/lib/constants'
  * Optional extra $match clause - in practice currencyScope(c, primary). Callers that
  * haven't been made currency-aware yet pass nothing and get every currency (as before).
  */
-type ScopeFilter = Record<string, unknown> | undefined
+export type ScopeFilter = Record<string, unknown> | undefined
 
 function scoped(match: Record<string, unknown>, scope: ScopeFilter): Record<string, unknown> {
   return scope ? { ...match, $and: [scope] } : match
@@ -203,6 +203,44 @@ const FALLBACK_COLORS = [
   '#EF4444', '#F59E0B', '#10B981', '#3B82F6',
 ]
 
+/** The colours the user set on the named categories (categories without one are absent). */
+export async function userCategoryColors(db: Db, userId: string, names: string[]): Promise<Map<string, string>> {
+  const docs = names.length
+    ? await db.collection<ICategory>('categories')
+        .find({ userId, name: { $in: names } })
+        .project({ name: 1, color: 1 })
+        .toArray()
+    : []
+  return new Map(docs.filter((d) => d.color).map((d) => [d.name, d.color as string]))
+}
+
+/**
+ * A colour for each of `sortedNames` (same order): the user's own, else a fixed palette
+ * by position - so pass names in display order to keep fallbacks stable between loads.
+ */
+export function resolveCategoryColors(sortedNames: string[], userColors: Map<string, string>): string[] {
+  return sortedNames.map((name, i) => userColors.get(name) ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length])
+}
+
+/** One month's totals row (absent = no activity) as the summary every report shows. */
+export function summarizeMonth(
+  m: Pick<MonthMeta, 'key' | 'label'>,
+  row: Pick<MonthlyTotalsRow, 'income' | 'expenses' | 'savings'> | undefined
+): MonthSummary {
+  const income = row?.income ?? 0
+  const expenses = row?.expenses ?? 0
+  const savings = row?.savings ?? 0
+  return {
+    key: m.key,
+    label: m.label,
+    income,
+    expenses,
+    savings,
+    leftover: income - expenses,
+    savingsRate: savingsRate(income, expenses, savings),
+  }
+}
+
 /**
  * Assembles the per-month totals, per-category trend, and grand totals that back
  * both /api/summary/range and /api/summary/export - one aggregation pass, shared
@@ -219,21 +257,7 @@ export async function buildRangeReport(db: Db, userId: string, months: MonthMeta
 
   const totalsByKey = new Map(totalsRows.map((r) => [`${r.year}-${r.month}`, r]))
 
-  const monthSummaries: MonthSummary[] = months.map((m) => {
-    const row = totalsByKey.get(m.key)
-    const income = row?.income ?? 0
-    const expenses = row?.expenses ?? 0
-    const savings = row?.savings ?? 0
-    return {
-      key: m.key,
-      label: m.label,
-      income,
-      expenses,
-      savings,
-      leftover: income - expenses,
-      savingsRate: savingsRate(income, expenses, savings),
-    }
-  })
+  const monthSummaries: MonthSummary[] = months.map((m) => summarizeMonth(m, totalsByKey.get(m.key)))
 
   const categoryByMonth = new Map<string, number[]>()
   for (const row of categoryRows) {
@@ -248,17 +272,10 @@ export async function buildRangeReport(db: Db, userId: string, months: MonthMeta
     categoryByMonth.get(name)!.some((v) => v > 0)
   )
 
-  const categoryDocs = activeCategoryNames.length
-    ? await db.collection<ICategory>('categories')
-        .find({ userId, name: { $in: activeCategoryNames } })
-        .project({ name: 1, color: 1 })
-        .toArray()
-    : []
-  const colorMap = new Map(categoryDocs.filter((d) => d.color).map((d) => [d.name, d.color as string]))
-
   const sortedCategoryNames = activeCategoryNames.sort(
     (a, b) => categoryByMonth.get(b)!.reduce((s, v) => s + v, 0) - categoryByMonth.get(a)!.reduce((s, v) => s + v, 0)
   )
+  const colors = resolveCategoryColors(sortedCategoryNames, await userCategoryColors(db, userId, sortedCategoryNames))
 
   const categories: CategoryRangeStats[] = sortedCategoryNames.map((name, i) => {
     const byMonth = categoryByMonth.get(name)!
@@ -266,7 +283,7 @@ export async function buildRangeReport(db: Db, userId: string, months: MonthMeta
     const { average, percentageAbove } = averageAndDelta(byMonth, currentMonthTotal)
     return {
       name,
-      color: colorMap.get(name) ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+      color: colors[i],
       byMonth,
       average,
       currentVsAverage: percentageAbove,

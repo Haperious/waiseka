@@ -1,439 +1,222 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { PieChart, Tags, Download, Crown, Lightbulb } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { PieChart, Tags, Download } from 'lucide-react'
 import { useViewCurrency } from '@/context/ViewCurrencyContext'
 import ViewCurrencySwitcher from '@/components/ViewCurrencySwitcher'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { FREE_HISTORY_DAYS, PREMIUM_HISTORY_DAYS } from '@/lib/constants'
 import { usePreferences } from '@/hooks/usePreferences'
+import { extractApiError, useResource } from '@/hooks/useFetch'
+import { formatAmountCompact, formatAmountWhole, getCurrencySymbol } from '@/lib/currency'
+import { isPremium } from '@/lib/tier'
+import { monthsCoveredIn, parseReportYear, selectableYears } from '@/lib/reportYears'
+import type { RangeReport } from '@/lib/services/monthlyStats'
+import type { AvailableYear, YearReport, YoyReport as YoyReportData } from '@/lib/services/yearReport'
+import { RangeSwitcher, YearPicker } from './ReportControls'
+import { EmptyYearCard, PlanFooter, PremiumLockCard, ReportError } from './ReportParts'
+import { ReportBodySkeleton } from './ReportSkeleton'
+import ThreeMonthReport from './ThreeMonthReport'
+import FullYearReport from './FullYearReport'
+import YoyReport from './YoyReport'
+import { hasActivity, monthSpan, parseRange, type ReportRange, type ReportView } from './reportModel'
+import styles from './reports.module.css'
 
-interface RangeMonth {
-  key: string
-  label: string
-  income: number
-  expenses: number
-  savings: number
-  leftover: number
-  savingsRate: number
-}
-interface RangeCategory {
-  name: string
-  color: string
-  byMonth: number[]
-  average: number
-  currentVsAverage: number
-}
-interface RangeReport {
-  months: RangeMonth[]
-  categories: RangeCategory[]
-  totals: RangeMonth
+/** What a Premium-only report route answers a free user with (403). */
+interface Locked { locked: true }
+
+const isLocked = (value: unknown): value is Locked =>
+  typeof value === 'object' && value !== null && 'locked' in value
+
+async function fetchReport<T>(url: string): Promise<T | Locked> {
+  const res = await fetch(url)
+  if (res.status === 403) return { locked: true }
+  if (!res.ok) throw new Error(await extractApiError(res))
+  return res.json() as Promise<T>
 }
 
-const SAVINGS_RATE_COLOR = (rate: number) =>
-  rate >= 20 ? 'var(--color-accent)' : rate >= 10 ? 'var(--color-warning)' : 'var(--color-text-muted)'
+/** Fetches `url` (null = don't) through useResource, which drops stale responses. */
+function useReport<T>(url: string | null) {
+  const fetcher = useCallback(() => fetchReport<T>(url!), [url])
+  return useResource(fetcher, { enabled: url !== null })
+}
 
 export default function ReportsPage() {
-  const { viewCurrency, formatView: formatAmount } = useViewCurrency()
+  const { viewCurrency } = useViewCurrency()
   const { preferences } = usePreferences()
+  const { data: session, status: sessionStatus } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // One "now" for the page's lifetime, so the year list and labels can't shift mid-session
+  const [now] = useState(() => new Date())
+  const currentYear = now.getUTCFullYear()
+
   const viewParam = searchParams.get('view')
-  const view = viewParam === 'table' || viewParam === 'chart'
+  const view: ReportView = viewParam === 'table' || viewParam === 'chart'
     ? viewParam
     : preferences?.reportsDefaultView ?? 'chart'
+  const requestedRange = parseRange(searchParams.get('range'))
+  const yearMode = requestedRange === 'yoy' ? 'yoy' : 'fy'
+  // The URL may carry any year; one outside the Premium window falls back to this year
+  const parsedYear = parseReportYear(searchParams.get('year'), true, now, yearMode)
+  const year = parsedYear.ok ? parsedYear.year : currentYear
 
-  const [report, setReport] = useState<RangeReport | null>(null)
-  const [loading, setLoading] = useState(true)
+  const sessionReady = sessionStatus !== 'loading'
+  const sessionPremium = session
+    ? isPremium({ tier: session.user.tier, premiumOverride: session.user.premiumOverride })
+    : false
 
-  // Re-fetched when the view currency changes; a stale response is dropped
-  useEffect(() => {
-    let cancelled = false
-    fetch(`/api/summary/range?currency=${viewCurrency}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (!cancelled) setReport(data) })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [viewCurrency])
+  const currencyParam = `currency=${viewCurrency}`
+  const fyUrl = sessionReady && sessionPremium && requestedRange === 'fy'
+    ? `/api/summary/year?year=${year}&${currencyParam}` : null
+  const yoyUrl = sessionReady && sessionPremium && requestedRange === 'yoy'
+    ? `/api/summary/yoy?year=${year}&${currencyParam}` : null
+  const fy = useReport<YearReport>(fyUrl)
+  const yoy = useReport<YoyReportData>(yoyUrl)
 
-  const setView = (next: 'chart' | 'table') => {
+  // The server has the last word on the tier (e.g. a session from before a downgrade)
+  const serverLocked = (fyUrl !== null && isLocked(fy.data)) || (yoyUrl !== null && isLocked(yoy.data))
+  const premium = sessionPremium && !serverLocked
+  const range: ReportRange = premium ? requestedRange : '3m'
+  const showLock = sessionReady && !premium && requestedRange !== '3m'
+
+  const quarter = useReport<RangeReport>(sessionReady && range === '3m' ? `/api/summary/range?${currencyParam}` : null)
+
+  const formatAmount = (v: number) => formatAmountWhole(v, viewCurrency)
+  const formatCompact = (v: number) => formatAmountCompact(v, viewCurrency)
+
+  const updateParams = (patch: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString())
-    params.set('view', next)
-    router.replace(`/reports?${params.toString()}`, { scroll: false })
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null) params.delete(key)
+      else params.set(key, value)
+    }
+    const query = params.toString()
+    router.replace(query ? `/reports?${query}` : '/reports', { scroll: false })
   }
 
-  const currentMonth = report?.months[report.months.length - 1]
-  const maxMonthly = useMemo(
-    () => Math.max(1, ...(report?.months.flatMap((m) => [m.income, m.expenses, m.savings]) ?? [])),
-    [report]
-  )
+  const setRange = (next: ReportRange) => {
+    if (next === '3m') return updateParams({ range: null, year: null })
+    // Carry over a year the user picked, when the other range offers it too (YoY can't
+    // show the window's first year); otherwise the new range starts at this year
+    const keepYear = searchParams.has('year') && parsedYear.ok && selectableYears(true, now, next).includes(year)
+    updateParams({ range: next, year: keepYear ? String(year) : null })
+  }
 
-  const currentMonthCategories = useMemo(() => {
-    if (!report) return []
-    const idx = report.months.length - 1
-    return report.categories
-      .map((c) => ({ ...c, currentAmount: c.byMonth[idx] }))
-      .filter((c) => c.currentAmount > 0)
-      .sort((a, b) => b.currentAmount - a.currentAmount)
-  }, [report])
+  // ── Header subtitle ────────────────────────────────────────────────────────
+  const quarterData = quarter.data && !isLocked(quarter.data) ? quarter.data : null
+  const fyData = fy.data && !isLocked(fy.data) ? fy.data : null
+  const yoyData = yoy.data && !isLocked(yoy.data) ? yoy.data : null
 
-  const currentMonthTotal = currentMonthCategories.reduce((s, c) => s + c.currentAmount, 0)
+  let subtitle: string | null = null
+  let yearToDate = false
+  if (range === 'fy') {
+    subtitle = `Jan – Dec ${year}`
+  } else if (range === 'yoy') {
+    const months = yoyData?.year === year ? yoyData.monthsCovered : monthsCoveredIn(year, now)
+    subtitle = `${monthSpan(months)} ${year} vs ${monthSpan(months)} ${year - 1}`
+    yearToDate = months < 12
+  } else if (quarterData && quarterData.months.length > 0) {
+    const first = quarterData.months[0]
+    const last = quarterData.months[quarterData.months.length - 1]
+    subtitle = `${first.label} – ${last.label} ${last.key.split('-')[0]}`
+  }
 
-  const freeYears = Math.round(FREE_HISTORY_DAYS / 365)
-  const premiumYears = Math.round(PREMIUM_HISTORY_DAYS / 365)
+  // ── Year picker options: the report's own list once loaded, else the Premium window ──
+  const loadedYears: AvailableYear[] | undefined = range === 'fy' ? fyData?.availableYears : yoyData?.availableYears
+  const pickerYears = loadedYears ?? selectableYears(true, now, yearMode).map((y) => ({ year: y, hasData: true }))
+
+  const exportHref = range === '3m'
+    ? `/api/summary/export?format=csv&${currencyParam}`
+    : `/api/summary/export?format=csv&range=${range}&year=${year}&${currencyParam}`
+
+  const reportProps = { view, formatAmount, formatCompact, isCurrentYear: year === currentYear }
+
+  const renderBody = () => {
+    if (!sessionReady) return <ReportBodySkeleton />
+    if (range === 'fy') {
+      if (fy.loading) return <ReportBodySkeleton stats />
+      if (fy.error || !fyData) return <ReportError message={fy.error} onRetry={fy.refetch} />
+      if (fyData.monthsWithData === 0) return <EmptyYearCard year={year} firstYearWithData={fyData.firstYearWithData} />
+      return <FullYearReport report={fyData} currencySymbol={getCurrencySymbol(viewCurrency)} {...reportProps} />
+    }
+    if (range === 'yoy') {
+      if (yoy.loading) return <ReportBodySkeleton stats />
+      if (yoy.error || !yoyData) return <ReportError message={yoy.error} onRetry={yoy.refetch} />
+      if (!yoyData.current.months.some(hasActivity)) {
+        return <EmptyYearCard year={year} firstYearWithData={yoyData.firstYearWithData} />
+      }
+      return <YoyReport report={yoyData} {...reportProps} />
+    }
+    if (quarter.loading) return <ReportBodySkeleton />
+    if (quarter.error || !quarterData) return <ReportError message={quarter.error} onRetry={quarter.refetch} />
+    return <ThreeMonthReport report={quarterData} {...reportProps} />
+  }
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .reports-header { flex-direction: column !important; align-items: flex-start !important; }
-          .reports-header-actions { width: 100% !important; justify-content: space-between !important; }
-          .reports-bar-col { flex: 0 0 56px !important; }
-          .reports-bar-track { overflow-x: auto !important; padding-bottom: 4px; }
-          .reports-month-cards { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+    <div className={styles.page}>
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="reports-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{
-            fontFamily: "'Playfair Display', serif", fontWeight: 900, fontSize: '1.25rem',
-            color: 'var(--color-text-primary)',
-          }}>
-            Monthly Report
-          </h1>
-          {report && (
-            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', marginTop: 2 }}>
-              {report.months[0].label} – {currentMonth?.label} {new Date().getFullYear()}
-            </p>
-          )}
+      <div className={styles.header}>
+        <div className={styles.titleBlock}>
+          <h1 className={styles.title}>Monthly Report</h1>
+          <div className={styles.subtitleRow}>
+            {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+            {yearToDate && <span className={styles.pill}>Year to date</span>}
+          </div>
         </div>
 
-        <div className="reports-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className={styles.actions}>
           <ViewCurrencySwitcher />
-          <div style={{
-            display: 'flex', borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden',
-          }}>
-            <button
-              onClick={() => setView('chart')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '6px 14px', fontSize: '0.74rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                backgroundColor: view === 'chart' ? 'var(--color-sage)' : 'var(--color-card)',
-                color: view === 'chart' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-              }}
-            >
-              <PieChart style={{ width: 12, height: 12 }} /> Chart
-            </button>
-            <div style={{ width: 1, backgroundColor: 'var(--color-border)' }} />
-            <button
-              onClick={() => setView('table')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '6px 14px', fontSize: '0.74rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                backgroundColor: view === 'table' ? 'var(--color-sage)' : 'var(--color-card)',
-                color: view === 'table' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-              }}
-            >
-              <Tags style={{ width: 12, height: 12 }} /> Table
-            </button>
+          <div className={styles.actionGroup}>
+            <div className={styles.segmented} role="group" aria-label="Category view">
+              <button
+                type="button"
+                className={`${styles.segment} ${styles.viewSegment}`}
+                aria-pressed={view === 'chart'}
+                onClick={() => updateParams({ view: 'chart' })}
+              >
+                <PieChart size={12} aria-hidden /> Chart
+              </button>
+              <button
+                type="button"
+                className={`${styles.segment} ${styles.viewSegment}`}
+                aria-pressed={view === 'table'}
+                onClick={() => updateParams({ view: 'table' })}
+              >
+                <Tags size={12} aria-hidden /> Table
+              </button>
+            </div>
+            <a href={exportHref} className={styles.iconButton} aria-label="Download CSV" title="Download CSV">
+              <Download size={13} aria-hidden />
+            </a>
           </div>
-
-          <a
-            href={`/api/summary/export?format=csv&currency=${viewCurrency}`}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 32, height: 32, borderRadius: 8, border: '1px solid var(--color-border)',
-              backgroundColor: 'var(--color-card)', color: 'var(--color-text-secondary)',
-            }}
-            aria-label="Export CSV"
-          >
-            <Download style={{ width: 13, height: 13 }} />
-          </a>
         </div>
       </div>
 
-      {loading || !report ? (
-        <Skeleton className="h-64 w-full rounded-2xl" />
+      {/* ── Range + year ───────────────────────────────────────────────── */}
+      {sessionReady ? (
+        <div className={styles.rangeRow}>
+          <RangeSwitcher value={range} premium={premium} onChange={setRange} />
+          {premium && range !== '3m' && (
+            <YearPicker
+              value={year}
+              years={pickerYears}
+              currentYear={currentYear}
+              onChange={(y) => updateParams({ year: String(y) })}
+            />
+          )}
+        </div>
       ) : (
-        <>
-          {/* ── Bar chart + where-it-went strip ───────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 18 }} className="max-lg:!grid-cols-1">
-            <div style={{
-              backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)',
-              borderRadius: 16, padding: '18px 20px',
-            }}>
-              <div className="reports-bar-track" style={{ display: 'flex', alignItems: 'flex-end', gap: 20, height: 210 }}>
-                {report.months.map((m) => (
-                  <div key={m.key} className="reports-bar-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', justifyContent: 'flex-end' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, flex: 1 }}>
-                      <MonthBar value={m.income} max={maxMonthly} color="var(--color-income)" formatAmount={formatAmount} />
-                      <MonthBar value={m.expenses} max={maxMonthly} color="var(--color-expense)" formatAmount={formatAmount} />
-                      <MonthBar value={m.savings} max={maxMonthly} color="var(--color-savings)" formatAmount={formatAmount} />
-                    </div>
-                    <span style={{
-                      fontSize: '0.7rem', fontWeight: 600, marginTop: 8,
-                      color: m.key === currentMonth?.key ? 'var(--color-accent)'
-                        : m.savingsRate < 15 ? 'var(--color-warning)' : 'var(--color-text-muted)',
-                    }}>
-                      {m.label.toUpperCase()} · {m.savingsRate}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{
-              backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)',
-              borderRadius: 16, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12,
-            }}>
-              <p style={{ fontSize: '0.83rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                Where {currentMonth?.label} went
-              </p>
-              <div style={{ height: 22, borderRadius: 999, overflow: 'hidden', display: 'flex', backgroundColor: 'var(--color-elevated)' }}>
-                {currentMonthCategories.slice(0, 6).map((c) => (
-                  <div
-                    key={c.name}
-                    style={{ width: `${(c.currentAmount / (currentMonthTotal || 1)) * 100}%`, backgroundColor: c.color }}
-                  />
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {currentMonthCategories.slice(0, 6).map((c) => (
-                  <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.79rem' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: c.color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.name}
-                    </span>
-                    <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-primary)' }}>
-                      {formatAmount(c.currentAmount)}
-                    </span>
-                    <span style={{ width: 34, textAlign: 'right', color: 'var(--color-text-muted)' }}>
-                      {Math.round((c.currentAmount / (currentMonthTotal || 1)) * 100)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Month cards ────────────────────────────────────────────────── */}
-          <div className="reports-month-cards" style={{ display: 'grid', gridTemplateColumns: `repeat(${report.months.length}, 1fr)`, gap: 12 }}>
-            {report.months.map((m) => {
-              const isCurrent = m.key === currentMonth?.key
-              return (
-                <div
-                  key={m.key}
-                  style={{
-                    backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)',
-                    borderLeft: isCurrent ? '3px solid var(--color-accent)' : '1px solid var(--color-border)',
-                    borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8,
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{
-                      fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em',
-                      color: isCurrent ? 'var(--color-accent)' : 'var(--color-text-muted)',
-                    }}>
-                      {m.label}
-                    </span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: SAVINGS_RATE_COLOR(m.savingsRate) }}>
-                      {m.savingsRate}%
-                    </span>
-                  </div>
-                  <MonthCardRow label="Income" value={formatAmount(m.income)} color="var(--color-income)" />
-                  <MonthCardRow label="Expenses" value={formatAmount(m.expenses)} color="var(--color-expense)" />
-                  <MonthCardRow label="Savings moved" value={formatAmount(m.savings)} color="var(--color-savings)" />
-                  <div style={{ height: 1, backgroundColor: 'var(--color-border)' }} />
-                  <MonthCardRow label="Left over" value={formatAmount(m.leftover)} color="var(--color-text-primary)" bold />
-                </div>
-              )
-            })}
-          </div>
-
-          {/* ── Toggled category panel ────────────────────────────────────── */}
-          <div style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 16, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
-              <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                {view === 'table' ? 'Category breakdown' : 'By category, month over month'}
-              </p>
-            </div>
-
-            {view === 'table' ? (
-              <CategoryTable report={report} formatAmount={formatAmount} />
-            ) : (
-              <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }} className="max-lg:!grid-cols-1">
-                {report.categories.map((c) => {
-                  const deltaColor = c.currentVsAverage > 0 ? 'var(--color-expense)' : c.currentVsAverage < 0 ? 'var(--color-income)' : 'var(--color-text-secondary)'
-                  const max = Math.max(1, ...c.byMonth)
-                  return (
-                    <div key={c.name} style={{
-                      border: '1px solid var(--color-border)', borderRadius: 12, backgroundColor: 'var(--color-elevated)',
-                      padding: '13px 15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-                    }}>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.name}
-                        </p>
-                        <p style={{ fontSize: '0.74rem', color: 'var(--color-text-secondary)' }}>
-                          {formatAmount(c.byMonth[c.byMonth.length - 1])} ·{' '}
-                          <span style={{ color: deltaColor }}>
-                            {c.currentVsAverage > 0 ? '+' : ''}{c.currentVsAverage}% vs avg
-                          </span>
-                        </p>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 44, flexShrink: 0 }}>
-                        {c.byMonth.map((v, i) => (
-                          <div key={i} style={{
-                            width: 10, borderRadius: '2px 2px 0 0',
-                            height: `${Math.max(6, (v / max) * 100)}%`,
-                            backgroundColor: i === c.byMonth.length - 1 ? c.color : 'var(--color-border)',
-                          }} />
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            <div style={{
-              padding: '12px 20px', borderTop: '1px solid var(--color-border)',
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-            }}>
-              <Lightbulb style={{ width: 15, height: 15, color: 'var(--color-accent)', flexShrink: 0, marginTop: 2 }} />
-              <p style={{ fontSize: '0.78rem', lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-                Recurring obligations are the amount you can&apos;t move month to month. Everything else in your
-                category breakdown is where you have room to cut.
-              </p>
-            </div>
-          </div>
-
-          {/* ── Premium retention line ────────────────────────────────────── */}
-          <div style={{
-            backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)',
-            borderLeft: '3px solid var(--color-premium, #D97706)', borderRadius: 14,
-            padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 14,
-          }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-              backgroundColor: 'color-mix(in srgb, var(--color-premium, #D97706) 15%, transparent)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Crown style={{ width: 14, height: 14, color: 'var(--color-premium, #D97706)' }} />
-            </div>
-            <p style={{ fontSize: '0.79rem', lineHeight: 1.55, color: 'var(--color-text-secondary)', flex: 1 }}>
-              Your plan keeps the last <strong>{freeYears} years</strong>. Premium keeps {premiumYears} years and
-              adds full-year and year-on-year views.
-            </p>
-          </div>
-        </>
+        <Skeleton style={{ height: 32, width: 330, maxWidth: '100%', borderRadius: 8 }} />
       )}
-    </div>
-  )
-}
 
-function MonthBar({ value, max, color, formatAmount }: { value: number; max: number; color: string; formatAmount: (v: number) => string }) {
-  const pct = Math.max(2, (value / max) * 100)
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-      <span style={{ fontSize: '0.64rem', fontWeight: 700, marginBottom: 4, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-        {formatAmount(value)}
-      </span>
-      <div style={{ width: 26, height: `${pct}%`, borderRadius: '3px 3px 0 0', backgroundColor: color }} />
-    </div>
-  )
-}
+      {showLock && <PremiumLockCard />}
 
-function MonthCardRow({ label, value, color, bold }: { label: string; value: string; color: string; bold?: boolean }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
-      <span style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
-      <span style={{ color, fontWeight: bold ? 800 : 700, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-    </div>
-  )
-}
+      {renderBody()}
 
-function CategoryTable({ report, formatAmount }: { report: RangeReport; formatAmount: (v: number) => string }) {
-  const currentIdx = report.months.length - 1
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-        <thead>
-          <tr style={{ backgroundColor: 'var(--color-surface)' }}>
-            <Th align="left">Category</Th>
-            {report.months.map((m, i) => (
-              <Th key={m.key} color={i === currentIdx ? 'var(--color-accent)' : undefined}>{m.label}</Th>
-            ))}
-            <Th>Trend</Th>
-            <Th>3-mo Avg</Th>
-            <Th>vs Avg</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {report.categories.map((c) => {
-            const max = Math.max(1, ...c.byMonth)
-            const deltaColor = c.currentVsAverage > 0 ? 'var(--color-expense)' : c.currentVsAverage < 0 ? 'var(--color-income)' : 'var(--color-text-muted)'
-            return (
-              <tr key={c.name} style={{ borderTop: '1px solid var(--color-border)' }}>
-                <td style={{ padding: '10px 20px', color: 'var(--color-text-primary)', fontWeight: 600 }}>{c.name}</td>
-                {c.byMonth.map((v, i) => (
-                  <td key={i} style={{
-                    padding: '10px 14px', textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                    color: i === currentIdx ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-                    fontWeight: i === currentIdx ? 700 : 400,
-                  }}>
-                    {formatAmount(v)}
-                  </td>
-                ))}
-                <td style={{ padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 20 }}>
-                    {c.byMonth.map((v, i) => (
-                      <div key={i} style={{
-                        width: 7, height: `${Math.max(15, (v / max) * 100)}%`,
-                        backgroundColor: i === currentIdx ? c.color : 'var(--color-border)',
-                      }} />
-                    ))}
-                  </div>
-                </td>
-                <td style={{ padding: '10px 14px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-secondary)' }}>
-                  {formatAmount(c.average)}
-                </td>
-                <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: c.currentVsAverage === 0 ? 'var(--color-text-muted)' : deltaColor }}>
-                  {c.currentVsAverage === 0 ? 'flat' : `${c.currentVsAverage > 0 ? '+' : ''}${c.currentVsAverage}%`}
-                </td>
-              </tr>
-            )
-          })}
-          <tr style={{ backgroundColor: 'var(--color-elevated)', fontWeight: 800 }}>
-            <td style={{ padding: '10px 20px', color: 'var(--color-text-primary)' }}>Total</td>
-            {report.months.map((m) => (
-              <td key={m.key} style={{ padding: '10px 14px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-primary)' }}>
-                {formatAmount(m.expenses)}
-              </td>
-            ))}
-            <td />
-            <td style={{ padding: '10px 14px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-              {formatAmount(report.totals.expenses / report.months.length)}
-            </td>
-            <td />
-          </tr>
-        </tbody>
-      </table>
+      {sessionReady && <PlanFooter premium={premium} />}
     </div>
-  )
-}
-
-function Th({ children, align = 'right', color }: { children: React.ReactNode; align?: 'left' | 'right'; color?: string }) {
-  return (
-    <th style={{
-      padding: '10px 14px', textAlign: align, fontSize: '0.62rem', fontWeight: 700,
-      textTransform: 'uppercase', letterSpacing: '0.09em',
-      color: color ?? 'var(--color-text-muted)',
-    }}>
-      {children}
-    </th>
   )
 }

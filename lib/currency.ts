@@ -55,6 +55,25 @@ export function formatAmountShort(amount: number, code: string): string {
   return ltrIsolate(`${sign}${symbol} ${abs.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`)
 }
 
+/** Rounded to a whole unit, no space after the symbol: `₱56,000`. */
+export function formatAmountWhole(amount: number, code: string): string {
+  const rounded = Math.round(amount)
+  const sign = rounded < 0 ? '-' : ''
+  return ltrIsolate(`${sign}${getCurrencySymbol(code)}${Math.abs(rounded).toLocaleString('en-US')}`)
+}
+
+/** Chart-label size: `₱950`, `₱1.2k`, `₱56k`, `₱1.2M` (one decimal at most, dropping `.0`). */
+export function formatAmountCompact(amount: number, code: string): string {
+  const sign = amount < 0 ? '-' : ''
+  const abs = Math.abs(amount)
+  const oneDecimal = (v: number) => String(Math.round(v * 10) / 10)
+  let body: string
+  if (Math.round(abs / 100_000) >= 10) body = `${oneDecimal(abs / 1_000_000)}M`
+  else if (Math.round(abs) >= 1000) body = `${oneDecimal(abs / 1000)}k`
+  else body = String(Math.round(abs))
+  return ltrIsolate(`${sign}${getCurrencySymbol(code)}${body}`)
+}
+
 export function getAllCurrencies(): CurrencyInfo[] {
   return Object.values(CURRENCIES)
 }

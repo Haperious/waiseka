@@ -144,6 +144,7 @@ yarn start
 | Budgets             | Up to 3  | Unlimited |
 | Goals               | Up to 3  | Unlimited |
 | Imports / month     | 3        | 20        |
+| Reports             | Last 3 months | + Full year, Year-on-year |
 | AI assistant        | Limited  | Full      |
 
 Tier checks are enforced server-side via `lib/tier.ts → isPremium(user)`. The `PremiumGate` component handles UI-level upgrade prompts.
