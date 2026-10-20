@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import {
-  TrendingUp, TrendingDown, PiggyBank, Pencil, Trash2, RefreshCw, ArrowLeftRight,
+  TrendingUp, TrendingDown, PiggyBank, Pencil, Trash2, RefreshCw, ArrowLeftRight, SlidersHorizontal,
 } from 'lucide-react'
 import { SkeletonRow } from '@/components/ui/Skeleton'
 import type { Transaction } from '@/hooks/useTransactions'
@@ -27,7 +27,15 @@ function useTypeVisual() {
       ? { color: 'var(--color-savings)', bg: 'var(--color-savings-bg)', Icon: PiggyBank, label: t('common.savings') }
       : type === 'transfer'
       ? { color: 'var(--color-accent)', bg: 'var(--color-sage)', Icon: ArrowLeftRight, label: t('common.transfer') }
+      : type === 'adjustment'
+      ? { color: 'var(--color-text-secondary)', bg: 'var(--color-elevated)', Icon: SlidersHorizontal, label: t('adjust.label') }
       : { color: 'var(--color-expense)', bg: 'var(--color-expense-bg)', Icon: TrendingDown, label: t('common.expense') }
+}
+
+/** Stored category, except adjustments show their translated label. */
+function useCategoryLabel() {
+  const { t } = useLanguage()
+  return (tx: Transaction) => (tx.type === 'adjustment' ? t('adjust.label') : tx.category)
 }
 
 function transferLabel(tx: Transaction, accountNameById: Map<string, string>): string {
@@ -63,8 +71,14 @@ function AmountCell({ tx }: { tx: Transaction }) {
     tx.type === 'income' ? 'var(--color-income)' :
     tx.type === 'savings' ? 'var(--color-savings)' :
     tx.type === 'transfer' ? 'var(--color-accent)' :
+    tx.type === 'adjustment' ? 'var(--color-text-secondary)' :
     'var(--color-expense)'
-  const prefix = tx.type === 'income' ? '+' : tx.type === 'savings' ? '=' : tx.type === 'transfer' ? '⇄' : '−'
+  // An adjustment's sign is the change to the account's figure (amount owed, for a card)
+  const prefix = tx.type === 'income' ? '+'
+    : tx.type === 'savings' ? '='
+    : tx.type === 'transfer' ? '⇄'
+    : tx.type === 'adjustment' ? ((tx.adjustmentDelta ?? 0) >= 0 ? '+' : '−')
+    : '−'
 
   return (
     <span style={{
@@ -122,6 +136,7 @@ function MobileTransactionRow({ tx, accountNameById, onEdit, onDelete }: {
 }) {
   const { t } = useLanguage()
   const { Icon, color, bg } = useTypeVisual()(tx.type)
+  const categoryLabel = useCategoryLabel()(tx)
   const accountLabel = tx.type === 'transfer'
     ? transferLabel(tx, accountNameById)
     : tx.accountId ? (accountNameById.get(tx.accountId) ?? t('tx.unknownAccount')) : t('quickAdd.unassigned')
@@ -140,13 +155,13 @@ function MobileTransactionRow({ tx, accountNameById, onEdit, onDelete }: {
           fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {tx.description || tx.category}
+          {tx.description || categoryLabel}
         </p>
         <p style={{
           fontSize: '0.72rem', color: 'var(--color-text-muted)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {tx.category} · {accountLabel}
+          {categoryLabel} · {accountLabel}
           {tx.isRecurring && ' · ↻'}
         </p>
       </div>
@@ -241,6 +256,7 @@ const rowActionStyle: React.CSSProperties = {
 /** Full table for desktop widths. */
 export function TransactionTable({ transactions, loading, accountNameById, onEdit, onDelete }: TransactionListProps) {
   const { t } = useLanguage()
+  const categoryLabel = useCategoryLabel()
 
   const columns = [
     { label: t('common.date'),        className: '' },
@@ -363,7 +379,7 @@ export function TransactionTable({ transactions, loading, accountNameById, onEdi
 
               {/* Category */}
               <td className="hidden sm:table-cell" style={{ padding: '12px 20px', color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-                {tx.category}
+                {categoryLabel(tx)}
               </td>
 
               {/* Account */}

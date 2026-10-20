@@ -56,7 +56,9 @@ export async function GET(req: NextRequest) {
 
   if (tags) query.tags = { $in: tags.split(',') }
   if (accountId === 'unassigned') {
+    // Transfers also have no accountId (they use fromAccountId/toAccountId) - they aren't unlinked
     query.accountId = null
+    query.$and = [...(query.$and ?? []), { type: { $ne: 'transfer' } }]
   } else if (accountId && ObjectId.isValid(accountId)) {
     // Match direct transactions on this account OR either leg of a transfer touching it
     const accountObjectId = new ObjectId(accountId)

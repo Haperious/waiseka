@@ -1,4 +1,4 @@
-import { Db } from 'mongodb'
+import { Db, ObjectId } from 'mongodb'
 import type { ITransaction } from '@/lib/models/Transaction'
 
 interface AccountActivity {
@@ -9,10 +9,23 @@ interface AccountActivity {
   transferIn: number
   /** Total transferred OUT of this account (source leg of transfers). */
   transferOut: number
+  /**
+   * Sum of balance adjustments (signed). Added straight onto the balance for asset
+   * accounts and onto the outstanding amount for credit accounts. Optional so older
+   * callers that build activity by hand keep working (missing = 0).
+   */
+  adjustment?: number
 }
 
 function emptyActivity(): AccountActivity {
-  return { income: 0, expense: 0, savings: 0, transferIn: 0, transferOut: 0 }
+  return { income: 0, expense: 0, savings: 0, transferIn: 0, transferOut: 0, adjustment: 0 }
+}
+
+export interface ActivityOptions {
+  /** Only count transactions dated on or before this moment (balance "as of" a date). */
+  asOf?: Date
+  /** Leave this transaction out (used when re-working an adjustment being edited). */
+  excludeTransactionId?: ObjectId
 }
 
 /**
@@ -23,8 +36,15 @@ function emptyActivity(): AccountActivity {
  * Mirrors the "derived over stored" pattern already used for Budget.spent -
  * balances are never written to the account document, only computed on read.
  */
-export async function getAccountActivityMap(db: Db, userId: string): Promise<Map<string, AccountActivity>> {
+export async function getAccountActivityMap(
+  db: Db,
+  userId: string,
+  options: ActivityOptions = {},
+): Promise<Map<string, AccountActivity>> {
   const col = db.collection<ITransaction>('transactions')
+  const extra: Record<string, unknown> = {}
+  if (options.asOf) extra.date = { $lte: options.asOf }
+  if (options.excludeTransactionId) extra._id = { $ne: options.excludeTransactionId }
 
   const [directRows, transferRows] = await Promise.all([
     col.aggregate([
@@ -32,14 +52,16 @@ export async function getAccountActivityMap(db: Db, userId: string): Promise<Map
         $match: {
           userId,
           isArchived: { $ne: true },
-          type: { $in: ['income', 'expense', 'savings'] },
+          type: { $in: ['income', 'expense', 'savings', 'adjustment'] },
           accountId: { $ne: null },
+          ...extra,
         },
       },
       {
         $group: {
           _id: { accountId: '$accountId', type: '$type' },
-          total: { $sum: '$amount' },
+          // Adjustments carry their signed change in adjustmentDelta; amount is only its size
+          total: { $sum: { $cond: [{ $eq: ['$type', 'adjustment'] }, { $ifNull: ['$adjustmentDelta', 0] }, '$amount'] } },
         },
       },
     ]).toArray(),
@@ -49,6 +71,7 @@ export async function getAccountActivityMap(db: Db, userId: string): Promise<Map
           userId,
           isArchived: { $ne: true },
           type: 'transfer',
+          ...extra,
         },
       },
       {
@@ -74,6 +97,7 @@ export async function getAccountActivityMap(db: Db, userId: string): Promise<Map
     if (row._id.type === 'income') entry.income += row.total
     else if (row._id.type === 'expense') entry.expense += row.total
     else if (row._id.type === 'savings') entry.savings += row.total
+    else if (row._id.type === 'adjustment') entry.adjustment = (entry.adjustment ?? 0) + row.total
     map.set(key, entry)
   }
 
@@ -103,13 +127,14 @@ export async function getAccountActivityMap(db: Db, userId: string): Promise<Map
  * destination account):
  *
  * Asset accounts (debit, savings, time_deposit, cash, e_wallet):
- *   balance = openingBalance + income - expense - savings + transferIn - transferOut
+ *   balance = openingBalance + income - expense - savings + transferIn - transferOut + adjustment
  *
  * Credit accounts:
- *   outstanding = openingBalance + expense - income - savings - transferIn + transferOut
+ *   outstanding = openingBalance + expense - income - savings - transferIn + transferOut + adjustment
  *     - openingBalance is the balance owed when the card was added to WaiseKa
  *     - a transfer INTO a card is a payment, so it reduces what you owe
  *     - a transfer OUT of a card (e.g. cash advance) increases what you owe
+ *     - an adjustment's delta is already in "amount owed" terms, so it's added as-is
  *   availableCredit = creditLimit - outstanding (null if no creditLimit set)
  */
 export function computeAssetBalance(openingBalance: number, activity: AccountActivity | undefined): number {
@@ -120,6 +145,7 @@ export function computeAssetBalance(openingBalance: number, activity: AccountAct
     - activity.savings
     + activity.transferIn
     - activity.transferOut
+    + (activity.adjustment ?? 0)
 }
 
 export function computeOutstanding(openingBalance: number, activity: AccountActivity | undefined): number {
@@ -130,6 +156,7 @@ export function computeOutstanding(openingBalance: number, activity: AccountActi
     - activity.savings
     - activity.transferIn
     + activity.transferOut
+    + (activity.adjustment ?? 0)
 }
 
 export function computeAvailableCredit(creditLimit: number | null | undefined, outstanding: number): number | null {

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Plus, Pencil, Archive, ArchiveRestore, Lock, Landmark, CreditCard, PiggyBank, Banknote, Smartphone, Wallet, ArrowLeftRight } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
+import { Plus, Pencil, Archive, ArchiveRestore, Lock, Landmark, CreditCard, PiggyBank, Banknote, Smartphone, Wallet, ArrowLeftRight, SlidersHorizontal, Info } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
@@ -12,6 +13,7 @@ import { formatAmount as formatCurrencyAmount } from '@/lib/currency'
 import { useToast } from '@/components/ui/Toast'
 import AccountForm from './AccountForm'
 import TransferForm from './TransferForm'
+import AdjustBalanceForm from './AdjustBalanceForm'
 
 /** Sum a list of accounts' balances grouped by their own currency (no FX conversion). */
 function sumByCurrency(items: { currency: string; value: number }[]): Map<string, number> {
@@ -66,6 +68,41 @@ function CreditUtilizationBar({ outstanding, limit }: { outstanding: number; lim
   )
 }
 
+function CardActionButton({ onClick, icon: Icon, children }: {
+  onClick: () => void
+  icon: React.ElementType
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        flex: 1, minWidth: 0, height: 34, borderRadius: 10,
+        border: '1px solid var(--color-border)',
+        backgroundColor: 'transparent',
+        color: 'var(--color-text-secondary)',
+        fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        transition: 'all 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--color-accent)'
+        e.currentTarget.style.backgroundColor = 'var(--color-sage)'
+        e.currentTarget.style.color = 'var(--color-accent)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--color-border)'
+        e.currentTarget.style.backgroundColor = 'transparent'
+        e.currentTarget.style.color = 'var(--color-text-secondary)'
+      }}
+    >
+      <Icon style={{ width: 13, height: 13, flexShrink: 0 }} />
+      {children}
+    </button>
+  )
+}
+
 function AccountCard({
   account,
   t,
@@ -74,6 +111,7 @@ function AccountCard({
   onArchive,
   onUnarchive,
   onPayCard,
+  onAdjust,
 }: {
   account: Account
   t: (key: TranslationKey) => string
@@ -83,6 +121,7 @@ function AccountCard({
   onArchive: () => void
   onUnarchive: () => void
   onPayCard: () => void
+  onAdjust: () => void
 }) {
   const Icon = TYPE_ICON[account.type] ?? Wallet
   const isCredit = account.type === 'credit'
@@ -192,32 +231,13 @@ function AccountCard({
         )}
       </div>
 
-      {isCredit && !account.isArchived && canPayCard && (
-        <button
-          onClick={onPayCard}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            width: '100%', height: 34, borderRadius: 10,
-            border: '1px solid var(--color-border)',
-            backgroundColor: 'transparent',
-            color: 'var(--color-text-secondary)',
-            fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--color-accent)'
-            e.currentTarget.style.backgroundColor = 'var(--color-sage)'
-            e.currentTarget.style.color = 'var(--color-accent)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--color-border)'
-            e.currentTarget.style.backgroundColor = 'transparent'
-            e.currentTarget.style.color = 'var(--color-text-secondary)'
-          }}
-        >
-          <CreditCard style={{ width: 13, height: 13 }} />
-          Pay this card
-        </button>
+      {!account.isArchived && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isCredit && canPayCard && (
+            <CardActionButton onClick={onPayCard} icon={CreditCard}>Pay this card</CardActionButton>
+          )}
+          <CardActionButton onClick={onAdjust} icon={SlidersHorizontal}>{t('adjust.action')}</CardActionButton>
+        </div>
       )}
 
       {account.isArchived && (
@@ -247,6 +267,18 @@ export default function AccountsPage() {
   const [payCardAccount, setPayCardAccount] = useState<Account | null>(null)
   const [showCapBanner, setShowCapBanner] = useState(false)
   const [editAccount, setEditAccount] = useState<Account | null>(null)
+  const [adjustAccount, setAdjustAccount] = useState<Account | null>(null)
+
+  // Transactions with no account never move a balance - a common reason WaiseKa and the bank disagree
+  const [unlinkedCount, setUnlinkedCount] = useState(0)
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/transactions?accountId=unassigned&limit=1', { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data && typeof data.total === 'number') setUnlinkedCount(data.total) })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
 
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
   const archivedAccounts = useMemo(() => accounts.filter((a) => a.isArchived), [accounts])
@@ -362,6 +394,29 @@ export default function AccountsPage() {
         </div>
       )}
 
+      {/* ── Unlinked transactions notice ─────────────────────────────────────── */}
+      {unlinkedCount > 0 && activeAccounts.length > 0 && (
+        <div role="status" style={{
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+          padding: '12px 16px', borderRadius: 12,
+          backgroundColor: 'var(--color-warning-bg)',
+          color: 'var(--color-warning)',
+        }}>
+          <Info style={{ width: 16, height: 16, flexShrink: 0 }} />
+          <p style={{ fontSize: '0.82rem', flex: '1 1 220px', lineHeight: 1.5, margin: 0 }}>
+            {unlinkedCount === 1
+              ? t('adjust.unlinkedOne')
+              : t('adjust.unlinked').replace('{n}', String(unlinkedCount))}
+          </p>
+          <Link
+            href="/transactions?account=unassigned"
+            style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-warning)', textDecoration: 'underline', flexShrink: 0 }}
+          >
+            {t('adjust.unlinkedAction')}
+          </Link>
+        </div>
+      )}
+
       {/* ── Free-tier cap banner ─────────────────────────────────────────────── */}
       {showCapBanner && (
         <div style={{
@@ -416,6 +471,7 @@ export default function AccountsPage() {
               onArchive={() => handleArchive(account)}
               onUnarchive={() => handleUnarchive(account)}
               onPayCard={() => setPayCardAccount(account)}
+              onAdjust={() => setAdjustAccount(account)}
             />
           ))}
         </div>
@@ -438,6 +494,7 @@ export default function AccountsPage() {
                 onArchive={() => handleArchive(account)}
                 onUnarchive={() => handleUnarchive(account)}
                 onPayCard={() => {}}
+                onAdjust={() => {}}
               />
             ))}
           </div>
@@ -462,6 +519,17 @@ export default function AccountsPage() {
             lockedToAccountId={payCardAccount._id}
             onSuccess={() => { setPayCardAccount(null); refetch() }}
             onCancel={() => setPayCardAccount(null)}
+          />
+        )}
+      </Modal>
+
+      {/* ── Adjust balance modal ─────────────────────────────────────────────── */}
+      <Modal open={!!adjustAccount} onClose={() => setAdjustAccount(null)} title={t('adjust.title')} variant="form">
+        {adjustAccount && (
+          <AdjustBalanceForm
+            account={adjustAccount}
+            onSuccess={() => { setAdjustAccount(null); refetch() }}
+            onCancel={() => setAdjustAccount(null)}
           />
         )}
       </Modal>

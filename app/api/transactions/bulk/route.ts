@@ -5,6 +5,7 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
+import { isEntryType } from '@/lib/transactionInput'
 import type { IUser } from '@/lib/models/User'
 import type { IAccount } from '@/lib/models/Account'
 import { parseTransactionDate } from '@/lib/utils'
@@ -30,6 +31,8 @@ function validateItem(item: BulkTransactionItem, index: number): ValidationError
   const fields: Record<string, string> = {}
 
   if (!item.type) fields.type = 'Type is required'
+  // Transfers and balance adjustments have their own routes
+  else if (!isEntryType(item.type)) fields.type = 'Type must be income, expense or savings'
   if (!item.category) fields.category = 'Category is required'
   if (!item.date) fields.date = 'Date is required'
   if (typeof item.amount !== 'number' || !isFinite(item.amount) || item.amount <= 0) {

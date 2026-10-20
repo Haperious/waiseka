@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, SlidersHorizontal } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useTransactions } from '@/hooks/useTransactions'
@@ -14,18 +14,21 @@ const TYPE_ICON: Record<string, LucideIcon> = {
   expense: TrendingDown,
   savings: PiggyBank,
   transfer: ArrowLeftRight,
+  adjustment: SlidersHorizontal,
 }
 const TYPE_COLOR: Record<string, string> = {
   income: 'var(--color-income)',
   expense: 'var(--color-expense)',
   savings: 'var(--color-savings)',
   transfer: 'var(--color-accent)',
+  adjustment: 'var(--color-text-secondary)',
 }
 const TYPE_BG: Record<string, string> = {
   income: 'var(--color-income-bg)',
   expense: 'var(--color-expense-bg)',
   savings: 'var(--color-savings-bg)',
   transfer: 'var(--color-sage)',
+  adjustment: 'var(--color-elevated)',
 }
 
 export default function RecentActivityCard() {
@@ -71,7 +74,10 @@ export default function RecentActivityCard() {
             const color = TYPE_COLOR[tx.type] ?? 'var(--color-text-primary)'
             const acct = accountName(tx.accountId)
             const subtitleParts = [tx.category, acct, tx.isRecurring ? 'recurring' : null].filter(Boolean)
-            const sign = tx.type === 'expense' ? '-' : tx.type === 'transfer' ? '' : '+'
+            const sign = tx.type === 'expense' ? '-'
+              : tx.type === 'transfer' ? ''
+              : tx.type === 'adjustment' ? ((tx.adjustmentDelta ?? 0) >= 0 ? '+' : '-')
+              : '+'
             return (
               <div key={tx._id} style={{
                 display: 'flex', alignItems: 'center', gap: 12,

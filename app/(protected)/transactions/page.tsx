@@ -19,6 +19,7 @@ import { isPremium } from '@/lib/tier'
 import ImportModal from '@/components/import/ImportModal'
 import AccountStrip from '@/components/accounts/AccountStrip'
 import TransactionForm from './TransactionForm'
+import AdjustBalanceForm from '../accounts/AdjustBalanceForm'
 import BulkTransactionForm from './BulkTransactionForm'
 import BulkAddSheet from './BulkAddSheet'
 import QuickAddSheet from '@/components/quick-add/QuickAddSheet'
@@ -65,6 +66,8 @@ export default function TransactionsPage() {
   const [filters, setFilters] = useState<TransactionFilterValues>(() => ({
     ...NO_FILTERS,
     search: searchParams.get('search') ?? '',
+    // Linked from the accounts page's "not linked to an account" notice
+    account: searchParams.get('account') === 'unassigned' ? 'unassigned' : NO_FILTERS.account,
   }))
   const [addOpen, setAddOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -146,6 +149,11 @@ export default function TransactionsPage() {
   }
 
   const listProps = { transactions, loading, accountNameById, onEdit: setEditTx, onDelete: setDeleteTx }
+
+  // Adjustments are edited in their own form (re-enter the balance), not the transaction form
+  const editingAdjustment = editTx?.type === 'adjustment' ? editTx : null
+  const adjustmentAccount = editingAdjustment ? accounts.find((a) => a._id === editingAdjustment.accountId) : undefined
+  const editingEntry = editingAdjustment ? null : editTx
 
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -276,18 +284,29 @@ export default function TransactionsPage() {
       {/* ── Edit ─────────────────────────────────────────────────────────────── */}
       {/* Mobile edits in the FAB's quick-add sheet; saving emits transaction-saved, which refetches above */}
       {isBelowLg ? (
-        <QuickAddSheet open={!!editTx} transaction={editTx} onClose={() => setEditTx(null)} />
+        <QuickAddSheet open={!!editingEntry} transaction={editingEntry} onClose={() => setEditTx(null)} />
       ) : (
-        <Modal open={!!editTx} onClose={() => setEditTx(null)} title={t('tx.editTitle')} variant="form">
-          {editTx && (
+        <Modal open={!!editingEntry} onClose={() => setEditTx(null)} title={t('tx.editTitle')} variant="form">
+          {editingEntry && (
             <TransactionForm
-              transaction={editTx}
+              transaction={editingEntry}
               onSuccess={() => { setEditTx(null); refetch(); refetchAccounts() }}
               onCancel={() => setEditTx(null)}
             />
           )}
         </Modal>
       )}
+
+      <Modal open={!!editingAdjustment} onClose={() => setEditTx(null)} title={t('adjust.editTitle')} variant="form">
+        {editingAdjustment && adjustmentAccount && (
+          <AdjustBalanceForm
+            account={adjustmentAccount}
+            adjustment={editingAdjustment}
+            onSuccess={() => { setEditTx(null); refetch(); refetchAccounts() }}
+            onCancel={() => setEditTx(null)}
+          />
+        )}
+      </Modal>
 
       {/* ── Delete confirm modal ─────────────────────────────────────────────── */}
       <Modal open={!!deleteTx} onClose={() => setDeleteTx(null)} title={t('tx.deleteTitle')}>

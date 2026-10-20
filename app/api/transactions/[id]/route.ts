@@ -82,8 +82,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
   const transaction = await db.collection<ITransaction>('transactions').findOneAndUpdate(
-    // Transfers can't become a regular entry here (or the reverse); they're edited by delete + re-create
-    update.type ? { _id, userId: session.user.id, type: { $ne: 'transfer' as const } } : { _id, userId: session.user.id },
+    // Transfers can't become a regular entry here (or the reverse); they're edited by delete + re-create.
+    // Adjustments are never edited here - PUT /api/adjustments/[id] re-works their difference.
+    update.type
+      ? { _id, userId: session.user.id, type: { $nin: ['transfer', 'adjustment'] as ITransaction['type'][] } }
+      : { _id, userId: session.user.id, type: { $ne: 'adjustment' as const } },
     { $set: update },
     { returnDocument: 'after' }
   )

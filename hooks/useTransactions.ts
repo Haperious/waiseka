@@ -10,7 +10,7 @@ export interface Transaction {
   amount: number
   /** Missing on imports/very old rows - those count as the primary currency. */
   currency?: CurrencyCode | null
-  type: "income" | "expense" | "savings" | "transfer"
+  type: "income" | "expense" | "savings" | "transfer" | "adjustment"
   category: string
   description?: string
   date: string
@@ -19,6 +19,10 @@ export interface Transaction {
   accountId: string | null
   fromAccountId?: string | null
   toAccountId?: string | null
+  /** Adjustment only: signed change to the account's balance (or amount owed, for cards). */
+  adjustmentDelta?: number
+  /** Adjustment only: the balance the user entered. */
+  adjustmentTarget?: number
   createdAt: string
 }
 

@@ -69,6 +69,7 @@ export default function TransactionFilters({ filters, accounts, onChange, onClea
     { value: 'expense',  label: t('common.expense') },
     { value: 'savings',  label: t('common.savings') },
     { value: 'transfer', label: t('common.transfer') },
+    { value: 'adjustment', label: t('adjust.label') },
   ]
 
   const accountOptions = [

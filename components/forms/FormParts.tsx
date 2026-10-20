@@ -17,11 +17,16 @@ export function moneyLabel(amount: number, currency: string, { whole = false } =
   return `${getCurrencySymbol(currency)}${abs}`
 }
 
-/** Keeps digits and a single decimal point (max 2 decimals) for amount fields typed on a keyboard. */
-export function sanitizeAmount(raw: string): string {
+/**
+ * Keeps digits and a single decimal point (max 2 decimals) for amount fields typed on a keyboard.
+ * `allowNegative` keeps one leading minus (an overdrawn balance, a card in credit).
+ */
+export function sanitizeAmount(raw: string, { allowNegative = false } = {}): string {
+  const negative = allowNegative && raw.trim().startsWith('-')
   const cleaned = raw.replace(/[^\d.]/g, '')
   const [whole, ...rest] = cleaned.split('.')
-  return rest.length ? `${whole}.${rest.join('').slice(0, 2)}` : whole
+  const value = rest.length ? `${whole}.${rest.join('').slice(0, 2)}` : whole
+  return negative ? `-${value}` : value
 }
 
 export function Field({ label, htmlFor, hint, error, children }: {
@@ -52,11 +57,13 @@ interface AmountFieldProps {
   currency: string
   error?: string
   autoFocus?: boolean
+  /** Lets the user type a leading minus. */
+  allowNegative?: boolean
 }
 
 /** Large currency amount input: muted symbol, 2rem/800 tabular digits, accent focus ring. */
 export const AmountField = forwardRef<HTMLInputElement, AmountFieldProps>(
-  ({ id, label, value, onChange, currency, error, autoFocus }, ref) => (
+  ({ id, label, value, onChange, currency, error, autoFocus, allowNegative }, ref) => (
     <Field label={label} htmlFor={id} error={error}>
       <div className={`${styles.amountBox} ${error ? styles.amountBoxError : ''}`}>
         <span className={styles.amountSymbol}>{getCurrencySymbol(currency)}</span>
@@ -71,7 +78,7 @@ export const AmountField = forwardRef<HTMLInputElement, AmountFieldProps>(
           value={value}
           autoFocus={autoFocus}
           aria-invalid={!!error || undefined}
-          onChange={(e) => onChange(sanitizeAmount(e.target.value))}
+          onChange={(e) => onChange(sanitizeAmount(e.target.value, { allowNegative }))}
         />
       </div>
     </Field>
