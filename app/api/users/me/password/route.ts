@@ -1,24 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { ObjectId } from 'mongodb'
 import bcrypt from 'bcryptjs'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { IUser } from '@/lib/models/User'
+import { newPasswordError } from '@/lib/passwordStrength'
 
 export async function PUT(req: NextRequest) {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const { currentPassword, newPassword, confirmPassword } = body
 
   if (!currentPassword || !newPassword || !confirmPassword) {
     return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
   }
 
-  if (newPassword.length < 8) {
-    return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 })
+  if (typeof currentPassword !== 'string') {
+    return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
   }
+
+  const passwordError = newPasswordError(newPassword, 'New password')
+  if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
 
   if (newPassword !== confirmPassword) {
     return NextResponse.json({ error: 'New passwords do not match' }, { status: 400 })

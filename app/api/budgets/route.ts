@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { badRequest, cleanText, isHexColor, isPositiveAmount, readJsonBody } from '@/lib/request'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
   // Each budget only counts expenses in its own currency (a budget with no currency is in the primary)
   const user = await db
     .collection<IUser>('users')
-    .findOne({ _id: new ObjectId(session.user.id) as never }, { projection: { preferences: 1 } })
+    .findOne({ _id: new ObjectId(session.user.id) }, { projection: { preferences: 1 } })
   const primary = primaryCurrencyOf(user)
 
   const [monthlySpent, weeklySpent] = await Promise.all([
@@ -60,12 +61,18 @@ export async function POST(req: NextRequest) {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const { category, limit, period, color, currency } = body
 
   if (!category || !limit) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
+  const budgetCategory = cleanText(category, 100)
+  if (!budgetCategory) return badRequest('category must be 1-100 characters')
+  if (!isPositiveAmount(limit)) return badRequest('limit must be a positive number')
+  if (period !== undefined && period !== 'monthly' && period !== 'weekly') return badRequest('period must be monthly or weekly')
+  if (color != null && !isHexColor(color)) return badRequest('color must be a hex colour like #3b82f6')
   if (currency !== undefined && !isCurrencyCode(currency)) {
     return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
   }
@@ -74,7 +81,7 @@ export async function POST(req: NextRequest) {
   const db = await getDb()
 
   // -- Tier gate (PRD D6: budgets in every currency share one limit): free users capped at FREE_BUDGET_LIMIT, premium at PREMIUM_BUDGET_LIMIT
-  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const userIsPremium = isPremium(user)
@@ -93,7 +100,7 @@ export async function POST(req: NextRequest) {
 
   const result = await db.collection<IBudget>('budgets').insertOne({
     userId: session.user.id,
-    category,
+    category: budgetCategory,
     limit,
     period: period ?? 'monthly',
     currency: currency ?? primaryCurrencyOf(user),

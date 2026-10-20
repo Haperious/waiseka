@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { getDb } from '@/lib/mongodb'
 import { sendResetPasswordEmail } from '@/lib/email'
-import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, tooManyRequests } from '@/lib/rate-limit'
 import type { IUser } from '@/lib/models/User'
 import { logEmail } from '@/lib/models/EmailLog'
 import { APP_URL } from '@/lib/app-url'
+import { createEmailToken } from '@/lib/resetToken'
+import { readJsonBody } from '@/lib/request'
 
 const EXPIRY_MINUTES = 30
 // 3 requests per IP per 15 minutes
@@ -14,16 +15,13 @@ const RATE_WINDOW_MS = 15 * 60 * 1000
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
-  const rl = rateLimit(`forgot-password:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
-    )
-  }
+  const rl = await rateLimit(`forgot-password:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.allowed) return tooManyRequests(rl)
 
-  const { email } = await req.json()
-  if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
+  const { email } = body
+  if (!email || typeof email !== 'string') return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
   const db = await getDb()
   const user = await db.collection<IUser>('users').findOne({ email: email.toLowerCase() })
@@ -31,7 +29,7 @@ export async function POST(req: NextRequest) {
   // Always return 200 to prevent email enumeration
   if (!user) return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' })
 
-  const token = crypto.randomBytes(32).toString('hex')
+  const { token, tokenHash } = createEmailToken()
   const expiresAt = new Date(Date.now() + EXPIRY_MINUTES * 60 * 1000)
 
   // Invalidate any previous unused tokens for this user so only the latest link works
@@ -42,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   await db.collection('passwordResetTokens').insertOne({
     userId: user._id.toString(),
-    token,
+    tokenHash,
     expiresAt,
     used: false,
     createdAt: new Date(),

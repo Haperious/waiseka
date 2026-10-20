@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { getSettings, invalidateSettingsCache } from '@/lib/models/GlobalSettings'
@@ -16,7 +17,8 @@ export async function PUT(req: NextRequest) {
   const session = await requireAdminSession()
   if (session instanceof NextResponse) return session
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
 
   if (body.aiEnabled !== undefined && typeof body.aiEnabled !== 'boolean') {
     return NextResponse.json({ error: 'aiEnabled must be a boolean' }, { status: 400 })

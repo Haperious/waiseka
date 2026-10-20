@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { badRequest, cleanText, isHexColor, readJsonBody } from '@/lib/request'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { objectIdParam } from '@/lib/route-params'
@@ -10,10 +11,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const _id = await objectIdParam(params)
   if (_id instanceof NextResponse) return _id
-  const body = await req.json()
-  const { name, type, color } = body
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
+  const { type, color } = body
+  const name = cleanText(body.name, 50)
 
-  if (!name?.trim()) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+  if (!name) return NextResponse.json({ error: 'Name is required (up to 50 characters)' }, { status: 400 })
+  if (color != null && !isHexColor(color)) return badRequest('color must be a hex colour like #3b82f6')
   if (!['income', 'expense', 'both'].includes(type))
     return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
 
@@ -22,14 +26,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const conflict = await col.findOne({
     userId: session.user.id,
-    name: name.trim(),
+    name,
     _id: { $ne: _id },
   })
   if (conflict) return NextResponse.json({ error: 'Category name already in use' }, { status: 409 })
 
   const updated = await col.findOneAndUpdate(
     { _id, userId: session.user.id },
-    { $set: { name: name.trim(), type, color, updatedAt: new Date() } },
+    { $set: { name, type, color, updatedAt: new Date() } },
     { returnDocument: 'after' }
   )
 

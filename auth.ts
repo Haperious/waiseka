@@ -15,6 +15,11 @@ class LoginRateLimitedError extends CredentialsSignin {
   code = LOGIN_RATE_LIMITED_CODE
 }
 
+// Compared against when the email has no account, so a miss costs the same bcrypt work as a
+// wrong password and response timing doesn't reveal which emails are registered. A cost-12
+// hash of random bytes nobody kept - precomputed so it adds nothing to cold starts.
+const DUMMY_PASSWORD_HASH = '$2b$12$1GzCOv1bRAGT0aP/lgJGf.7/sRd00X0r1ayb0G2MnvAriL9.JfWGu'
+
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig,
   callbacks: {
@@ -49,7 +54,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
             .collection<IUser>('users')
             .findOne(
               { _id: new ObjectId(token.id as string) },
-              { projection: { passwordChangedAt: 1, isVerified: 1 } }
+              { projection: { passwordChangedAt: 1, isVerified: 1, isAdmin: 1, tier: 1, premiumOverride: 1 } }
             )
 
           const dbChangedAt = dbUser?.passwordChangedAt?.getTime() ?? null
@@ -63,6 +68,14 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
           // another tab/browser) would otherwise never reach an already-open session.
           if (dbUser && typeof dbUser.isVerified === 'boolean') {
             token.isVerified = dbUser.isVerified
+          }
+
+          // Same for admin rights and the plan: an active session keeps renewing, so a
+          // login-time snapshot would let a revoked admin or a downgraded user keep access
+          if (dbUser) {
+            token.isAdmin = dbUser.isAdmin === true
+            token.tier = dbUser.tier
+            token.premiumOverride = dbUser.premiumOverride === true
           }
 
           // Update lastLogin on each active session refresh (throttled to once per hour to
@@ -92,15 +105,13 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
 
         // Checked before the DB lookup and bcrypt compare so a locked-out
         // attacker gets no timing signal and costs us no hashing work
-        const rateLimitResult = checkLoginRateLimit(email, getClientIp(request))
+        const rateLimitResult = await checkLoginRateLimit(email, getClientIp(request))
         if (!rateLimitResult.allowed) throw new LoginRateLimitedError()
 
         const db = await getDb()
         const user = await db.collection<IUser>('users').findOne({ email: email.toLowerCase() })
-        if (!user) return null
-
-        const passwordMatch = await bcrypt.compare(password, user.password)
-        if (!passwordMatch) return null
+        const passwordMatch = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH)
+        if (!user || !passwordMatch) return null
 
         await db.collection<IUser>('users').updateOne(
           { _id: user._id },
@@ -120,6 +131,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
           isVerified: user.isVerified,
           createdAt: user.createdAt.toISOString(),
           mfaEnabled: !!user.mfa?.enabled,
+          passwordChangedAt: user.passwordChangedAt?.getTime() ?? null,
         }
       },
     }),

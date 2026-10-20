@@ -19,7 +19,7 @@ export interface ReportViewer {
 export async function getReportViewer(db: Db, userId: string, req: NextRequest): Promise<ReportViewer> {
   const user = await db
     .collection<IUser>('users')
-    .findOne({ _id: new ObjectId(userId) as never }, { projection: { tier: 1, premiumOverride: 1, preferences: 1 } })
+    .findOne({ _id: new ObjectId(userId) }, { projection: { tier: 1, premiumOverride: 1, preferences: 1 } })
   const premium = user ? isPremium(user) : false
   const { currency, primary } = viewCurrencyOf(user, req.nextUrl.searchParams)
   return { premium, currency, primary, scope: currencyScope(currency, primary) }

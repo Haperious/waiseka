@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { badRequest, cleanText, isHexColor, isOptionalText, readJsonBody } from '@/lib/request'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { objectIdParam } from '@/lib/route-params'
@@ -11,16 +12,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const _id = await objectIdParam(params)
   if (_id instanceof NextResponse) return _id
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
 
   // Whitelist editable fields - never allow userId, _id, or system fields to be overwritten
   const update: Partial<IAccount> & { updatedAt: Date } = { updatedAt: new Date() }
 
   if (body.name !== undefined) {
-    if (!body.name.trim()) return NextResponse.json({ error: 'name cannot be empty' }, { status: 400 })
-    update.name = body.name
+    const name = cleanText(body.name, 100)
+    if (!name) return badRequest('name must be 1-100 characters')
+    update.name = name
   }
-  if (body.institution !== undefined) update.institution = body.institution
+  if (body.institution !== undefined) {
+    if (!isOptionalText(body.institution, 100)) return badRequest('institution must be up to 100 characters')
+    update.institution = body.institution
+  }
   if (body.type !== undefined) {
     if (!ACCOUNT_TYPES.includes(body.type)) {
       return NextResponse.json({ error: `type must be one of: ${ACCOUNT_TYPES.join(', ')}` }, { status: 400 })
@@ -57,9 +63,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     update.lowBalanceThreshold = body.lowBalanceThreshold
   }
-  if (body.color !== undefined) update.color = body.color
-  if (body.icon !== undefined) update.icon = body.icon
-  if (body.displayOrder !== undefined) update.displayOrder = body.displayOrder
+  if (body.color !== undefined) {
+    if (body.color !== null && !isHexColor(body.color)) return badRequest('color must be a hex colour like #3b82f6')
+    update.color = body.color
+  }
+  if (body.icon !== undefined) {
+    if (!isOptionalText(body.icon, 50)) return badRequest('icon must be up to 50 characters')
+    update.icon = body.icon
+  }
+  if (body.displayOrder !== undefined) {
+    if (!Number.isInteger(body.displayOrder)) return badRequest('displayOrder must be a whole number')
+    update.displayOrder = body.displayOrder
+  }
   if (body.isArchived !== undefined) update.isArchived = !!body.isArchived
   if (body.includeInTotal !== undefined) update.includeInTotal = !!body.includeInTotal
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
@@ -7,6 +8,8 @@ import type { ITransaction } from '@/lib/models/Transaction'
 import type { IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
 import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
+import { readTransactionFields } from '@/lib/transactionInput'
+import { historyWindowStart, isPremium } from '@/lib/tier'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireVerifiedSession()
@@ -14,7 +17,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const _id = await objectIdParam(params)
   if (_id instanceof NextResponse) return _id
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
 
   // Whitelist editable fields - never allow userId, _id, or other system fields to be overwritten
   const update: Partial<ITransaction> & { updatedAt: Date } = { updatedAt: new Date() }
@@ -24,13 +28,28 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     update.amount = body.amount
   }
-  if (body.type !== undefined) update.type = body.type
-  if (body.category !== undefined) update.category = body.category
-  if (body.description !== undefined) update.description = body.description
-  if (body.date !== undefined) update.date = new Date(body.date)
+  const checked = readTransactionFields(body)
+  if ('error' in checked) return NextResponse.json({ error: checked.error }, { status: 400 })
+  // tags stay as they are - the edit forms don't send them
+  const { tags: _tags, ...fields } = checked.fields
+  Object.assign(update, fields)
+  if (body.description === null) update.description = ''
   if (body.isRecurring !== undefined) update.isRecurring = Boolean(body.isRecurring)
 
   const db = await getDb()
+
+  if (update.date) {
+    const user = await db.collection<IUser>('users').findOne(
+      { _id: new ObjectId(session.user.id) },
+      { projection: { tier: 1, premiumOverride: 1 } }
+    )
+    if (update.date < historyWindowStart(user ? isPremium(user) : false)) {
+      return NextResponse.json(
+        { error: 'That date is outside your history window. Upgrade to Premium for extended history.' },
+        { status: 403 }
+      )
+    }
+  }
 
   if (body.accountId !== undefined) {
     let account: IAccount | null = null
@@ -56,14 +75,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     )
     if (existing && existing.type !== 'transfer') {
       const user = await db.collection<IUser>('users').findOne(
-        { _id: new ObjectId(session.user.id) as never },
+        { _id: new ObjectId(session.user.id) },
         { projection: { preferences: 1 } }
       )
       update.currency = resolveTransactionCurrency(account, primaryCurrencyOf(user))
     }
   }
   const transaction = await db.collection<ITransaction>('transactions').findOneAndUpdate(
-    { _id, userId: session.user.id },
+    // Transfers can't become a regular entry here (or the reverse); they're edited by delete + re-create
+    update.type ? { _id, userId: session.user.id, type: { $ne: 'transfer' as const } } : { _id, userId: session.user.id },
     { $set: update },
     { returnDocument: 'after' }
   )

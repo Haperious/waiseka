@@ -108,6 +108,8 @@ export async function aggregateMonthlyTotals(
     {
       $match: scoped({
         userId,
+        // Same filter as the category aggregation, so month and category totals agree
+        isArchived: { $ne: true },
         date: { $gte: start, $lte: end },
       }, scope),
     },

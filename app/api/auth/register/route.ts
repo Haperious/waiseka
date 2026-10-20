@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import bcrypt from 'bcryptjs'
-import crypto from 'crypto'
 import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/mongodb'
 import { CURRENCY_SYMBOL_MAP } from '@/lib/models/User'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
 import type { IAccount } from '@/lib/models/Account'
 import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email'
-import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, tooManyRequests } from '@/lib/rate-limit'
 import type { IEmailLog } from '@/lib/models/EmailLog'
 import { APP_URL } from '@/lib/app-url'
+import { createEmailToken } from '@/lib/resetToken'
+import { newPasswordError } from '@/lib/passwordStrength'
 
 // 5 registrations per IP per hour
 const RATE_LIMIT = 5
@@ -17,17 +19,15 @@ const RATE_WINDOW_MS = 60 * 60 * 1000
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
-  const rl = rateLimit(`register:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
-    )
-  }
+  const rl = await rateLimit(`register:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.allowed) return tooManyRequests(rl)
 
   try {
-    const body = await req.json()
-    const { name, email, password, confirmPassword } = body
+    const body = await readJsonBody(req)
+    if (body instanceof NextResponse) return body
+    const { password, confirmPassword } = body
+    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    const email = typeof body.email === 'string' ? body.email.trim() : ''
 
     if (!name || !email || !password || !confirmPassword) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
@@ -42,9 +42,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
-    }
+    const passwordError = newPasswordError(password)
+    if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
 
     if (password !== confirmPassword) {
       return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 })
@@ -133,11 +132,11 @@ export async function POST(req: NextRequest) {
     const firstName = name.split(' ')[0]
     const lowerEmail = email.toLowerCase()
 
-    const verifyToken = crypto.randomBytes(32).toString('hex')
+    const { token: verifyToken, tokenHash } = createEmailToken()
     const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
     await db.collection('emailVerificationTokens').insertOne({
       userId: userId,
-      token: verifyToken,
+      tokenHash,
       expiresAt: verifyExpiry,
       createdAt: now,
     })

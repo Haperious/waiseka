@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
@@ -7,6 +6,7 @@ import { sendVerificationEmail } from '@/lib/email'
 import type { IUser } from '@/lib/models/User'
 import { logEmail } from '@/lib/models/EmailLog'
 import { APP_URL } from '@/lib/app-url'
+import { createEmailToken } from '@/lib/resetToken'
 
 const EXPIRY_HOURS = 24
 
@@ -26,12 +26,12 @@ export async function POST() {
   // Delete any existing unused tokens for this user
   await db.collection('emailVerificationTokens').deleteMany({ userId: session.user.id })
 
-  const token = crypto.randomBytes(32).toString('hex')
+  const { token, tokenHash } = createEmailToken()
   const expiresAt = new Date(Date.now() + EXPIRY_HOURS * 60 * 60 * 1000)
 
   await db.collection('emailVerificationTokens').insertOne({
     userId: session.user.id,
-    token,
+    tokenHash,
     expiresAt,
     createdAt: new Date(),
   })

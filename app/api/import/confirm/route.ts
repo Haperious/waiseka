@@ -1,67 +1,68 @@
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
-import { isPremium } from '@/lib/tier'
-import { incrementImportCount } from '@/lib/importUsage'
+import { historyWindowStart, isPremium } from '@/lib/tier'
 import { NextRequest, NextResponse } from 'next/server'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
 import { ObjectId } from 'mongodb'
 import { primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { importDedupeKey, MAX_IMPORT_ROWS, sanitizeImportRow, type ImportRow } from '@/lib/importRows'
 
 export async function POST(req: NextRequest) {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = session.user.id
-  const { transactions } = (await req.json()) as { transactions: Partial<ITransaction>[] }
+  const body = await req.json().catch(() => null)
+  const transactions: unknown = body?.transactions
 
   if (!Array.isArray(transactions) || transactions.length === 0) {
-    return NextResponse.json({ inserted: 0, skipped: 0 })
+    return NextResponse.json({ inserted: 0, skipped: 0, invalid: 0 })
+  }
+  if (transactions.length > MAX_IMPORT_ROWS) {
+    return NextResponse.json({ error: `Maximum ${MAX_IMPORT_ROWS} transactions per import` }, { status: 400 })
   }
 
   const db = await getDb()
 
-  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(userId) as never })
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(userId) })
   const userIsPremium = user ? isPremium({ tier: user.tier, premiumOverride: user.premiumOverride }) : false
 
-  // Imports have no account (out of scope, PRD Q4), so they take the primary currency
-  const currency = primaryCurrencyOf(user)
   const now = new Date()
+  const windowStart = historyWindowStart(userIsPremium, now)
+  const rows = transactions
+    .map((t) => sanitizeImportRow(t, windowStart, now))
+    .filter((r): r is ImportRow => r !== null)
+  const invalid = transactions.length - rows.length
 
-  const docs = transactions.map((t) => ({
-    userId,
-    amount: t.amount ?? 0,
-    currency,
-    type: t.type ?? 'expense',
-    category: t.category ?? 'Others',
-    description: t.description ?? '',
-    date: t.date ? new Date(t.date as unknown as string) : now,
-    tags: t.tags ?? [],
-    isRecurring: t.isRecurring ?? false,
-    source: 'import',
-    createdAt: now,
-    updatedAt: now,
-  }))
+  // One lookup for the whole batch instead of one per row
+  const col = db.collection<ITransaction>('transactions')
+  const existing = rows.length
+    ? await col
+        .find(
+          { userId, date: { $in: rows.map((r) => r.date) } },
+          { projection: { date: 1, amount: 1, description: 1 } }
+        )
+        .toArray()
+    : []
+  const alreadyImported = new Set(existing.map(importDedupeKey))
+  const fresh = rows.filter((r) => !alreadyImported.has(importDedupeKey(r)))
 
-  const inserted: typeof docs = []
-
-  for (const doc of docs) {
-    const exists = await db.collection('transactions').findOne({
-      userId: doc.userId,
-      date: doc.date,
-      amount: doc.amount,
-      description: doc.description,
-    })
-    if (!exists) inserted.push(doc)
+  if (fresh.length > 0) {
+    // Imports have no account (out of scope, PRD Q4), so they take the primary currency
+    const currency = primaryCurrencyOf(user)
+    await col.insertMany(fresh.map((r) => ({
+      ...r,
+      userId,
+      currency,
+      tags: [],
+      accountId: null,
+      isArchived: false,
+      source: 'import',
+      createdAt: now,
+      updatedAt: now,
+    })) as unknown as ITransaction[])
   }
 
-  if (inserted.length > 0) {
-    await db.collection('transactions').insertMany(inserted)
-  }
-
-  if (!userIsPremium) {
-    await incrementImportCount(userId)
-  }
-
-  return NextResponse.json({ inserted: inserted.length, skipped: docs.length - inserted.length })
+  return NextResponse.json({ inserted: fresh.length, skipped: rows.length - fresh.length, invalid })
 }

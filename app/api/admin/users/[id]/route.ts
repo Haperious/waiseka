@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { objectIdParam } from '@/lib/route-params'
@@ -15,13 +16,28 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const _id = await objectIdParam(params)
   if (_id instanceof NextResponse) return _id
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
 
   const update: Record<string, unknown> = { updatedAt: new Date() }
-  if (body.tier !== undefined) update.tier = body.tier
-  if (body.premiumOverride !== undefined) update.premiumOverride = body.premiumOverride
-  if (body['ai.enabled'] !== undefined) update['ai.enabled'] = body['ai.enabled']
-  if (body['ai.queriesCapOverride'] !== undefined) update['ai.queriesCapOverride'] = body['ai.queriesCapOverride']
+  const invalid = (field: string) => NextResponse.json({ error: `Invalid ${field}` }, { status: 400 })
+  if (body.tier !== undefined) {
+    if (body.tier !== 'free' && body.tier !== 'premium') return invalid('tier')
+    update.tier = body.tier
+  }
+  if (body.premiumOverride !== undefined) {
+    if (typeof body.premiumOverride !== 'boolean') return invalid('premiumOverride')
+    update.premiumOverride = body.premiumOverride
+  }
+  if (body['ai.enabled'] !== undefined) {
+    if (typeof body['ai.enabled'] !== 'boolean') return invalid('ai.enabled')
+    update['ai.enabled'] = body['ai.enabled']
+  }
+  if (body['ai.queriesCapOverride'] !== undefined) {
+    const cap = body['ai.queriesCapOverride']
+    if (cap !== null && !(Number.isInteger(cap) && cap >= 0)) return invalid('ai.queriesCapOverride')
+    update['ai.queriesCapOverride'] = cap
+  }
 
   const db = await getDb()
   const user = await db.collection<IUser>('users').findOneAndUpdate(

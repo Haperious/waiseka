@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
@@ -37,7 +38,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Notifications are currently disabled' }, { status: 403 })
   }
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const { email, push } = body
 
   if (email?.frequency && !VALID_FREQUENCIES.includes(email.frequency)) {

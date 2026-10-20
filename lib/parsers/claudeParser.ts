@@ -1,7 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { ITransaction } from '@/lib/models/Transaction'
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+import { askClaude } from '@/lib/ai'
 
 const EXTRACTION_PROMPT = `Extract all transactions from this bank statement or screenshot.
 Return ONLY a valid JSON array. No explanation, no markdown, no extra text.
@@ -44,23 +42,19 @@ export async function extractWithClaude(
         },
       } as const)
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2000,
-    messages: [
-      {
-        role: 'user',
-        content: [fileContent, { type: 'text', text: EXTRACTION_PROMPT }],
-      },
-    ],
+  // A long statement's JSON runs to thousands of tokens on top of the model's thinking;
+  // the old 2000 cut it off mid-array, which then parsed as "no transactions found"
+  const { text, truncated } = await askClaude({
+    messages: [{ role: 'user', content: [fileContent, { type: 'text', text: EXTRACTION_PROMPT }] }],
+    effort: 'medium',
+    maxTokens: 32000,
   })
+  if (truncated) throw new Error('Statement too long to extract in one pass')
 
-  const text =
-    response.content.find((c) => c.type === 'text')?.text ?? '[]'
-
-  try {
-    return JSON.parse(text)
-  } catch {
-    return []
-  }
+  // Tolerate a fenced ```json block despite the prompt asking for bare JSON
+  const json = text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')
+  if (!json) return []
+  const parsed: unknown = JSON.parse(json)
+  if (!Array.isArray(parsed)) throw new Error('Extraction did not return a JSON array')
+  return parsed
 }

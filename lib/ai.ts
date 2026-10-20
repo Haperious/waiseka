@@ -55,23 +55,60 @@ export function buildChatMessages(
   }))
 }
 
+/** Claude declined the request (stop_reason "refusal"), even after server-side fallback. */
+export class ClaudeRefusalError extends Error {}
+
+/**
+ * One request to Claude; returns the reply text and whether max_tokens cut it off.
+ *
+ * Sonnet 5.5 thinks before answering (adaptive thinking is on by default), so a response
+ * can start with `thinking` blocks - the text is read by block type, never content[0] - and
+ * max_tokens has to cover the thinking as well as the reply. `effort` sets how much it
+ * thinks. `fallbacks: 'default'` has the API retry a safety decline on a fallback model
+ * inside the same call; a decline that survives that throws ClaudeRefusalError.
+ */
+export async function askClaude({
+  system,
+  messages,
+  effort,
+  maxTokens = 16000,
+}: {
+  system?: string
+  messages: Anthropic.Beta.BetaMessageParam[]
+  effort: 'low' | 'medium' | 'high'
+  maxTokens?: number
+}): Promise<{ text: string; truncated: boolean }> {
+  // Streamed and collected with finalMessage(): the SDK refuses non-streaming requests whose
+  // max_tokens could run past 10 minutes (above ~21K), which the statement parser needs
+  const response = await client.beta.messages.stream({
+    model: ANTHROPIC_MODEL,
+    max_tokens: maxTokens,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: { effort },
+    ...(system && { system }),
+    messages,
+  }).finalMessage()
+
+  if (response.stop_reason === 'refusal') {
+    throw new ClaudeRefusalError(`Claude declined the request (${response.stop_details?.category ?? 'no category'})`)
+  }
+  const text = response.content
+    .flatMap((block) => (block.type === 'text' ? [block.text] : []))
+    .join('')
+  return { text, truncated: response.stop_reason === 'max_tokens' }
+}
+
+/** Chat-style text reply for the AI features (chat, report, recommendations, goal check). */
 export async function callAnthropic({
   systemPrompt,
   messages,
-  maxTokens = 1000,
 }: {
   systemPrompt: string
   messages: { role: 'user' | 'assistant'; content: string }[]
-  maxTokens?: number
 }): Promise<string> {
-  const response = await client.messages.create({
-    model: ANTHROPIC_MODEL,
-    max_tokens: maxTokens,
-    system: systemPrompt,
-    messages,
-  })
-
-  const block = response.content[0]
-  if (block.type !== 'text') throw new Error('Unexpected response type from Anthropic')
-  return block.text
+  // Short advice from a small summary: low effort is the recommended level for chat
+  const { text } = await askClaude({ system: systemPrompt, messages, effort: 'low' })
+  if (!text) throw new Error('Claude returned no text')
+  return text
 }

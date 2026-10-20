@@ -12,6 +12,13 @@ export const FREE_IMPORT_LIMIT = 3
 /** Max CSV/PDF imports per calendar month for premium users. */
 export const PREMIUM_IMPORT_LIMIT = 20
 
+/**
+ * Largest statement or screenshot /api/import/upload accepts. Netlify functions refuse
+ * request bodies over ~6 MB and Claude refuses images over 5 MB, so 5 MB is the most
+ * that can work end to end.
+ */
+export const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024
+
 // ── Budget limits ────────────────────────────────────────────────────────────
 /** Max active budgets a free-tier user may create. */
 export const FREE_BUDGET_LIMIT = 10
@@ -55,7 +62,7 @@ export const MONTH_NAMES = [
 
 // ── AI model ─────────────────────────────────────────────────────────────────
 /** Anthropic model used for all AI features. Update here to change globally. */
-export const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514'
+export const ANTHROPIC_MODEL = 'claude-sonnet-5-5'
 
 // ── Announcements ────────────────────────────────────────────────────────────
 /** Max announcement cards shown in one carousel session. */

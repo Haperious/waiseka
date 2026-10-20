@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { getSettings } from '@/lib/models/GlobalSettings'
-import { aiGate } from '@/lib/ai-gate'
+import { aiGate, aiQueryCap, withAiQuery } from '@/lib/ai-gate'
 import { buildFinancialProfile, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
 import { getCurrencySymbol } from '@/lib/currency'
@@ -69,21 +69,16 @@ export async function POST() {
     'Generate a concise monthly budget report with 3 actionable tips.',
   ].filter(Boolean).join('\n\n')
 
-  const report = await callAnthropic({
+  const outcome = await withAiQuery(db, user, settings, () => callAnthropic({
     systemPrompt,
     messages: [{ role: 'user', content: 'Please generate my monthly budget report.' }],
-  })
+  }))
+  if (outcome instanceof NextResponse) return outcome
+  const { result: report, queriesUsed } = outcome
 
-  const newQueriesUsed = user.ai.queriesUsed + 1
-  await db.collection<IUser>('users').updateOne(
-    { _id: user._id },
-    { $set: { 'ai.queriesUsed': newQueriesUsed, updatedAt: new Date() } }
-  )
-
-  const cap = user.ai.queriesCapOverride ?? settings.aiQueryCap
   return NextResponse.json({
     report,
-    queriesUsed: newQueriesUsed,
-    queriesRemaining: Math.max(0, cap - newQueriesUsed),
+    queriesUsed,
+    queriesRemaining: Math.max(0, aiQueryCap(user, settings) - queriesUsed),
   })
 }

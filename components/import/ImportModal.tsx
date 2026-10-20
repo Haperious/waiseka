@@ -8,6 +8,7 @@ import ProcessingScreen from './ProcessingScreen'
 import ReviewTable from './ReviewTable'
 import { useToast } from '@/components/ui/Toast'
 import type { ITransaction } from '@/lib/models/Transaction'
+import { FREE_IMPORT_LIMIT, MAX_IMPORT_FILE_BYTES, PREMIUM_IMPORT_LIMIT } from '@/lib/constants'
 
 type Stage = 'idle' | 'processing' | 'password' | 'review' | 'confirming'
 type ProcessStep = 'uploading' | 'extracting' | 'done'
@@ -68,7 +69,12 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
       const res = await fetch('/api/import/upload', { method: 'POST', body: formData })
 
       if (res.status === 429) {
-        toast('Monthly import limit reached (5/5). Upgrade to Premium for unlimited imports.', 'error')
+        toast(
+          isPremium
+            ? `Monthly import limit reached (${PREMIUM_IMPORT_LIMIT}/${PREMIUM_IMPORT_LIMIT}). It resets next month.`
+            : `Monthly import limit reached (${FREE_IMPORT_LIMIT}/${FREE_IMPORT_LIMIT}). Upgrade to Premium for up to ${PREMIUM_IMPORT_LIMIT} imports a month.`,
+          'error'
+        )
         setStage('idle')
         return
       }
@@ -83,7 +89,12 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
 
       if (!res.ok) {
         const data = await res.json()
-        toast(data.error === 'UNSUPPORTED_FILE_TYPE' ? 'Unsupported file type.' : 'Extraction failed.', 'error')
+        toast(
+          data.error === 'UNSUPPORTED_FILE_TYPE' ? 'Unsupported file type.'
+            : data.error === 'FILE_TOO_LARGE' ? `File is too large (max ${MAX_IMPORT_FILE_BYTES / 1024 / 1024} MB).`
+            : 'Extraction failed.',
+          'error'
+        )
         setStage('idle')
         return
       }
@@ -127,9 +138,10 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
         body: JSON.stringify({ transactions: selected }),
       })
 
+      if (!res.ok) throw new Error('confirm failed')
       const data = await res.json()
       toast(
-        `${data.inserted} transaction${data.inserted !== 1 ? 's' : ''} added${data.skipped > 0 ? `, ${data.skipped} duplicate${data.skipped !== 1 ? 's' : ''} skipped` : ''}.`,
+        `${data.inserted} transaction${data.inserted !== 1 ? 's' : ''} added${data.skipped > 0 ? `, ${data.skipped} duplicate${data.skipped !== 1 ? 's' : ''} skipped` : ''}${data.invalid > 0 ? `, ${data.invalid} couldn't be saved (check the amount and date)` : ''}.`,
         'success'
       )
       onImported()
@@ -140,7 +152,7 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
     }
   }
 
-  const limitReached = !isPremium && usage?.count != null && usage.count >= (usage.limit ?? 3)
+  const limitReached = usage?.count != null && usage.limit != null && usage.count >= usage.limit
 
   return (
     <Modal
@@ -152,10 +164,10 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
     >
       {stage === 'idle' && (
         <div className="flex flex-col gap-4">
-          {!isPremium && usage?.count != null && (
+          {usage?.count != null && (
             <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
               <span>Monthly imports used</span>
-              <span className={usage.count >= (usage.limit ?? 3) ? 'font-semibold text-red-500' : 'font-semibold'}>
+              <span className={limitReached ? 'font-semibold text-red-500' : 'font-semibold'}>
                 {usage.count} / {usage.limit}
               </span>
             </div>
@@ -165,7 +177,9 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
             <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 text-center">
               <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-1">Monthly limit reached</p>
               <p className="text-xs text-amber-600 dark:text-amber-500">
-                Upgrade to Premium for unlimited imports and AI-powered extraction.
+                {isPremium
+                  ? 'Your imports reset at the start of next month.'
+                  : `Upgrade to Premium for up to ${PREMIUM_IMPORT_LIMIT} imports a month and AI-powered extraction.`}
               </p>
             </div>
           ) : (
@@ -179,9 +193,9 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
 
           {!isPremium && (
             <p className="text-center text-xs text-gray-400">
-              Free: up to 5 PDF imports/month.{' '}
+              Free: up to {FREE_IMPORT_LIMIT} PDF imports/month.{' '}
               <span className="font-medium text-green-600 dark:text-green-400">
-                Upgrade for AI extraction + unlimited imports.
+                Upgrade for AI extraction + {PREMIUM_IMPORT_LIMIT} imports/month.
               </span>
             </p>
           )}

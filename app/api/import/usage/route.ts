@@ -2,10 +2,9 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
 import { getMonthlyImportCount } from '@/lib/importUsage'
+import { FREE_IMPORT_LIMIT, PREMIUM_IMPORT_LIMIT } from '@/lib/constants'
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-
-const FREE_IMPORT_LIMIT = 5
 
 export async function GET() {
   const session = await requireVerifiedSession()
@@ -16,12 +15,9 @@ export async function GET() {
   const user = await db.collection('users').findOne({ _id: new ObjectId(userId) })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  if (isPremium({ tier: user.tier, premiumOverride: user.premiumOverride })) {
-    return NextResponse.json({ count: null, limit: null, resetAt: null })
-  }
-
+  const premium = isPremium({ tier: user.tier, premiumOverride: user.premiumOverride })
   const count = await getMonthlyImportCount(userId)
   const resetAt = user.importUsage?.resetAt ?? null
 
-  return NextResponse.json({ count, limit: FREE_IMPORT_LIMIT, resetAt })
+  return NextResponse.json({ count, limit: premium ? PREMIUM_IMPORT_LIMIT : FREE_IMPORT_LIMIT, resetAt })
 }

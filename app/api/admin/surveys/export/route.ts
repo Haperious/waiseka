@@ -4,15 +4,7 @@ import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import type { ISurvey } from '@/lib/models/Survey'
 import type { IUser } from '@/lib/models/User'
-
-function escapeCsvField(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return ''
-  const str = String(value)
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-  return str
-}
+import { escapeCsvField } from '@/lib/services/reportCsv'
 
 export async function GET(req: NextRequest) {
   const session = await requireAdminSession()

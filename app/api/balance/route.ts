@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   const db = await getDb()
   const user = await db
     .collection<IUser>('users')
-    .findOne({ _id: new ObjectId(session.user.id) as never })
+    .findOne({ _id: new ObjectId(session.user.id) })
   const userIsPremium = user ? isPremium(user) : false
   const { currency, primary } = viewCurrencyOf(user, searchParams)
 

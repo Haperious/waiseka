@@ -21,6 +21,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Design handoff bundles (generated prototypes, not app code)
+    "docs/**",
+    // Local-only test tooling and its dependencies
+    ".local-test/**",
   ]),
 ]);
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { badRequest, cleanText, isPositiveAmount, parseDateField, readJsonBody } from '@/lib/request'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
@@ -15,7 +16,7 @@ export async function GET() {
   const db = await getDb()
   const [goals, user] = await Promise.all([
     db.collection<IGoal>('goals').find({ userId: session.user.id }).sort({ createdAt: -1 }).toArray(),
-    db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never }, { projection: { preferences: 1 } }),
+    db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) }, { projection: { preferences: 1 } }),
   ])
   // Goals created before multi-currency have no currency - they're the primary's. Filling it
   // in here keeps GoalForm from defaulting an edit to the view currency and re-denominating it.
@@ -27,11 +28,20 @@ export async function POST(req: NextRequest) {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const { title, targetAmount, deadline, priority, currency } = body
 
   if (!title || !targetAmount || !deadline) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+  const goalTitle = cleanText(title, 100)
+  if (!goalTitle) return badRequest('title must be 1-100 characters')
+  if (!isPositiveAmount(targetAmount)) return badRequest('targetAmount must be a positive number')
+  const deadlineDate = parseDateField(deadline)
+  if (!deadlineDate) return badRequest('deadline must be a valid date')
+  if (priority !== undefined && !['low', 'medium', 'high'].includes(priority)) {
+    return badRequest('priority must be low, medium, or high')
   }
   if (currency !== undefined && !isCurrencyCode(currency)) {
     return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
@@ -40,7 +50,7 @@ export async function POST(req: NextRequest) {
   const db = await getDb()
 
   // -- Tier gate: free users capped at FREE_GOAL_LIMIT active goals
-  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   if (!isPremium(user)) {
@@ -59,11 +69,11 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const result = await db.collection<IGoal>('goals').insertOne({
     userId: session.user.id,
-    title,
+    title: goalTitle,
     targetAmount,
     savedAmount: 0,
     currency: currency ?? primaryCurrencyOf(user),
-    deadline: new Date(deadline),
+    deadline: deadlineDate,
     priority: priority ?? 'medium',
     status: 'active',
     createdAt: now,

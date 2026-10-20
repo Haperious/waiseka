@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { getSettings } from '@/lib/models/GlobalSettings'
-import { aiGate } from '@/lib/ai-gate'
+import { aiGate, withAiQuery } from '@/lib/ai-gate'
 import { buildFinancialProfile, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
 import { getCurrencySymbol } from '@/lib/currency'
@@ -62,16 +62,11 @@ export async function POST() {
     'Suggest 3 specific, actionable ways this user can increase their savings based on their spending patterns.',
   ].filter(Boolean).join('\n\n')
 
-  const result = await callAnthropic({
+  const outcome = await withAiQuery(db, user, settings, () => callAnthropic({
     systemPrompt,
     messages: [{ role: 'user', content: 'What are 3 specific ways I can increase my savings?' }],
-  })
+  }))
+  if (outcome instanceof NextResponse) return outcome
 
-  const newQueriesUsed = user.ai.queriesUsed + 1
-  await db.collection<IUser>('users').updateOne(
-    { _id: user._id },
-    { $set: { 'ai.queriesUsed': newQueriesUsed, updatedAt: new Date() } }
-  )
-
-  return NextResponse.json({ recommendations: result, queriesUsed: newQueriesUsed })
+  return NextResponse.json({ recommendations: outcome.result, queriesUsed: outcome.queriesUsed })
 }

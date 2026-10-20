@@ -263,7 +263,7 @@ export async function aggregateYearsWithData(
   end: Date,
   scope?: ScopeFilter
 ): Promise<number[]> {
-  const match: Record<string, unknown> = { userId, date: { $gte: start, $lte: end } }
+  const match: Record<string, unknown> = { userId, isArchived: { $ne: true }, date: { $gte: start, $lte: end } }
   if (scope) match.$and = [scope]
   const rows = await db.collection<ITransaction>('transactions').aggregate<{ _id: number }>([
     { $match: match },

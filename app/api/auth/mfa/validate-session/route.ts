@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { auth, unstable_update } from '@/auth'
 import { getDb } from '@/lib/mongodb'
 import { verify, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib'
@@ -6,7 +7,7 @@ import { ObjectId, type Db } from 'mongodb'
 import crypto from 'crypto'
 import type { IUser } from '@/lib/models/User'
 import { checkMfaRateLimit } from '@/lib/auth-rate-limit'
-import { getClientIp } from '@/lib/rate-limit'
+import { getClientIp, tooManyRequests } from '@/lib/rate-limit'
 import { issueMfaTicket } from '@/lib/mfa-ticket'
 
 const otpCrypto = new NobleCryptoPlugin()
@@ -42,15 +43,13 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rateLimitResult = checkMfaRateLimit(session.user.id, getClientIp(req))
+  const rateLimitResult = await checkMfaRateLimit(session.user.id, getClientIp(req))
   if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { error: 'Too many attempts. Please wait a few minutes and try again.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) } }
-    )
+    return tooManyRequests(rateLimitResult, 'Too many attempts. Please wait a few minutes and try again.')
   }
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const { token } = body
 
   if (!token || typeof token !== 'string') {
@@ -84,15 +83,14 @@ export async function POST(req: NextRequest) {
 
   if (/^[A-Fa-f0-9]{8}$/.test(normalised)) {
     const hashed = hashBackupCode(normalised.toUpperCase())
-    const backupIndex = user.mfa.backupCodes.indexOf(hashed)
 
-    if (backupIndex !== -1) {
-      const updatedCodes = [...user.mfa.backupCodes]
-      updatedCodes.splice(backupIndex, 1)
-      await db.collection<IUser>('users').updateOne(
-        { _id: user._id },
-        { $set: { 'mfa.backupCodes': updatedCodes } }
-      )
+    // Check and remove the code in one step, so two requests at once can't both use it
+    const consumed = await db.collection<IUser>('users').updateOne(
+      { _id: user._id, 'mfa.backupCodes': hashed },
+      { $pull: { 'mfa.backupCodes': hashed } }
+    )
+
+    if (consumed.modifiedCount === 1) {
       if (!(await markSessionMfaVerified(db, session.user.id))) {
         return NextResponse.json({ error: VERIFICATION_FAILED_MESSAGE }, { status: 500 })
       }

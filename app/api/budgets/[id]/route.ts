@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { badRequest, cleanText, isHexColor, readJsonBody } from '@/lib/request'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { objectIdParam } from '@/lib/route-params'
@@ -11,11 +12,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const _id = await objectIdParam(params)
   if (_id instanceof NextResponse) return _id
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
 
   // Whitelist editable fields - never allow userId, _id, or system fields to be overwritten
   const update: Partial<IBudget> & { updatedAt: Date } = { updatedAt: new Date() }
-  if (body.category !== undefined) update.category = body.category
+  if (body.category !== undefined) {
+    const category = cleanText(body.category, 100)
+    if (!category) return badRequest('category must be 1-100 characters')
+    update.category = category
+  }
   if (body.limit !== undefined) {
     if (typeof body.limit !== 'number' || !isFinite(body.limit) || body.limit <= 0) {
       return NextResponse.json({ error: 'limit must be a positive number' }, { status: 400 })
@@ -28,7 +34,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     update.period = body.period
   }
-  if (body.color !== undefined) update.color = body.color
+  if (body.color !== undefined) {
+    if (!isHexColor(body.color)) return badRequest('color must be a hex colour like #3b82f6')
+    update.color = body.color
+  }
   // Safe to change: spent is derived on read, never stored
   if (body.currency !== undefined) {
     if (!isCurrencyCode(body.currency)) {

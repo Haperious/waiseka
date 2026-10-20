@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   resetAiQueries,
@@ -49,12 +50,20 @@ function dueJobs(now: Date): string[] {
   return due
 }
 
+/** Constant-time comparison, so response timing can't reveal how much of a guess was right. */
+function secretMatches(provided: string | null, secret: string): boolean {
+  if (provided === null) return false
+  // Hashing first gives equal-length buffers, which timingSafeEqual requires
+  const digest = (value: string) => crypto.createHash('sha256').update(value).digest()
+  return crypto.timingSafeEqual(digest(provided), digest(secret))
+}
+
 export async function POST(req: NextRequest) {
   const secret = process.env.CRON_SECRET
   if (!secret) {
     return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 })
   }
-  if (req.headers.get('x-cron-secret') !== secret) {
+  if (!secretMatches(req.headers.get('x-cron-secret'), secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

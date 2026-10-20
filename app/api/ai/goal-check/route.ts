@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { getSettings } from '@/lib/models/GlobalSettings'
-import { aiGate } from '@/lib/ai-gate'
+import { aiGate, withAiQuery } from '@/lib/ai-gate'
 import { buildFinancialProfile, callAnthropic } from '@/lib/ai'
 import type { IUser } from '@/lib/models/User'
 import type { ITransaction } from '@/lib/models/Transaction'
@@ -15,7 +16,9 @@ export async function POST(req: NextRequest) {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { goalId } = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
+  const { goalId } = body
   if (typeof goalId !== 'string' || !ObjectId.isValid(goalId)) {
     return NextResponse.json({ error: 'A valid goalId is required' }, { status: 400 })
   }
@@ -86,10 +89,12 @@ export async function POST(req: NextRequest) {
     'Assess whether this goal is feasible by its deadline based on current savings rate. Be specific about the timeline and any adjustments needed.',
   ].join('\n\n')
 
-  const analysis = await callAnthropic({
+  const outcome = await withAiQuery(db, user, settings, () => callAnthropic({
     systemPrompt,
     messages: [{ role: 'user', content: `Is my goal "${goal.title}" feasible by the deadline?` }],
-  })
+  }))
+  if (outcome instanceof NextResponse) return outcome
+  const { result: analysis, queriesUsed } = outcome
 
   let feasible = false
   if (goal.deadline && avgMonthlySavings > 0) {
@@ -98,11 +103,5 @@ export async function POST(req: NextRequest) {
     feasible = avgMonthlySavings * monthsUntilDeadline >= remaining
   }
 
-  const newQueriesUsed = user.ai.queriesUsed + 1
-  await db.collection<IUser>('users').updateOne(
-    { _id: user._id },
-    { $set: { 'ai.queriesUsed': newQueriesUsed, updatedAt: new Date() } }
-  )
-
-  return NextResponse.json({ analysis, feasible, queriesUsed: newQueriesUsed })
+  return NextResponse.json({ analysis, feasible, queriesUsed })
 }

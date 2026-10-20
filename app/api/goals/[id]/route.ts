@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import type { Db } from "mongodb"
+import { badRequest, cleanText, parseDateField, readJsonBody } from "@/lib/request"
+import { ObjectId, type Db } from "mongodb"
 import { requireVerifiedSession } from "@/lib/auth-helpers"
 import { getDb } from "@/lib/mongodb"
 import { objectIdParam } from "@/lib/route-params"
@@ -19,11 +20,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const _id = await objectIdParam(params)
   if (_id instanceof NextResponse) return _id
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
 
   // Whitelist editable fields - never allow userId, _id, or system fields to be overwritten
   const update: Partial<IGoal> & { updatedAt: Date } = { updatedAt: new Date() }
-  if (body.title !== undefined) update.title = body.title
+  if (body.title !== undefined) {
+    const title = cleanText(body.title, 100)
+    if (!title) return badRequest("title must be 1-100 characters")
+    update.title = title
+  }
   if (body.targetAmount !== undefined) {
     if (typeof body.targetAmount !== "number" || !isFinite(body.targetAmount) || body.targetAmount <= 0) {
       return NextResponse.json({ error: "targetAmount must be a positive number" }, { status: 400 })
@@ -36,7 +42,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     update.savedAmount = body.savedAmount
   }
-  if (body.deadline !== undefined) update.deadline = new Date(body.deadline)
+  if (body.deadline !== undefined) {
+    const deadline = parseDateField(body.deadline)
+    if (!deadline) return badRequest("deadline must be a valid date")
+    update.deadline = deadline
+  }
   if (body.currency !== undefined) {
     if (!isCurrencyCode(body.currency)) {
       return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
@@ -123,7 +133,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 async function checkMilestone(userId: string, goal: IGoal, reachedPercent: number, db: Db) {
   const user = await db
     .collection<IUser>("users")
-    .findOne({ _id: userId } as never, { projection: { name: 1, email: 1, preferences: 1 } })
+    // _id is an ObjectId; the string id the old cast let through never matched, so no
+    // milestone email was ever sent
+    .findOne({ _id: new ObjectId(userId) }, { projection: { name: 1, email: 1, preferences: 1 } })
   if (!user) return
 
   // The goal's own currency (missing = primary)

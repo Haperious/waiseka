@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { badRequest, cleanText, isHexColor, isOptionalText, readJsonBody } from '@/lib/request'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
@@ -47,12 +48,18 @@ export async function POST(req: NextRequest) {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const { name, institution, type, openingBalance, currency, creditLimit, dueDay, lowBalanceThreshold, color, icon, includeInTotal } = body
 
   if (!name || !type) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
+  const accountName = cleanText(name, 100)
+  if (!accountName) return badRequest('name must be 1-100 characters')
+  if (!isOptionalText(institution, 100)) return badRequest('institution must be up to 100 characters')
+  if (color != null && !isHexColor(color)) return badRequest('color must be a hex colour like #3b82f6')
+  if (!isOptionalText(icon, 50)) return badRequest('icon must be up to 50 characters')
   if (!ACCOUNT_TYPES.includes(type)) {
     return NextResponse.json({ error: `type must be one of: ${ACCOUNT_TYPES.join(', ')}` }, { status: 400 })
   }
@@ -80,7 +87,7 @@ export async function POST(req: NextRequest) {
 
   const db = await getDb()
 
-  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   // -- Tier gate: free users capped at FREE_ACCOUNT_LIMIT non-archived accounts
@@ -100,8 +107,8 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const result = await db.collection<IAccount>('accounts').insertOne({
     userId: session.user.id,
-    name,
-    institution: institution ?? undefined,
+    name: accountName,
+    institution: institution || undefined,
     type,
     openingBalance: openingBalance ?? 0,
     currency: currency ?? primaryCurrencyOf(user),
@@ -113,7 +120,7 @@ export async function POST(req: NextRequest) {
     icon: icon ?? null,
     displayOrder: 0,
     isArchived: false,
-    includeInTotal: includeInTotal ?? true,
+    includeInTotal: includeInTotal !== false,
     createdAt: now,
     updatedAt: now,
   } as IAccount)

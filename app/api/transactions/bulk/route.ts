@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
@@ -43,7 +44,8 @@ export async function POST(req: NextRequest) {
   const session = await requireVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const { transactions, accountId } = body as { transactions: BulkTransactionItem[]; accountId?: string | null }
 
   if (!Array.isArray(transactions) || transactions.length === 0) {
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
   const db = await getDb()
 
   const user = await db.collection<IUser>('users').findOne(
-    { _id: new ObjectId(session.user.id) as never },
+    { _id: new ObjectId(session.user.id) },
     { projection: { name: 1, email: 1, preferences: 1, tier: 1, premiumOverride: 1 } }
   )
 

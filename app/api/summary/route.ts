@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const db = await getDb()
 
   // -- Tier gate: free users cannot query beyond their history window
-  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) as never })
+  const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) })
   const userIsPremium = user ? isPremium(user) : false
   const { currency, primary } = viewCurrencyOf(user, searchParams)
 

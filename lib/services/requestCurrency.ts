@@ -15,7 +15,7 @@ export async function getRequestCurrencyScope(db: Db, userId: string, req: NextR
 }> {
   const user = await db
     .collection<IUser>('users')
-    .findOne({ _id: new ObjectId(userId) as never }, { projection: { preferences: 1 } })
+    .findOne({ _id: new ObjectId(userId) }, { projection: { preferences: 1 } })
   const { currency, primary } = viewCurrencyOf(user, req.nextUrl.searchParams)
   return { currency, primary, scope: currencyScope(currency, primary) }
 }

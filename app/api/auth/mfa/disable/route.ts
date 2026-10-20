@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readJsonBody } from '@/lib/request'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { checkMfaRateLimit } from '@/lib/auth-rate-limit'
-import { getClientIp } from '@/lib/rate-limit'
+import { getClientIp, tooManyRequests } from '@/lib/rate-limit'
 import { getDb } from '@/lib/mongodb'
 import { verifySync, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib'
 import { ObjectId } from 'mongodb'
@@ -13,15 +14,13 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Shares the MFA attempt counter so this can't be used to guess codes around the login limit
-  const rateLimitResult = checkMfaRateLimit(session.user.id, getClientIp(req))
+  const rateLimitResult = await checkMfaRateLimit(session.user.id, getClientIp(req))
   if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { error: 'Too many attempts. Please wait a few minutes and try again.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.retryAfterMs / 1000)) } }
-    )
+    return tooManyRequests(rateLimitResult, 'Too many attempts. Please wait a few minutes and try again.')
   }
 
-  const body = await req.json()
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const { token } = body
 
   if (!token || typeof token !== 'string') {

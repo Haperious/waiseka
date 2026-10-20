@@ -11,7 +11,11 @@ type Cell = string | number | null | undefined
 
 export function escapeCsvField(value: Cell): string {
   if (value === null || value === undefined) return ''
-  const str = String(value)
+  let str = String(value)
+  // Text that starts like a formula (a category named "=HYPERLINK(...)") would run when the
+  // file is opened in Excel or Sheets; a leading apostrophe makes it plain text. Numbers are
+  // left alone, so a negative change still exports as a number.
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(str)) str = `'${str}`
   if (/[",\r\n]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`
   }

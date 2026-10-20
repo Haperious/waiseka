@@ -18,10 +18,15 @@ export function monthsCoveredIn(year: number, now: Date): number {
 
 /**
  * Years a report can be asked for: the history window's first year through this year,
- * newest first. Year-on-year starts one later because it needs a previous year to compare.
+ * newest first. Year-on-year needs the whole previous year inside the window - the window
+ * rarely starts on 1 Jan, so its first year is usually partial and can't be the "before"
+ * side of a like-for-like comparison.
  */
 export function selectableYears(premium: boolean, now: Date, mode: YearReportMode): number[] {
-  const first = historyWindowStart(premium, now).getUTCFullYear() + (mode === 'yoy' ? 1 : 0)
+  const windowStart = historyWindowStart(premium, now)
+  const windowYear = windowStart.getUTCFullYear()
+  const firstFullYear = windowStart.getTime() === Date.UTC(windowYear, 0, 1) ? windowYear : windowYear + 1
+  const first = mode === 'yoy' ? firstFullYear + 1 : windowYear
   const years: number[] = []
   for (let y = now.getUTCFullYear(); y >= first; y--) years.push(y)
   return years
