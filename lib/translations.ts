@@ -633,6 +633,15 @@ export const translations = {
     "adjust.unlinkedOne": "1 transaction isn't linked to an account, so it doesn't change any balance.",
     "adjust.unlinkedAction": "Review",
     "adjust.retry": "Retry",
+    "link.banner": "These aren't linked to an account, so they don't change any balance. Edit one to pick its account, or link them all to one account.",
+    "link.allTo": "Link all to",
+    "link.action": "Link all",
+    "link.confirm": "Link every unlinked {currency} transaction to {account}?",
+    "link.confirmYes": "Yes, link",
+    "link.done": "{n} transactions linked to {account}",
+    "link.doneOne": "1 transaction linked to {account}",
+    "link.skipped": "{n} in another currency stayed unlinked.",
+    "link.failed": "Couldn't link the transactions",
   },
 
   tl: {
@@ -1273,6 +1282,15 @@ export const translations = {
     "adjust.unlinkedOne": "1 transaksyon ang walang account, kaya hindi nito binabago ang anumang balance.",
     "adjust.unlinkedAction": "Tingnan",
     "adjust.retry": "Ulitin",
+    "link.banner": "Walang account ang mga ito, kaya hindi nila binabago ang anumang balance. I-edit ang isa para pumili ng account, o i-link silang lahat sa isang account.",
+    "link.allTo": "I-link lahat sa",
+    "link.action": "I-link lahat",
+    "link.confirm": "I-link ang lahat ng walang account na {currency} transaksyon sa {account}?",
+    "link.confirmYes": "Oo, i-link",
+    "link.done": "{n} transaksyon ang na-link sa {account}",
+    "link.doneOne": "1 transaksyon ang na-link sa {account}",
+    "link.skipped": "{n} na nasa ibang currency ang nanatiling walang account.",
+    "link.failed": "Hindi na-link ang mga transaksyon",
   },
 } as const
 

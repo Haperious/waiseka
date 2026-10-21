@@ -5,7 +5,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
 import { ObjectId } from 'mongodb'
-import { primaryCurrencyOf } from '@/lib/services/currencyScope'
+import type { IAccount } from '@/lib/models/Account'
+import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
+import { isBeforeOpeningDate } from '@/lib/services/balanceAdjustment'
 import { importDedupeKey, MAX_IMPORT_ROWS, sanitizeImportRow, type ImportRow } from '@/lib/importRows'
 
 export async function POST(req: NextRequest) {
@@ -23,7 +25,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Maximum ${MAX_IMPORT_ROWS} transactions per import` }, { status: 400 })
   }
 
+  // The statement's account. Optional for older clients (rows stay unassigned), but the
+  // import screen always sends one so imported spending moves a real balance.
+  const rawAccountId: unknown = body?.accountId
+  if (rawAccountId != null && (typeof rawAccountId !== 'string' || !ObjectId.isValid(rawAccountId))) {
+    return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
+  }
+
   const db = await getDb()
+
+  let account: IAccount | null = null
+  if (typeof rawAccountId === 'string') {
+    // Never trust a client-supplied id - it must be one of the caller's open accounts
+    account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(rawAccountId), userId })
+    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+    if (account.isArchived) {
+      return NextResponse.json({ error: 'Cannot import into an archived account' }, { status: 409 })
+    }
+  }
 
   const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(userId) })
   const userIsPremium = user ? isPremium({ tier: user.tier, premiumOverride: user.premiumOverride }) : false
@@ -49,14 +68,14 @@ export async function POST(req: NextRequest) {
   const fresh = rows.filter((r) => !alreadyImported.has(importDedupeKey(r)))
 
   if (fresh.length > 0) {
-    // Imports have no account (out of scope, PRD Q4), so they take the primary currency
-    const currency = primaryCurrencyOf(user)
+    // Same rule as any entry: the account's currency, else the primary one
+    const currency = resolveTransactionCurrency(account, primaryCurrencyOf(user))
     await col.insertMany(fresh.map((r) => ({
       ...r,
       userId,
       currency,
       tags: [],
-      accountId: null,
+      accountId: account?._id ?? null,
       isArchived: false,
       source: 'import',
       createdAt: now,
@@ -64,5 +83,10 @@ export async function POST(req: NextRequest) {
     })) as unknown as ITransaction[])
   }
 
-  return NextResponse.json({ inserted: fresh.length, skipped: rows.length - fresh.length, invalid })
+  // Rows before the account's opening date are already inside its opening balance,
+  // so they're saved but don't move it - the screen tells the user how many
+  const linked = account
+  const beforeOpening = linked ? fresh.filter((r) => isBeforeOpeningDate(linked, r.date)).length : 0
+
+  return NextResponse.json({ inserted: fresh.length, skipped: rows.length - fresh.length, invalid, beforeOpening })
 }

@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import DropZone from './DropZone'
 import ProcessingScreen from './ProcessingScreen'
 import ReviewTable from './ReviewTable'
+import Select from '@/components/ui/Select'
 import { useToast } from '@/components/ui/Toast'
+import { useAccounts } from '@/hooks/useAccounts'
+import { useDefaultAccount } from '@/hooks/useDefaultAccount'
 import type { ITransaction } from '@/lib/models/Transaction'
 import { FREE_IMPORT_LIMIT, MAX_IMPORT_FILE_BYTES, PREMIUM_IMPORT_LIMIT } from '@/lib/constants'
 
@@ -36,6 +39,15 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
   const [pdfPassword, setPdfPassword] = useState('')
   const [wrongPassword, setWrongPassword] = useState(false)
 
+  // The account the statement belongs to, so imported entries move a real balance.
+  // null = not picked yet, so it falls back to the default account.
+  const { accounts } = useAccounts()
+  const { defaultAccountId } = useDefaultAccount()
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
+  const [pickedAccountId, setPickedAccountId] = useState<string | null>(null)
+  const accountId = pickedAccountId ?? defaultAccountId
+  const importAccount = activeAccounts.find((a) => a._id === accountId)
+
   // Start each opening fresh (adjusted during render, not in an effect)
   const [prevOpen, setPrevOpen] = useState(open)
   if (open !== prevOpen) {
@@ -43,6 +55,7 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
     if (open) {
       setStage('idle')
       setExtracted([])
+      setPickedAccountId(null)
     }
   }
 
@@ -135,13 +148,17 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
       const res = await fetch('/api/import/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions: selected }),
+        body: JSON.stringify({ transactions: selected, accountId: importAccount?._id ?? null }),
       })
 
       if (!res.ok) throw new Error('confirm failed')
       const data = await res.json()
+      const beforeOpening: number = data.beforeOpening ?? 0
+      const openingNote = beforeOpening > 0 && importAccount
+        ? ` ${beforeOpening} ${beforeOpening === 1 ? 'is' : 'are'} dated before ${importAccount.name}'s opening balance date, so ${beforeOpening === 1 ? "it doesn't" : "they don't"} change its balance.`
+        : ''
       toast(
-        `${data.inserted} transaction${data.inserted !== 1 ? 's' : ''} added${data.skipped > 0 ? `, ${data.skipped} duplicate${data.skipped !== 1 ? 's' : ''} skipped` : ''}${data.invalid > 0 ? `, ${data.invalid} couldn't be saved (check the amount and date)` : ''}.`,
+        `${data.inserted} transaction${data.inserted !== 1 ? 's' : ''} added${data.skipped > 0 ? `, ${data.skipped} duplicate${data.skipped !== 1 ? 's' : ''} skipped` : ''}${data.invalid > 0 ? `, ${data.invalid} couldn't be saved (check the amount and date)` : ''}.${openingNote}`,
         'success'
       )
       onImported()
@@ -235,6 +252,22 @@ export default function ImportModal({ open, onClose, onImported, isPremium }: Im
       )}
 
       {stage === 'processing' && <ProcessingScreen step={processStep} />}
+
+      {(stage === 'review' || stage === 'confirming') && activeAccounts.length > 0 && (
+        <div className="mb-4">
+          <Select
+            label="Which account is this statement from?"
+            value={accountId}
+            onValueChange={setPickedAccountId}
+            options={activeAccounts.map((a) => ({ value: a._id, label: `${a.name} (${a.currency})` }))}
+            placeholder="Choose an account"
+            disabled={stage === 'confirming'}
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Imported entries update this account&apos;s balance, in its currency.
+          </p>
+        </div>
+      )}
 
       {(stage === 'review' || stage === 'confirming') && (
         <ReviewTable

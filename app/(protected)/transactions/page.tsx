@@ -26,6 +26,7 @@ import QuickAddSheet from '@/components/quick-add/QuickAddSheet'
 import TransactionFilters, { NO_FILTERS, type TransactionFilterValues } from './TransactionFilters'
 import { MobileTransactionList, TransactionTable } from './TransactionList'
 import Pagination from './Pagination'
+import LinkUnassignedBanner from './LinkUnassignedBanner'
 import { onTransactionSaved } from '@/lib/transactionEvents'
 
 const cardStyle: React.CSSProperties = {
@@ -223,6 +224,14 @@ export default function TransactionsPage() {
         onClear={() => updateFilters(NO_FILTERS)}
         isPremium={userIsPremium}
       />
+
+      {/* ── Link unassigned entries to an account ────────────────────────────── */}
+      {filters.account === 'unassigned' && !loading && total > 0 && accounts.some((a) => !a.isArchived) && (
+        <LinkUnassignedBanner
+          accounts={accounts.filter((a) => !a.isArchived)}
+          onLinked={() => { refetch(); refetchAccounts() }}
+        />
+      )}
 
       {/* ── Table ────────────────────────────────────────────────────────────── */}
       <div style={cardStyle}>
