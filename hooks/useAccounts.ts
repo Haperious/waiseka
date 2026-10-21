@@ -16,6 +16,8 @@ export interface Account {
   currency: CurrencyCode
   creditLimit?: number | null
   dueDay?: number | null
+  /** Credit only: day of month the statement closes. */
+  statementDay?: number | null
   lowBalanceThreshold?: number | null
   color?: string | null
   icon?: string | null
@@ -35,6 +37,10 @@ export interface Account {
   verificationStatus?: 'fresh' | 'stale' | 'never' | 'changed'
   /** Whole days since lastVerifiedAt, worked out on the server. Null = never checked. */
   verifiedDaysAgo?: number | null
+  /** Set when the account needed several adjustments lately: count and total difference over `days`. */
+  adjustmentPattern?: { count: number; net: number; days: number } | null
+  /** Credit only: yyyy-MM-dd of a recently closed statement that hasn't been checked yet. */
+  statementDue?: string | null
 }
 
 interface AccountsContextValue {

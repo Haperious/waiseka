@@ -41,6 +41,70 @@ export function verifiedDaysAgo(account: Pick<IAccount, 'lastVerifiedAt'>, now: 
   return Math.max(0, Math.floor((now.getTime() - new Date(account.lastVerifiedAt).getTime()) / DAY_MS))
 }
 
+/** Window and count for "this account keeps needing adjustments". */
+export const PATTERN_DAYS = 90
+export const PATTERN_MIN_ADJUSTMENTS = 3
+
+export interface AdjustmentPattern {
+  /** Adjustments that actually changed something in the window. */
+  count: number
+  /** Their total difference (bank minus WaiseKa, in the account's own terms). */
+  net: number
+  days: number
+}
+
+/**
+ * An account that needed several adjustments lately usually has entries that never get
+ * logged (or get logged twice) - worth telling the user, since adjusting again only hides
+ * it. Null when there's no pattern. Zero-difference checkpoints don't count.
+ */
+export function adjustmentPattern(
+  checkpoints: { day: string; delta: number }[],
+  now: Date = new Date(),
+): AdjustmentPattern | null {
+  const since = new Date(now.getTime() - PATTERN_DAYS * DAY_MS).toISOString().slice(0, 10)
+  const recent = checkpoints.filter((c) => c.day >= since && Math.abs(c.delta) >= 0.005)
+  if (recent.length < PATTERN_MIN_ADJUSTMENTS) return null
+  const net = Math.round(recent.reduce((sum, c) => sum + c.delta, 0) * 100) / 100
+  return { count: recent.length, net, days: PATTERN_DAYS }
+}
+
+/** How long after a card statement closes we keep asking to check it. */
+export const STATEMENT_CHECK_DAYS = 20
+
+/**
+ * The most recent statement closing date on or before `today` (UTC day), with the
+ * statement day clamped to short months like dueDay. Null without a statement day.
+ */
+export function lastStatementDate(statementDay: number | null | undefined, today: Date): Date | null {
+  if (statementDay == null) return null
+  const y = today.getUTCFullYear()
+  const m = today.getUTCMonth()
+  const clamp = (year: number, month: number) =>
+    Math.min(statementDay, new Date(Date.UTC(year, month + 1, 0)).getUTCDate())
+  const thisMonth = new Date(Date.UTC(y, m, clamp(y, m), 12))
+  if (thisMonth.getUTCDate() <= today.getUTCDate()) return thisMonth
+  return new Date(Date.UTC(y, m - 1, clamp(y, m - 1), 12))
+}
+
+/**
+ * yyyy-MM-dd of a card statement that closed recently and hasn't been checked yet, or
+ * null. A statement gives one exact figure for one day - the easiest reconcile point.
+ * Checked means a check (or adjustment) on or after the closing day.
+ */
+export function statementCheckDue(
+  account: Pick<IAccount, 'type' | 'statementDay' | 'lastVerifiedDate' | 'isArchived'>,
+  now: Date = new Date(),
+): string | null {
+  if (account.type !== 'credit' || account.isArchived) return null
+  const closed = lastStatementDate(account.statementDay, now)
+  if (!closed) return null
+  if (now.getTime() - closed.getTime() > STATEMENT_CHECK_DAYS * DAY_MS) return null
+  const closedDay = utcDay(closed)
+  if (account.lastVerifiedDate && utcDay(new Date(account.lastVerifiedDate)) >= closedDay) return null
+  return closedDay
+}
+
 /** Probe days for getAccountLedger: the day each account was last checked with a figure. */
 export function verificationProbes(accounts: Pick<IAccount, '_id' | 'lastVerifiedBalance' | 'lastVerifiedDate'>[]): Map<string, string> {
   const probes = new Map<string, string>()

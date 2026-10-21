@@ -62,9 +62,10 @@ export default function BulkTransactionForm({ onSuccess, onCancel }: BulkTransac
   const { currency: primaryCurrency } = useCurrency()
 
   const activeAccounts = accounts.filter((a) => !a.isArchived)
+  // Unassigned stays available but last, so a real account is the easy pick
   const accountOptions = [
-    { value: UNASSIGNED, label: t('common.unassigned') },
     ...activeAccounts.map((a) => ({ value: a._id, label: a.name })),
+    { value: UNASSIGNED, label: t('common.unassigned') },
   ]
 
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))

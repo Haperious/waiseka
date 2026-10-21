@@ -596,7 +596,8 @@ export default function BulkAddSheet({ open, onSuccess, onCancel }: BulkAddSheet
       {accountPickerOpen && (
         <PickerOverlay onClose={() => setAccountPickerOpen(false)} title={t('quickAdd.account')}>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {[{ _id: '', name: t('bulk.unassigned'), computedBalance: undefined as number | undefined, currency: undefined as string | undefined }, ...activeAccounts].map((a) => {
+            {/* Unassigned stays available but last, so a real account is the easy pick */}
+            {[...activeAccounts, { _id: '', name: t('bulk.unassigned'), computedBalance: undefined as number | undefined, currency: undefined as string | undefined }].map((a) => {
               const isSelected = !accountPending && a._id === accountId
               return (
                 <li key={a._id || '__unassigned__'}>

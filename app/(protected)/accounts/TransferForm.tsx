@@ -12,6 +12,8 @@ import { Account } from "@/hooks/useAccounts"
 import { AccountCard } from "@/components/forms/AccountCard"
 import { AmountField, Chip, FormModalLayout, moneyLabel } from "@/components/forms/FormParts"
 import formStyles from "@/components/forms/forms.module.css"
+import SimilarEntryNote from "@/components/forms/SimilarEntryNote"
+import { useSimilarEntries } from "@/hooks/useSimilarEntries"
 
 interface TransferFormProps {
   accounts: Account[]
@@ -21,10 +23,12 @@ interface TransferFormProps {
   lockedToAccountId?: string
   /** Called when the destination switches between a card (a payment) and anything else, so the modal title can follow. */
   onCardPaymentChange?: (isCardPayment: boolean) => void
+  /** Pre-fills the form, e.g. from a planned transfer that's due. Still editable. */
+  initial?: { fromAccountId?: string; toAccountId?: string; amount?: number }
 }
 
 /** Transfer / pay-card form. Render inside <Modal variant="form">. */
-export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAccountId, onCardPaymentChange }: TransferFormProps) {
+export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAccountId, onCardPaymentChange, initial }: TransferFormProps) {
   const { toast } = useToast()
   const { t } = useLanguage()
   const { currency: primaryCurrency } = useCurrency()
@@ -33,9 +37,9 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts])
 
   const [form, setForm] = useState({
-    fromAccountId: "",
-    toAccountId: lockedToAccountId ?? "",
-    amount: "",
+    fromAccountId: initial?.fromAccountId ?? "",
+    toAccountId: lockedToAccountId ?? initial?.toAccountId ?? "",
+    amount: initial?.amount != null ? String(initial.amount) : "",
     description: "",
     date: format(new Date(), "yyyy-MM-dd"),
   })
@@ -64,6 +68,22 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
   }, [isCardPayment, onCardPaymentChange])
   const willOverpay = isCardPayment && form.amount !== "" && Number(form.amount) > outstanding
   const currency = fromAccount?.currency ?? toAccount?.currency ?? primaryCurrency
+
+  // Soft checks - none of them block saving
+  const amountValue = Number(form.amount)
+  const amountValid = form.amount !== "" && Number.isFinite(amountValue) && amountValue > 0
+  const similar = useSimilarEntries(
+    amountValid && form.fromAccountId && form.toAccountId && form.date
+      ? { type: "transfer", amount: amountValue, date: form.date, fromAccountId: form.fromAccountId, toAccountId: form.toAccountId }
+      : null
+  )
+  // Moving more than WaiseKa shows usually means an entry is missing on the source side
+  const fromBalance = fromAccount && fromAccount.type !== "credit" ? fromAccount.computedBalance : undefined
+  const overdraws = amountValid && fromBalance != null && amountValue > fromBalance
+  // Before one side's opening date, only the other side's balance moves
+  const beforeOpeningAccount = [fromAccount, toAccount].find(
+    (a) => a?.openingBalanceDate && form.date && form.date < a.openingBalanceDate.slice(0, 10)
+  )
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -193,8 +213,21 @@ export default function TransferForm({ accounts, onSuccess, onCancel, lockedToAc
           {t('transferForm.overpayWarning')}
         </div>
       )}
+      {overdraws && fromAccount && (
+        <div className={formStyles.warningBlock} role="status">
+          {t('transferForm.overdraw')
+            .replace('{account}', fromAccount.name)
+            .replace('{amount}', moneyLabel(fromBalance ?? 0, currency))}
+        </div>
+      )}
+      <SimilarEntryNote matches={similar} currency={currency} />
       {countsAsSavings && (
         <span className={formStyles.hint}>{t('transferForm.savingsNote')}</span>
+      )}
+      {beforeOpeningAccount && (
+        <span className={formStyles.hint}>
+          {t('transferForm.beforeOpening').replace('{account}', beforeOpeningAccount.name)}
+        </span>
       )}
 
       <div className={formStyles.twoCol}>

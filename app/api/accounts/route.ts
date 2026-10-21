@@ -9,7 +9,9 @@ import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
 import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
 import { getAccountLedger, computeAssetBalance, computeOutstanding } from '@/lib/services/accountBalance'
-import { verificationProbes, verificationStatus, verifiedDaysAgo } from '@/lib/services/verification'
+import {
+  adjustmentPattern, statementCheckDue, verificationProbes, verificationStatus, verifiedDaysAgo,
+} from '@/lib/services/verification'
 import { readOpeningBalanceDate } from '@/lib/services/balanceAdjustment'
 
 export async function GET() {
@@ -23,7 +25,7 @@ export async function GET() {
     .sort({ isArchived: 1, displayOrder: 1, createdAt: 1 })
     .toArray()
 
-  const { activity: activityMap, probeFigures } = await getAccountLedger(db, session.user.id, {
+  const { activity: activityMap, probeFigures, checkpointDeltas } = await getAccountLedger(db, session.user.id, {
     probes: verificationProbes(accounts),
   })
 
@@ -33,22 +35,26 @@ export async function GET() {
   const accountsWithBalance = accounts.map((account) => {
     const id = account._id.toString()
     const activity = activityMap.get(id)
-    const status = verificationStatus(account, probeFigures.get(id), now)
+    // How well WaiseKa tracks the bank for this account (badges, reminders, warnings)
+    const checks = {
+      verificationStatus: verificationStatus(account, probeFigures.get(id), now),
+      verifiedDaysAgo: verifiedDaysAgo(account, now),
+      adjustmentPattern: adjustmentPattern(checkpointDeltas.filter((c) => c.accountId === id), now),
+      statementDue: statementCheckDue(account, now),
+    }
     if (account.type === 'credit') {
       const outstandingBalance = computeOutstanding(account.openingBalance ?? 0, activity)
       return {
         ...account,
         outstandingBalance,
         availableCredit: account.creditLimit != null ? account.creditLimit - outstandingBalance : null,
-        verificationStatus: status,
-        verifiedDaysAgo: verifiedDaysAgo(account, now),
+        ...checks,
       }
     }
     return {
       ...account,
       computedBalance: computeAssetBalance(account.openingBalance, activity),
-      verificationStatus: status,
-      verifiedDaysAgo: verifiedDaysAgo(account, now),
+      ...checks,
     }
   })
 
@@ -103,6 +109,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'dueDay must be an integer between 1 and 31' }, { status: 400 })
     }
   }
+  const { statementDay } = body
+  if (type === 'credit' && statementDay !== undefined && statementDay !== null) {
+    if (!Number.isInteger(statementDay) || statementDay < 1 || statementDay > 31) {
+      return NextResponse.json({ error: 'statementDay must be an integer between 1 and 31' }, { status: 400 })
+    }
+  }
 
   const db = await getDb()
 
@@ -138,6 +150,7 @@ export async function POST(req: NextRequest) {
     currency: currency ?? primaryCurrencyOf(user),
     creditLimit: type === 'credit' ? (creditLimit ?? null) : null,
     dueDay: type === 'credit' ? (dueDay ?? null) : null,
+    statementDay: type === 'credit' ? (statementDay ?? null) : null,
     // Low-balance alerts only make sense for asset accounts; credit uses utilization instead.
     lowBalanceThreshold: type === 'credit' ? null : (lowBalanceThreshold ?? null),
     color: color ?? null,

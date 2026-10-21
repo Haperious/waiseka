@@ -19,7 +19,13 @@ import { resolveCutoffPeriod, cutoffPrefsFor } from '@/lib/services/cutoff'
 import { primaryCurrencyOf } from '@/lib/services/currencyScope'
 import { getSpentByCurrencyAndCategory } from '@/lib/services/budgetSpending'
 import { getAccountLedger, computeAssetBalance, computeOutstanding, nextDueDate } from '@/lib/services/accountBalance'
-import { verificationProbes, verificationStatus, verifiedDaysAgo } from '@/lib/services/verification'
+import {
+  statementCheckDue, verificationProbes, verificationStatus, verifiedDaysAgo,
+} from '@/lib/services/verification'
+
+/** yyyy-MM-dd -> "Oct 15" */
+const formatDay = (day: string) =>
+  new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 import { formatAmount } from '@/lib/currency'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IAccount } from '@/lib/models/Account'
@@ -120,6 +126,7 @@ export async function GET() {
   if (plannedTransfers.length > 0) {
     // Each planned transfer runs on its source account's currency and that currency's cutoff
     const currencyByAccount = new Map(accounts.map((a) => [a._id.toString(), a.currency]))
+    const nameByAccount = new Map(accounts.map((a) => [a._id.toString(), a.name]))
     const planned = plannedTransfers.map((p) => {
       const currency = currencyByAccount.get(p.fromAccountId.toString()) ?? primary
       return { p, currency, period: resolveCutoffPeriod(cutoffPrefsFor(user?.preferences, currency), now) }
@@ -140,20 +147,42 @@ export async function GET() {
       )
       if (moved) continue
 
+      // Opens the transfer form pre-filled, so logging it is one tap
+      const from = nameByAccount.get(p.fromAccountId.toString())
+      const to = nameByAccount.get(p.toAccountId.toString())
       items.push({
         id: `planned-transfer-${p._id.toString()}`,
         severity: 'info',
         icon: 'PiggyBank',
-        title: `${formatAmount(p.amount, currency)} not yet moved`,
-        body: `Expected this cutoff (${period.label}). Your transfer is still pending.`,
-        href: '/accounts',
+        title: `Did you move ${formatAmount(p.amount, currency)}?`,
+        body: `Expected this cutoff (${period.label})${from && to ? ` from ${from} to ${to}` : ''}. If you already moved it, tap to log it.`,
+        href: `/accounts?transfer=${p._id.toString()}`,
       })
     }
   }
 
+  // ── Card statement to check ─────────────────────────────────────────────
+  // A statement is one exact figure for one day - the easiest reconcile point
+  const statementDue = new Set<string>()
+  for (const account of accounts) {
+    const closed = statementCheckDue(account, now)
+    if (!closed) continue
+    statementDue.add(account._id.toString())
+    items.push({
+      id: `statement-${account._id.toString()}`,
+      severity: 'warning',
+      icon: 'CreditCard',
+      title: `Check your ${account.name} statement`,
+      body: `It closed on ${formatDay(closed)}. Type its balance to make sure WaiseKa matches.`,
+      href: `/accounts?statement=${account._id.toString()}`,
+    })
+  }
+
   // ── Balance check due ───────────────────────────────────────────────────
-  // Catching a gap with the bank early (a missed entry, a fee) is far easier than weeks later
+  // Catching a gap with the bank early (a missed entry, a fee) is far easier than weeks later.
+  // Cards with a statement to check are already covered above.
   const due = accounts
+    .filter((account) => !statementDue.has(account._id.toString()))
     .map((account) => ({ account, status: verificationStatus(account, probeFigures.get(account._id.toString()), now) }))
     .filter((x) => x.status !== 'fresh')
   if (due.length === 1) {

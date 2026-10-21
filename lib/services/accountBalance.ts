@@ -65,6 +65,8 @@ export interface AccountLedger {
   adjustmentDeltas: Map<string, number>
   /** The figure at the end of each requested probe day, keyed by account id. */
   probeFigures: Map<string, number>
+  /** Every counted checkpoint with its live difference, oldest first per account. */
+  checkpointDeltas: { accountId: string; day: string; delta: number }[]
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -132,6 +134,7 @@ export function buildLedger(
 
   const adjustmentDeltas = new Map<string, number>()
   const probeFigures = new Map<string, number>()
+  const checkpointDeltas: AccountLedger['checkpointDeltas'] = []
   const walked = new Set([...byAccount.keys(), ...probes.keys()])
   for (const accountId of walked) {
     const list = byAccount.get(accountId) ?? []
@@ -169,6 +172,7 @@ export function buildLedger(
       }
       sum += delta
       adjustmentDeltas.set(cp._id.toString(), delta)
+      checkpointDeltas.push({ accountId, day, delta })
     }
     takeProbe()
 
@@ -179,13 +183,17 @@ export function buildLedger(
     }
   }
 
-  return { activity, adjustmentDeltas, probeFigures }
+  return { activity, adjustmentDeltas, probeFigures, checkpointDeltas }
 }
 
 /**
  * Loads a user's accounts, per-day activity and adjustments, then builds the ledger.
  * Balances are never written to the account document, only computed on read - the same
  * "derived over stored" pattern used for Budget.spent.
+ *
+ * Archived transactions are counted on purpose. Archiving only hides entries past the
+ * plan's history window from lists and reports; the money still moved, so dropping them
+ * here would make balances jump when they're archived. (Deleting is a hard delete.)
  */
 export async function getAccountLedger(
   db: Db,
@@ -206,7 +214,6 @@ export async function getAccountLedger(
       {
         $match: {
           userId,
-          isArchived: { $ne: true },
           type: { $in: ['income', 'expense', 'savings'] },
           accountId: { $ne: null },
           ...extra,
@@ -218,7 +225,6 @@ export async function getAccountLedger(
       {
         $match: {
           userId,
-          isArchived: { $ne: true },
           type: 'transfer',
           ...extra,
         },
@@ -238,7 +244,7 @@ export async function getAccountLedger(
     ]).toArray(),
     col
       .find(
-        { userId, isArchived: { $ne: true }, type: 'adjustment', accountId: { $ne: null }, ...extra },
+        { userId, type: 'adjustment', accountId: { $ne: null }, ...extra },
         { projection: { accountId: 1, date: 1, adjustmentTarget: 1, adjustmentDelta: 1 } },
       )
       .sort({ date: 1, createdAt: 1 })

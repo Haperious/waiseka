@@ -64,6 +64,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     update.dueDay = body.dueDay
   }
+  if (body.statementDay !== undefined) {
+    if (body.statementDay !== null && (!Number.isInteger(body.statementDay) || body.statementDay < 1 || body.statementDay > 31)) {
+      return NextResponse.json({ error: 'statementDay must be an integer between 1 and 31, or null' }, { status: 400 })
+    }
+    update.statementDay = body.statementDay
+  }
   if (body.lowBalanceThreshold !== undefined) {
     if (body.lowBalanceThreshold !== null && (typeof body.lowBalanceThreshold !== 'number' || !isFinite(body.lowBalanceThreshold) || body.lowBalanceThreshold < 0)) {
       return NextResponse.json({ error: 'lowBalanceThreshold must be a non-negative number or null' }, { status: 400 })
@@ -133,9 +139,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   // Never hard-delete an account that has transactions referencing it - it would
   // orphan historical records and break derived balance calculations. Archive instead.
+  // Transfers reference accounts through fromAccountId/toAccountId, not accountId
   const transactionCount = await db.collection('transactions').countDocuments({
     userId: session.user.id,
-    accountId: _id,
+    $or: [{ accountId: _id }, { fromAccountId: _id }, { toAccountId: _id }],
   })
   if (transactionCount > 0) {
     return NextResponse.json(

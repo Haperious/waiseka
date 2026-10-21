@@ -26,6 +26,8 @@ import {
   type SegmentOption,
 } from '@/components/forms/FormParts'
 import formStyles from '@/components/forms/forms.module.css'
+import SimilarEntryNote from '@/components/forms/SimilarEntryNote'
+import { useSimilarEntries } from '@/hooks/useSimilarEntries'
 
 const UNASSIGNED = ''
 
@@ -79,6 +81,13 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   // Entries before the account's opening date are already inside its opening balance,
   // so they won't move it - say so instead of letting the balance look "stuck"
   const openingDay = selectedAccount?.openingBalanceDate?.slice(0, 10)
+  // Soft "already logged?" check - saving the same entry twice is a common cause of drift
+  const amountValue = Number(form.amount)
+  const similar = useSimilarEntries(
+    !accountPending && form.date && Number.isFinite(amountValue) && amountValue > 0
+      ? { type: form.type, amount: amountValue, date: form.date, accountId: accountId ?? '', excludeId: transaction?._id }
+      : null
+  )
   const beforeOpeningNote = selectedAccount && openingDay && form.date && form.date < openingDay
     ? t('form.beforeOpening')
         .replace('{account}', selectedAccount.name)
@@ -131,9 +140,10 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
     [categories, form.type]
   )
 
+  // Unassigned stays available but last, so a real account is the easy pick
   const accountOptions = [
-    { value: UNASSIGNED, label: t('common.unassigned') },
     ...activeAccounts.map((a) => ({ value: a._id, label: a.name })),
+    { value: UNASSIGNED, label: t('common.unassigned') },
   ]
 
   const today = format(new Date(), 'yyyy-MM-dd')
@@ -241,6 +251,8 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
           </div>
         </Field>
       </div>
+
+      <SimilarEntryNote matches={similar} currency={currency} />
 
       <Input
         id="tx-note"

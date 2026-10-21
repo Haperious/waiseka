@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Pencil, Archive, ArchiveRestore, Lock, Landmark, CreditCard, PiggyBank, Banknote, Smartphone, Wallet, ArrowLeftRight, SlidersHorizontal, Info, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { format } from 'date-fns'
+import { Plus, Pencil, Archive, ArchiveRestore, Lock, Landmark, CreditCard, PiggyBank, Banknote, Smartphone, Wallet, ArrowLeftRight, SlidersHorizontal, Info, ShieldCheck, ShieldAlert, Receipt } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
@@ -106,13 +107,23 @@ function VerificationBadge({ account, t, onCheck }: {
   )
 }
 
-/** Opens the check dialog for ?verify=<accountId> (the dashboard reminder links here). */
-function VerifyFromUrl({ onOpen }: { onOpen: (accountId: string) => void }) {
+/**
+ * Opens a dialog from the URL - the dashboard reminders link here:
+ * ?verify=<accountId> (balance check), ?statement=<accountId> (card statement check),
+ * ?transfer=<plannedTransferId> (log a planned transfer that's due).
+ */
+function DialogFromUrl({ onVerify, onStatement, onPlannedTransfer }: {
+  onVerify: (accountId: string) => void
+  onStatement: (accountId: string) => void
+  onPlannedTransfer: (plannedTransferId: string) => void
+}) {
   const searchParams = useSearchParams()
-  const id = searchParams.get('verify')
-  useEffect(() => {
-    if (id) onOpen(id)
-  }, [id, onOpen])
+  const verify = searchParams.get('verify')
+  const statement = searchParams.get('statement')
+  const transfer = searchParams.get('transfer')
+  useEffect(() => { if (verify) onVerify(verify) }, [verify, onVerify])
+  useEffect(() => { if (statement) onStatement(statement) }, [statement, onStatement])
+  useEffect(() => { if (transfer) onPlannedTransfer(transfer) }, [transfer, onPlannedTransfer])
   return null
 }
 
@@ -161,6 +172,7 @@ function AccountCard({
   onPayCard,
   onAdjust,
   onVerify,
+  onCheckStatement,
 }: {
   account: Account
   t: (key: TranslationKey) => string
@@ -172,6 +184,7 @@ function AccountCard({
   onPayCard: () => void
   onAdjust: () => void
   onVerify: () => void
+  onCheckStatement: () => void
 }) {
   const Icon = TYPE_ICON[account.type] ?? Wallet
   const isCredit = account.type === 'credit'
@@ -284,6 +297,52 @@ function AccountCard({
         )}
       </div>
 
+      {!account.isArchived && account.statementDue && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          padding: '10px 12px', borderRadius: 10,
+          backgroundColor: 'var(--color-warning-bg)', color: 'var(--color-warning)',
+        }}>
+          <Receipt style={{ width: 14, height: 14, flexShrink: 0 }} aria-hidden="true" />
+          <span style={{ fontSize: '0.78rem', flex: '1 1 160px', lineHeight: 1.4 }}>
+            {t('statement.due').replace('{date}', format(new Date(`${account.statementDue}T12:00:00`), 'MMM d'))}
+          </span>
+          <button
+            type="button"
+            onClick={onCheckStatement}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-warning)', textDecoration: 'underline' }}
+          >
+            {t('statement.check')}
+          </button>
+        </div>
+      )}
+
+      {!account.isArchived && account.adjustmentPattern && (
+        <div style={{
+          display: 'flex', gap: 8, alignItems: 'flex-start',
+          padding: '10px 12px', borderRadius: 10,
+          backgroundColor: 'var(--color-elevated)', color: 'var(--color-text-secondary)',
+          fontSize: '0.75rem', lineHeight: 1.45,
+        }}>
+          <Info style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+          <span>
+            <strong style={{ color: 'var(--color-text-primary)' }}>
+              {t('pattern.title')
+                .replace('{days}', String(account.adjustmentPattern.days))
+                .replace('{n}', String(account.adjustmentPattern.count))
+                .replace('{amount}', `${account.adjustmentPattern.net >= 0 ? '+' : '−'}${fmt(Math.abs(account.adjustmentPattern.net))}`)}
+            </strong>
+            {' '}
+            {/* Bank lower than WaiseKa (asset) or owing more (card) points at unlogged spending */}
+            {t(
+              isCredit
+                ? (account.adjustmentPattern.net > 0 ? 'pattern.spendingCredit' : 'pattern.paymentsCredit')
+                : (account.adjustmentPattern.net < 0 ? 'pattern.spendingAsset' : 'pattern.incomeAsset')
+            )}
+          </span>
+        </div>
+      )}
+
       {!account.isArchived && (
         <div style={{ display: 'flex', gap: 8 }}>
           {isCredit && canPayCard && (
@@ -327,11 +386,38 @@ export default function AccountsPage() {
   const router = useRouter()
   const [verifyAccountId, setVerifyAccountId] = useState<string | null>(null)
   const verifyAccount = accounts.find((a) => a._id === verifyAccountId && !a.isArchived) ?? null
+  // Drop ?verify= / ?statement= / ?transfer= once handled, so a refresh doesn't reopen the dialog
+  const clearUrl = useCallback(() => {
+    if (window.location.search) router.replace('/accounts', { scroll: false })
+  }, [router])
   const closeVerify = useCallback(() => {
     setVerifyAccountId(null)
-    // Drop ?verify= so a refresh doesn't reopen it
-    if (window.location.search.includes('verify=')) router.replace('/accounts', { scroll: false })
-  }, [router])
+    clearUrl()
+  }, [clearUrl])
+
+  // Card statement check: the adjust form, opened on the statement's closing date
+  const [statementAccountId, setStatementAccountId] = useState<string | null>(null)
+  const statementAccount = accounts.find((a) => a._id === statementAccountId && !a.isArchived) ?? null
+  const closeStatement = useCallback(() => {
+    setStatementAccountId(null)
+    clearUrl()
+  }, [clearUrl])
+
+  // A planned transfer that's due, opened pre-filled from the dashboard reminder
+  const [plannedTransfer, setPlannedTransfer] = useState<{ fromAccountId: string; toAccountId: string; amount: number } | null>(null)
+  const openPlannedTransfer = useCallback((id: string) => {
+    fetch('/api/planned-transfers')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list: { _id: string; fromAccountId: string; toAccountId: string; amount: number }[]) => {
+        const plan = Array.isArray(list) ? list.find((p) => p._id === id) : undefined
+        if (plan) setPlannedTransfer({ fromAccountId: plan.fromAccountId, toAccountId: plan.toAccountId, amount: plan.amount })
+      })
+      .catch(() => {})
+  }, [])
+  const closePlannedTransfer = useCallback(() => {
+    setPlannedTransfer(null)
+    clearUrl()
+  }, [clearUrl])
 
   // Transactions with no account never move a balance - a common reason WaiseKa and the bank disagree
   const [unlinkedCount, setUnlinkedCount] = useState(0)
@@ -537,6 +623,7 @@ export default function AccountsPage() {
               onPayCard={() => setPayCardAccount(account)}
               onAdjust={() => setAdjustAccount(account)}
               onVerify={() => setVerifyAccountId(account._id)}
+              onCheckStatement={() => setStatementAccountId(account._id)}
             />
           ))}
         </div>
@@ -561,6 +648,7 @@ export default function AccountsPage() {
                 onPayCard={() => {}}
                 onAdjust={() => {}}
                 onVerify={() => {}}
+                onCheckStatement={() => {}}
               />
             ))}
           </div>
@@ -591,7 +679,7 @@ export default function AccountsPage() {
 
       {/* ── Balance check (also opened from the dashboard via ?verify=) ──────── */}
       <Suspense fallback={null}>
-        <VerifyFromUrl onOpen={setVerifyAccountId} />
+        <DialogFromUrl onVerify={setVerifyAccountId} onStatement={setStatementAccountId} onPlannedTransfer={openPlannedTransfer} />
       </Suspense>
       <Modal open={!!verifyAccount} onClose={closeVerify} title={t('verify.title')} variant="form">
         {verifyAccount && (
@@ -600,6 +688,30 @@ export default function AccountsPage() {
             onVerified={() => { closeVerify(); refetch() }}
             onMismatch={() => { closeVerify(); setAdjustAccount(verifyAccount) }}
             onCancel={closeVerify}
+          />
+        )}
+      </Modal>
+
+      {/* ── Card statement check ─────────────────────────────────────────────── */}
+      <Modal open={!!statementAccount?.statementDue} onClose={closeStatement} title={t('statement.check')} variant="form">
+        {statementAccount?.statementDue && (
+          <AdjustBalanceForm
+            account={statementAccount}
+            statementDate={statementAccount.statementDue}
+            onSuccess={() => { closeStatement(); refetch() }}
+            onCancel={closeStatement}
+          />
+        )}
+      </Modal>
+
+      {/* ── Planned transfer that's due ──────────────────────────────────────── */}
+      <Modal open={!!plannedTransfer} onClose={closePlannedTransfer} title="Transfer" variant="form">
+        {plannedTransfer && (
+          <TransferForm
+            accounts={accounts}
+            initial={plannedTransfer}
+            onSuccess={() => { closePlannedTransfer(); refetch() }}
+            onCancel={closePlannedTransfer}
           />
         )}
       </Modal>

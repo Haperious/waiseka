@@ -39,6 +39,7 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
     openingBalanceDate: account ? (account.openingBalanceDate?.slice(0, 10) ?? '') : format(new Date(), 'yyyy-MM-dd'),
     creditLimit: account?.creditLimit != null ? String(account.creditLimit) : '',
     dueDay: account?.dueDay != null ? String(account.dueDay) : '',
+    statementDay: account?.statementDay != null ? String(account.statementDay) : '',
     lowBalanceThreshold: account?.lowBalanceThreshold != null ? String(account.lowBalanceThreshold) : '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -58,6 +59,10 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
     if (form.type === 'credit' && form.dueDay) {
       const d = Number(form.dueDay)
       if (!Number.isInteger(d) || d < 1 || d > 31) e.dueDay = t('accountForm.errDueDay')
+    }
+    if (form.type === 'credit' && form.statementDay) {
+      const d = Number(form.statementDay)
+      if (!Number.isInteger(d) || d < 1 || d > 31) e.statementDay = t('accountForm.errDueDay')
     }
     if (form.type !== 'credit' && form.lowBalanceThreshold && (isNaN(Number(form.lowBalanceThreshold)) || Number(form.lowBalanceThreshold) < 0))
       e.lowBalanceThreshold = t('accountForm.errAmount')
@@ -84,10 +89,12 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
       if (form.type === 'credit') {
         payload.creditLimit = form.creditLimit ? Number(form.creditLimit) : null
         payload.dueDay = form.dueDay ? Number(form.dueDay) : null
+        payload.statementDay = form.statementDay ? Number(form.statementDay) : null
         payload.lowBalanceThreshold = null
       } else {
         payload.creditLimit = null
         payload.dueDay = null
+        payload.statementDay = null
         payload.lowBalanceThreshold = form.lowBalanceThreshold ? Number(form.lowBalanceThreshold) : null
       }
 
@@ -239,7 +246,22 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
               />
             </Field>
           </div>
-          {balanceAsOfInput}
+          <div className={formStyles.twoCol}>
+            <Field hint={errors.statementDay ? undefined : t('accountForm.statementDayHint')}>
+              <Input
+                id="account-statement"
+                label={t('accountForm.statementDay')}
+                type="number"
+                min="1"
+                max="31"
+                placeholder={t('accountForm.dueDayPlaceholder')}
+                value={form.statementDay}
+                onChange={(e) => setForm({ ...form, statementDay: e.target.value })}
+                error={errors.statementDay}
+              />
+            </Field>
+            {balanceAsOfInput}
+          </div>
         </div>
       ) : (
         <div className={formStyles.paleBlock}>

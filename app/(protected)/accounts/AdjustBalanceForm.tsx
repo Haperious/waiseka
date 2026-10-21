@@ -20,6 +20,8 @@ interface AdjustBalanceFormProps {
   adjustment?: Transaction | null
   onSuccess: () => void
   onCancel: () => void
+  /** yyyy-MM-dd of a card statement to check: starts on that date with statement wording. */
+  statementDate?: string
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -29,7 +31,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100
  * reviews the change, then confirms. The server works out and saves the difference.
  * Render inside <Modal variant="form">.
  */
-export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCancel }: AdjustBalanceFormProps) {
+export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCancel, statementDate }: AdjustBalanceFormProps) {
   const { t } = useLanguage()
   const { toast } = useToast()
   const isCredit = account.type === "credit"
@@ -39,7 +41,7 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
     adjustment?.adjustmentTarget != null ? String(adjustment.adjustmentTarget) : ""
   )
   const [date, setDate] = useState(
-    adjustment ? format(new Date(adjustment.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")
+    adjustment ? format(new Date(adjustment.date), "yyyy-MM-dd") : statementDate ?? format(new Date(), "yyyy-MM-dd")
   )
   const [note, setNote] = useState(adjustment?.description ?? "")
   const [step, setStep] = useState<"enter" | "confirm">("enter")
@@ -87,10 +89,37 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
     if (openingDay && date < openingDay) {
       return setError(t("adjust.beforeOpening").replace("{date}", format(new Date(`${openingDay}T12:00:00`), "MMM d, yyyy")))
     }
-    if (delta === 0) return setError(t("adjust.matches"))
+    if (delta === 0) {
+      // Already matching is good news: save it as a check instead of turning the user away
+      if (isEdit || current == null) return setError(t("adjust.matches"))
+      return void saveMatch(current)
+    }
     if (delta == null) return
     setError("")
     setStep("confirm")
+  }
+
+  const saveMatch = async (balance: number) => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/accounts/${account._id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, balance }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast(data.error ?? t("verify.failed"), "error")
+        setReloadKey((k) => k + 1)
+        return
+      }
+      toast(t("adjust.matchedSaved").replace("{account}", account.name), "success")
+      onSuccess()
+    } catch {
+      toast(t("common.genericError"), "error")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const save = async (e: React.FormEvent) => {
@@ -178,14 +207,16 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
           <Button type="button" variant="outline" onClick={onCancel}>
             {t("common.cancel")}
           </Button>
-          <Button type="submit" disabled={current == null}>
+          <Button type="submit" disabled={current == null} loading={saving}>
             {t("adjust.review")}
           </Button>
         </>
       }
     >
       <span className={formStyles.hint} style={{ fontSize: "0.82rem" }}>
-        {isCredit ? t("adjust.introCredit") : t("adjust.intro")}
+        {statementDate
+          ? t("adjust.introStatement").replace("{date}", format(new Date(`${statementDate}T12:00:00`), "MMM d, yyyy"))
+          : isCredit ? t("adjust.introCredit") : t("adjust.intro")}
       </span>
 
       <div className={formStyles.field}>

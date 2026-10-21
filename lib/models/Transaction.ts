@@ -29,7 +29,11 @@ export interface ITransaction {
   adjustmentDelta?: number
   /** Adjustment only: the balance the user typed in (what their bank showed on `date`). Kept so an edit can re-work the change. */
   adjustmentTarget?: number
-  /** Set when this transaction is beyond the user's tier retention window. Archived transactions are retained but excluded from queries. */
+  /**
+   * Set when this transaction is beyond the user's tier retention window. Archived transactions
+   * are retained but excluded from lists and reports - except account balances, which always
+   * count them (see getAccountLedger), so archiving never changes a balance.
+   */
   isArchived: boolean
   /** Date this transaction was archived. Null if not archived. */
   archivedAt?: Date

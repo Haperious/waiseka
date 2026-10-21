@@ -30,6 +30,8 @@ export interface IAccount {
   creditLimit?: number | null
   /** Credit-only. Day of month the payment is due (1-31). Ignored for all other account types. */
   dueDay?: number | null
+  /** Credit-only. Day of month the statement closes (1-31). Drives the "check your statement" prompt. */
+  statementDay?: number | null
   /** Opt-in low-balance alert threshold. Alert fires when the derived balance drops below this. Null/unset = no alert. Asset accounts only. */
   lowBalanceThreshold?: number | null
   color?: string | null

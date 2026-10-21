@@ -5,8 +5,11 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IAccount } from '@/lib/models/Account'
-import { parseTransactionDate } from '@/lib/utils'
+import type { IUser } from '@/lib/models/User'
+import { MAX_DESCRIPTION_LENGTH, parseDateInput } from '@/lib/transactionInput'
+import { historyWindowStart, isPremium } from '@/lib/tier'
 import { getAccountActivityMap, computeOutstanding } from '@/lib/services/accountBalance'
+import { isBeforeOpeningDate } from '@/lib/services/balanceAdjustment'
 
 /**
  * POST /api/transfers
@@ -45,8 +48,31 @@ export async function POST(req: NextRequest) {
   if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
   }
+  // An unreadable date used to be saved as Invalid Date, which drops out of every balance
+  let transferDate = new Date()
+  if (date !== undefined && date !== null && date !== '') {
+    const parsed = parseDateInput(date)
+    if (!parsed) return NextResponse.json({ error: 'date must be a valid date' }, { status: 400 })
+    transferDate = parsed
+  }
+  if (description !== undefined && description !== null
+    && (typeof description !== 'string' || description.length > MAX_DESCRIPTION_LENGTH)) {
+    return NextResponse.json({ error: `description must be text up to ${MAX_DESCRIPTION_LENGTH} characters` }, { status: 400 })
+  }
 
   const db = await getDb()
+
+  // Same rule as every other entry: nothing older than the plan's history window
+  const user = await db.collection<IUser>('users').findOne(
+    { _id: new ObjectId(session.user.id) },
+    { projection: { tier: 1, premiumOverride: 1 } }
+  )
+  if (transferDate < historyWindowStart(user ? isPremium(user) : false)) {
+    return NextResponse.json(
+      { error: 'That date is outside your history window. Upgrade to Premium for extended history.' },
+      { status: 403 }
+    )
+  }
 
   // Both accounts must belong to the caller - never trust client-supplied ids
   const accounts = await db.collection<IAccount>('accounts').find({
@@ -80,6 +106,12 @@ export async function POST(req: NextRequest) {
     if (amount > currentOutstanding) overpayment = true
   }
 
+  // A transfer dated before one account's opening date only counts on the other side,
+  // so the two balances disagree with the bank. Saved anyway, but flagged for the UI.
+  const beforeOpening = [fromAccount, toAccount]
+    .filter((a) => isBeforeOpeningDate(a, transferDate))
+    .map((a) => a.name)
+
   // Money moved into a savings/time_deposit account is savings behavior -
   // count it toward totalSavings/health score alongside type: 'savings' transactions.
   const countsAsSavings = toAccount.type === 'savings' || toAccount.type === 'time_deposit'
@@ -91,8 +123,8 @@ export async function POST(req: NextRequest) {
     currency: fromAccount.currency,
     type: 'transfer',
     category: 'Transfer',
-    description: description ?? `${fromAccount.name} → ${toAccount.name}`,
-    date: date ? parseTransactionDate(date) : now,
+    description: description || `${fromAccount.name} → ${toAccount.name}`,
+    date: transferDate,
     tags: [],
     isRecurring: false,
     accountId: null,
@@ -105,5 +137,5 @@ export async function POST(req: NextRequest) {
   })
 
   const transfer = await db.collection<ITransaction>('transactions').findOne({ _id: result.insertedId })
-  return NextResponse.json({ transfer, overpayment }, { status: 201 })
+  return NextResponse.json({ transfer, overpayment, beforeOpening }, { status: 201 })
 }

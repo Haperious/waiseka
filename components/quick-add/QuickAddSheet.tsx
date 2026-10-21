@@ -6,6 +6,8 @@ import { Calculator, CalendarDays, Camera, ChevronDown, Layers, Mic, PenLine, Re
 import { useCategories } from "@/hooks/useCategories"
 import { useAccounts } from "@/hooks/useAccounts"
 import { useDefaultAccount } from "@/hooks/useDefaultAccount"
+import { useSimilarEntries } from "@/hooks/useSimilarEntries"
+import SimilarEntryNote from "@/components/forms/SimilarEntryNote"
 import { accountIdForSubmit } from "@/lib/accountSelection"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getCurrencySymbol } from "@/lib/currency"
@@ -246,6 +248,14 @@ function KeypadMode({ onDone, transaction }: { onDone: () => void; transaction?:
   const amountValue = Number(amountStr)
   const canSave = amountStr !== "" && amountValue > 0 && !!category
 
+  // Soft "already logged?" check - saving the same entry twice is a common cause of drift
+  const entryCurrency = activeAccounts.find((a) => a._id === accountId)?.currency ?? primaryCurrency
+  const similar = useSimilarEntries(
+    !accountPending && amountValue > 0
+      ? { type, amount: amountValue, date, accountId: accountId ?? "", excludeId: transaction?._id }
+      : null
+  )
+
   const accountLabel = accountPending
     ? t("common.defaultAccount")
     : activeAccounts.find((a) => a._id === accountId)?.name ?? t("quickAdd.unassigned")
@@ -335,12 +345,13 @@ function KeypadMode({ onDone, transaction }: { onDone: () => void; transaction?:
               onChange={(e) => setAccountId(e.target.value === PENDING_DEFAULT ? null : e.target.value)}
             >
               {accountPending && <option value={PENDING_DEFAULT}>{t("common.defaultAccount")}</option>}
-              <option value="">{t("quickAdd.unassigned")}</option>
               {activeAccounts.map((a) => (
                 <option key={a._id} value={a._id}>
                   {a.name}
                 </option>
               ))}
+              {/* Unassigned stays available but last, so a real account is the easy pick */}
+              <option value="">{t("quickAdd.unassigned")}</option>
             </select>
           </label>
           <label className={styles.pill}>
@@ -376,6 +387,8 @@ function KeypadMode({ onDone, transaction }: { onDone: () => void; transaction?:
             enterKeyHint="done"
           />
         </label>
+
+        <SimilarEntryNote matches={similar} currency={entryCurrency} />
 
         <Keypad value={amountStr} onChange={setAmountStr} keyHeight={48} />
       </div>
