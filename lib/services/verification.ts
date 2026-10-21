@@ -91,9 +91,11 @@ export function lastStatementDate(statementDay: number | null | undefined, today
  * yyyy-MM-dd of a card statement that closed recently and hasn't been checked yet, or
  * null. A statement gives one exact figure for one day - the easiest reconcile point.
  * Checked means a check (or adjustment) on or after the closing day.
+ * A statement that closed before the opening balance date is skipped: its figure is
+ * already inside the opening balance, and the check form can't save a date that early.
  */
 export function statementCheckDue(
-  account: Pick<IAccount, 'type' | 'statementDay' | 'lastVerifiedDate' | 'isArchived'>,
+  account: Pick<IAccount, 'type' | 'statementDay' | 'lastVerifiedDate' | 'isArchived' | 'openingBalanceDate'>,
   now: Date = new Date(),
 ): string | null {
   if (account.type !== 'credit' || account.isArchived) return null
@@ -101,6 +103,7 @@ export function statementCheckDue(
   if (!closed) return null
   if (now.getTime() - closed.getTime() > STATEMENT_CHECK_DAYS * DAY_MS) return null
   const closedDay = utcDay(closed)
+  if (account.openingBalanceDate && closedDay < utcDay(new Date(account.openingBalanceDate))) return null
   if (account.lastVerifiedDate && utcDay(new Date(account.lastVerifiedDate)) >= closedDay) return null
   return closedDay
 }

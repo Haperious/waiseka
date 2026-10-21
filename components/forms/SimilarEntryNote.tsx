@@ -12,10 +12,11 @@ export default function SimilarEntryNote({ matches, currency }: { matches: Simil
   if (matches.length === 0) return null
   const first = matches[0]
   const name = first.description || first.category
+  // Function replacers, so "$&" and friends in a note are shown as typed
   const text = t('form.similar')
-    .replace('{amount}', formatAmount(first.amount, currency))
-    .replace('{date}', format(new Date(first.date), 'MMM d'))
-    .replace('{name}', name)
+    .replace('{amount}', () => formatAmount(first.amount, currency))
+    .replace('{date}', () => format(new Date(first.date), 'MMM d'))
+    .replace('{name}', () => name)
   return (
     <div className={formStyles.warningBlock} role="status">
       {text}
