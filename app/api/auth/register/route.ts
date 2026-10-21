@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
       type: 'debit',
       openingBalance: 0,
       openingBalanceDate: now,
+      lastVerifiedAt: now,
       currency: 'PHP',
       creditLimit: null,
       dueDay: null,

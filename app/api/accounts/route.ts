@@ -8,7 +8,8 @@ import { FREE_ACCOUNT_LIMIT } from '@/lib/constants'
 import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
 import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
-import { getAccountActivityMap, computeAssetBalance, computeOutstanding } from '@/lib/services/accountBalance'
+import { getAccountLedger, computeAssetBalance, computeOutstanding } from '@/lib/services/accountBalance'
+import { verificationProbes, verificationStatus, verifiedDaysAgo } from '@/lib/services/verification'
 import { readOpeningBalanceDate } from '@/lib/services/balanceAdjustment'
 
 export async function GET() {
@@ -22,23 +23,32 @@ export async function GET() {
     .sort({ isArchived: 1, displayOrder: 1, createdAt: 1 })
     .toArray()
 
-  const activityMap = await getAccountActivityMap(db, session.user.id)
+  const { activity: activityMap, probeFigures } = await getAccountLedger(db, session.user.id, {
+    probes: verificationProbes(accounts),
+  })
 
   // Balances are computed here, never stored - same "derived over stored"
   // pattern used for Budget.spent. Nothing below persists to the accounts collection.
+  const now = new Date()
   const accountsWithBalance = accounts.map((account) => {
-    const activity = activityMap.get(account._id.toString())
+    const id = account._id.toString()
+    const activity = activityMap.get(id)
+    const status = verificationStatus(account, probeFigures.get(id), now)
     if (account.type === 'credit') {
       const outstandingBalance = computeOutstanding(account.openingBalance ?? 0, activity)
       return {
         ...account,
         outstandingBalance,
         availableCredit: account.creditLimit != null ? account.creditLimit - outstandingBalance : null,
+        verificationStatus: status,
+        verifiedDaysAgo: verifiedDaysAgo(account, now),
       }
     }
     return {
       ...account,
       computedBalance: computeAssetBalance(account.openingBalance, activity),
+      verificationStatus: status,
+      verifiedDaysAgo: verifiedDaysAgo(account, now),
     }
   })
 
@@ -121,6 +131,10 @@ export async function POST(req: NextRequest) {
     type,
     openingBalance: openingBalance ?? 0,
     openingBalanceDate,
+    // Adding the account counts as a check: the opening balance is what the bank showed
+    lastVerifiedAt: now,
+    lastVerifiedBalance: null,
+    lastVerifiedDate: null,
     currency: currency ?? primaryCurrencyOf(user),
     creditLimit: type === 'credit' ? (creditLimit ?? null) : null,
     dueDay: type === 'credit' ? (dueDay ?? null) : null,

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
-import { Plus, Pencil, Archive, ArchiveRestore, Lock, Landmark, CreditCard, PiggyBank, Banknote, Smartphone, Wallet, ArrowLeftRight, SlidersHorizontal, Info } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Plus, Pencil, Archive, ArchiveRestore, Lock, Landmark, CreditCard, PiggyBank, Banknote, Smartphone, Wallet, ArrowLeftRight, SlidersHorizontal, Info, ShieldCheck, ShieldAlert } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
@@ -14,6 +15,7 @@ import { useToast } from '@/components/ui/Toast'
 import AccountForm from './AccountForm'
 import TransferForm from './TransferForm'
 import AdjustBalanceForm from './AdjustBalanceForm'
+import VerifyBalanceForm from './VerifyBalanceForm'
 
 /** Sum a list of accounts' balances grouped by their own currency (no FX conversion). */
 function sumByCurrency(items: { currency: string; value: number }[]): Map<string, number> {
@@ -68,6 +70,52 @@ function CreditUtilizationBar({ outstanding, limit }: { outstanding: number; lim
   )
 }
 
+/** "Checked 3 days ago" - green while fresh, amber when a check is due or history changed since. */
+function VerificationBadge({ account, t, onCheck }: {
+  account: Account
+  t: (key: TranslationKey) => string
+  onCheck: () => void
+}) {
+  const status = account.verificationStatus ?? 'never'
+  const days = account.verifiedDaysAgo ?? 0
+  const when = days === 0 ? t('verify.today') : days === 1 ? t('verify.daysAgoOne') : t('verify.daysAgo').replace('{n}', String(days))
+  const label =
+    status === 'fresh' ? t('verify.fresh').replace('{when}', when)
+    : status === 'stale' ? t('verify.stale').replace('{when}', when)
+    : status === 'changed' ? t('verify.changed')
+    : t('verify.never')
+  const ok = status === 'fresh'
+  const BadgeIcon = ok ? ShieldCheck : ShieldAlert
+
+  return (
+    <button
+      type="button"
+      onClick={onCheck}
+      title={t('verify.action')}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+        marginTop: 8, padding: '3px 9px', borderRadius: 999, border: 'none', cursor: 'pointer',
+        fontSize: '0.7rem', fontWeight: 600,
+        backgroundColor: ok ? 'var(--color-income-bg)' : 'var(--color-warning-bg)',
+        color: ok ? 'var(--color-income)' : 'var(--color-warning)',
+      }}
+    >
+      <BadgeIcon style={{ width: 12, height: 12, flexShrink: 0 }} aria-hidden="true" />
+      {label}
+    </button>
+  )
+}
+
+/** Opens the check dialog for ?verify=<accountId> (the dashboard reminder links here). */
+function VerifyFromUrl({ onOpen }: { onOpen: (accountId: string) => void }) {
+  const searchParams = useSearchParams()
+  const id = searchParams.get('verify')
+  useEffect(() => {
+    if (id) onOpen(id)
+  }, [id, onOpen])
+  return null
+}
+
 function CardActionButton({ onClick, icon: Icon, children }: {
   onClick: () => void
   icon: React.ElementType
@@ -112,6 +160,7 @@ function AccountCard({
   onUnarchive,
   onPayCard,
   onAdjust,
+  onVerify,
 }: {
   account: Account
   t: (key: TranslationKey) => string
@@ -122,6 +171,7 @@ function AccountCard({
   onUnarchive: () => void
   onPayCard: () => void
   onAdjust: () => void
+  onVerify: () => void
 }) {
   const Icon = TYPE_ICON[account.type] ?? Wallet
   const isCredit = account.type === 'credit'
@@ -229,6 +279,9 @@ function AccountCard({
             Payment due day: {account.dueDay}
           </div>
         )}
+        {!account.isArchived && (
+          <div><VerificationBadge account={account} t={t} onCheck={onVerify} /></div>
+        )}
       </div>
 
       {!account.isArchived && (
@@ -236,6 +289,7 @@ function AccountCard({
           {isCredit && canPayCard && (
             <CardActionButton onClick={onPayCard} icon={CreditCard}>Pay this card</CardActionButton>
           )}
+          <CardActionButton onClick={onVerify} icon={ShieldCheck}>{t('verify.action')}</CardActionButton>
           <CardActionButton onClick={onAdjust} icon={SlidersHorizontal}>{t('adjust.action')}</CardActionButton>
         </div>
       )}
@@ -268,6 +322,16 @@ export default function AccountsPage() {
   const [showCapBanner, setShowCapBanner] = useState(false)
   const [editAccount, setEditAccount] = useState<Account | null>(null)
   const [adjustAccount, setAdjustAccount] = useState<Account | null>(null)
+
+  // Balance check dialog. Held by id so a ?verify= link works once accounts have loaded.
+  const router = useRouter()
+  const [verifyAccountId, setVerifyAccountId] = useState<string | null>(null)
+  const verifyAccount = accounts.find((a) => a._id === verifyAccountId && !a.isArchived) ?? null
+  const closeVerify = useCallback(() => {
+    setVerifyAccountId(null)
+    // Drop ?verify= so a refresh doesn't reopen it
+    if (window.location.search.includes('verify=')) router.replace('/accounts', { scroll: false })
+  }, [router])
 
   // Transactions with no account never move a balance - a common reason WaiseKa and the bank disagree
   const [unlinkedCount, setUnlinkedCount] = useState(0)
@@ -472,6 +536,7 @@ export default function AccountsPage() {
               onUnarchive={() => handleUnarchive(account)}
               onPayCard={() => setPayCardAccount(account)}
               onAdjust={() => setAdjustAccount(account)}
+              onVerify={() => setVerifyAccountId(account._id)}
             />
           ))}
         </div>
@@ -495,6 +560,7 @@ export default function AccountsPage() {
                 onUnarchive={() => handleUnarchive(account)}
                 onPayCard={() => {}}
                 onAdjust={() => {}}
+                onVerify={() => {}}
               />
             ))}
           </div>
@@ -519,6 +585,21 @@ export default function AccountsPage() {
             lockedToAccountId={payCardAccount._id}
             onSuccess={() => { setPayCardAccount(null); refetch() }}
             onCancel={() => setPayCardAccount(null)}
+          />
+        )}
+      </Modal>
+
+      {/* ── Balance check (also opened from the dashboard via ?verify=) ──────── */}
+      <Suspense fallback={null}>
+        <VerifyFromUrl onOpen={setVerifyAccountId} />
+      </Suspense>
+      <Modal open={!!verifyAccount} onClose={closeVerify} title={t('verify.title')} variant="form">
+        {verifyAccount && (
+          <VerifyBalanceForm
+            account={verifyAccount}
+            onVerified={() => { closeVerify(); refetch() }}
+            onMismatch={() => { closeVerify(); setAdjustAccount(verifyAccount) }}
+            onCancel={closeVerify}
           />
         )}
       </Modal>

@@ -27,6 +27,8 @@ export interface ActivityOptions {
   asOf?: Date
   /** Leave this transaction out (used when re-working an adjustment being edited). */
   excludeTransactionId?: ObjectId
+  /** accountId -> yyyy-MM-dd: also work out each account's figure at the end of that day. */
+  probes?: Map<string, string>
 }
 
 /** UTC calendar day as yyyy-MM-dd - the same day Mongo's $dateToString gives by default. */
@@ -61,6 +63,8 @@ export interface AccountLedger {
   activity: Map<string, AccountActivity>
   /** Each adjustment's live difference, keyed by its transaction id. */
   adjustmentDeltas: Map<string, number>
+  /** The figure at the end of each requested probe day, keyed by account id. */
+  probeFigures: Map<string, number>
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -90,6 +94,8 @@ export function buildLedger(
   accounts: LedgerAccount[],
   rows: DayActivityRow[],
   checkpoints: CheckpointRow[],
+  /** accountId -> yyyy-MM-dd: also report the account's figure at the end of that day. */
+  probes: Map<string, string> = new Map(),
 ): AccountLedger {
   const accountById = new Map(accounts.map((a) => [a._id.toString(), a]))
   const floorOf = (id: string) => {
@@ -125,13 +131,23 @@ export function buildLedger(
   }
 
   const adjustmentDeltas = new Map<string, number>()
-  for (const [accountId, list] of byAccount) {
+  const probeFigures = new Map<string, number>()
+  const walked = new Set([...byAccount.keys(), ...probes.keys()])
+  for (const accountId of walked) {
+    const list = byAccount.get(accountId) ?? []
     const account = accountById.get(accountId)
     const floor = floorOf(accountId)
     const days = [...(dailyNet.get(accountId) ?? new Map<string, number>())].sort(([a], [b]) => (a < b ? -1 : 1))
     let running = account?.openingBalance ?? 0
     let next = 0
     let sum = 0
+    const probeDay = probes.get(accountId)
+    // The figure at the end of probeDay: every day and checkpoint up to and including it
+    const takeProbe = () => {
+      if (probeDay === undefined || probeFigures.has(accountId)) return
+      while (next < days.length && days[next][0] <= probeDay) running += days[next++][1]
+      probeFigures.set(accountId, round2(running))
+    }
 
     for (const cp of list) {
       const day = utcDay(new Date(cp.date))
@@ -139,6 +155,7 @@ export function buildLedger(
         adjustmentDeltas.set(cp._id.toString(), 0)
         continue
       }
+      if (probeDay !== undefined && day > probeDay) takeProbe()
       while (next < days.length && days[next][0] <= day) running += days[next++][1]
 
       let delta: number
@@ -153,13 +170,16 @@ export function buildLedger(
       sum += delta
       adjustmentDeltas.set(cp._id.toString(), delta)
     }
+    takeProbe()
 
-    const entry = activity.get(accountId) ?? emptyActivity()
-    entry.adjustment = round2(sum)
-    activity.set(accountId, entry)
+    if (list.length > 0) {
+      const entry = activity.get(accountId) ?? emptyActivity()
+      entry.adjustment = round2(sum)
+      activity.set(accountId, entry)
+    }
   }
 
-  return { activity, adjustmentDeltas }
+  return { activity, adjustmentDeltas, probeFigures }
 }
 
 /**
@@ -238,7 +258,7 @@ export async function getAccountLedger(
     rows.push({ accountId: r._id.accountId.toString(), day: r._id.day, kind: 'transferIn', total: r.total })
   }
 
-  return buildLedger(accounts as unknown as LedgerAccount[], rows, checkpoints as unknown as CheckpointRow[])
+  return buildLedger(accounts as unknown as LedgerAccount[], rows, checkpoints as unknown as CheckpointRow[], options.probes)
 }
 
 /** Per-account activity for the balance formulas below. */

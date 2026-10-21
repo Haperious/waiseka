@@ -12,6 +12,7 @@ import {
   BEFORE_OPENING_DATE_ERROR, accountFigureAsOf, adjustmentDelta, endOfUtcDay, isBeforeOpeningDate,
   readAdjustmentInput, startOfUtcDay,
 } from '@/lib/services/balanceAdjustment'
+import { recordVerification } from '@/lib/services/verification'
 
 /**
  * PUT /api/adjustments/[id] { targetBalance?, date?, note? }
@@ -101,5 +102,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     { returnDocument: 'after' }
   )
   if (!adjustment) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  await recordVerification(db, session.user.id, account._id, date, target)
   return NextResponse.json({ adjustment, previousBalance: current })
 }

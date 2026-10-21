@@ -15,6 +15,16 @@ export interface IAccount {
    * field existed - those keep counting every entry.
    */
   openingBalanceDate?: Date | null
+  /**
+   * When the user last confirmed WaiseKa matched their bank (a "Yes, matches" check, a
+   * balance adjustment, or adding the account). Drives the "Verified 3 days ago" badge and
+   * the reminder to check again. Unset on older accounts = never checked.
+   */
+  lastVerifiedAt?: Date | null
+  /** The figure the user confirmed (balance, or amount owed for cards). Null when the check was adding the account. */
+  lastVerifiedBalance?: number | null
+  /** The day that figure was for. If the figure on this day later differs, history changed after the check. */
+  lastVerifiedDate?: Date | null
   currency: CurrencyCode
   /** Credit-only. Ignored for all other account types. */
   creditLimit?: number | null

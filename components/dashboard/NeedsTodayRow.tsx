@@ -1,14 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { TrendingDown, CreditCard, PiggyBank } from 'lucide-react'
+import { TrendingDown, CreditCard, PiggyBank, ShieldCheck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 export interface InsightItem {
   id: string
   severity: 'critical' | 'warning' | 'info'
-  icon: 'TrendingDown' | 'CreditCard' | 'PiggyBank'
+  icon: 'TrendingDown' | 'CreditCard' | 'PiggyBank' | 'ShieldCheck'
   title: string
   body: string
   href: string
@@ -18,6 +18,7 @@ const ICONS: Record<InsightItem['icon'], LucideIcon> = {
   TrendingDown,
   CreditCard,
   PiggyBank,
+  ShieldCheck,
 }
 
 const SEVERITY_COLOR: Record<InsightItem['severity'], string> = {

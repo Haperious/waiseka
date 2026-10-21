@@ -29,6 +29,12 @@ export interface Account {
   outstandingBalance?: number
   /** creditLimit - outstandingBalance. Null if no creditLimit is set. Credit accounts only. */
   availableCredit?: number | null
+  /** When the user last confirmed WaiseKa matched their bank. Null = never. */
+  lastVerifiedAt?: string | null
+  /** Derived on read: fresh (checked within a week), stale, never, or changed since the check. */
+  verificationStatus?: 'fresh' | 'stale' | 'never' | 'changed'
+  /** Whole days since lastVerifiedAt, worked out on the server. Null = never checked. */
+  verifiedDaysAgo?: number | null
 }
 
 interface AccountsContextValue {

@@ -18,7 +18,8 @@ import { getDb } from '@/lib/mongodb'
 import { resolveCutoffPeriod, cutoffPrefsFor } from '@/lib/services/cutoff'
 import { primaryCurrencyOf } from '@/lib/services/currencyScope'
 import { getSpentByCurrencyAndCategory } from '@/lib/services/budgetSpending'
-import { getAccountActivityMap, computeOutstanding, nextDueDate } from '@/lib/services/accountBalance'
+import { getAccountLedger, computeAssetBalance, computeOutstanding, nextDueDate } from '@/lib/services/accountBalance'
+import { verificationProbes, verificationStatus, verifiedDaysAgo } from '@/lib/services/verification'
 import { formatAmount } from '@/lib/currency'
 import type { IBudget } from '@/lib/models/Budget'
 import type { IAccount } from '@/lib/models/Account'
@@ -32,7 +33,7 @@ const BUDGET_NEAR_LIMIT_PCT = 90
 export interface InsightItem {
   id: string
   severity: 'critical' | 'warning' | 'info'
-  icon: 'TrendingDown' | 'CreditCard' | 'PiggyBank'
+  icon: 'TrendingDown' | 'CreditCard' | 'PiggyBank' | 'ShieldCheck'
   title: string
   body: string
   href: string
@@ -84,10 +85,14 @@ export async function GET() {
     }
   }
 
+  // One ledger for both the card and the balance-check items below
+  const { activity: activityMap, probeFigures } = accounts.length > 0
+    ? await getAccountLedger(db, userId, { probes: verificationProbes(accounts) })
+    : { activity: new Map(), probeFigures: new Map<string, number>() }
+
   // ── Credit card due soon ────────────────────────────────────────────────
   const creditAccounts = accounts.filter((a) => a.type === 'credit' && a.dueDay != null)
   if (creditAccounts.length > 0) {
-    const activityMap = await getAccountActivityMap(db, userId)
     for (const account of creditAccounts) {
       const due = nextDueDate(account, now)
       if (!due) continue
@@ -144,6 +149,48 @@ export async function GET() {
         href: '/accounts',
       })
     }
+  }
+
+  // ── Balance check due ───────────────────────────────────────────────────
+  // Catching a gap with the bank early (a missed entry, a fee) is far easier than weeks later
+  const due = accounts
+    .map((account) => ({ account, status: verificationStatus(account, probeFigures.get(account._id.toString()), now) }))
+    .filter((x) => x.status !== 'fresh')
+  if (due.length === 1) {
+    const { account, status } = due[0]
+    const isCredit = account.type === 'credit'
+    const activity = activityMap.get(account._id.toString())
+    const figure = isCredit
+      ? computeOutstanding(account.openingBalance ?? 0, activity)
+      : computeAssetBalance(account.openingBalance ?? 0, activity)
+    const amount = formatAmount(figure, account.currency)
+    const days = verifiedDaysAgo(account, now) ?? 0
+    const question = isCredit
+      ? `Does your card still show ${amount} owed?`
+      : `Does your bank still show ${amount}?`
+    items.push({
+      id: `verify-${account._id.toString()}`,
+      severity: status === 'changed' ? 'warning' : 'info',
+      icon: 'ShieldCheck',
+      title: status === 'changed' ? `${account.name} changed since your last check` : `Check ${account.name}'s balance`,
+      body:
+        status === 'changed' ? `An older entry was added or edited after you checked. ${question}`
+        : status === 'never' ? `You haven't checked it against your bank yet. ${question}`
+        : `Last checked ${days} day${days === 1 ? '' : 's'} ago. ${question}`,
+      href: `/accounts?verify=${account._id.toString()}`,
+    })
+  } else if (due.length > 1) {
+    const changed = due.filter((x) => x.status === 'changed').length
+    items.push({
+      id: 'verify-many',
+      severity: changed > 0 ? 'warning' : 'info',
+      icon: 'ShieldCheck',
+      title: `${due.length} accounts are due for a balance check`,
+      body: changed > 0
+        ? `${changed} changed after your last check. It takes a few seconds and catches missed entries early.`
+        : 'It takes a few seconds and catches missed entries early.',
+      href: '/accounts',
+    })
   }
 
   const severityRank = { critical: 0, warning: 1, info: 2 }

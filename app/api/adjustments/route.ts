@@ -11,6 +11,7 @@ import {
   ADJUSTMENT_CATEGORY, BEFORE_OPENING_DATE_ERROR, accountFigureAsOf, adjustmentDelta, endOfUtcDay,
   isBeforeOpeningDate, readAdjustmentInput, roundMoney, startOfUtcDay,
 } from '@/lib/services/balanceAdjustment'
+import { recordVerification } from '@/lib/services/verification'
 
 /**
  * Balance adjustments - "my bank says ₱5,000, make WaiseKa match".
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
       { $set: update },
       { returnDocument: 'after' }
     )
+    await recordVerification(db, session.user.id, account._id, date, targetBalance)
     return NextResponse.json({ adjustment, previousBalance: current, replaced: true })
   }
 
@@ -150,6 +152,8 @@ export async function POST(req: NextRequest) {
     updatedAt: now,
   }
   const result = await db.collection<Omit<ITransaction, '_id'>>('transactions').insertOne(doc)
+  // Typing in the bank's balance is a check too
+  await recordVerification(db, session.user.id, account._id, date, targetBalance)
 
   return NextResponse.json({ adjustment: { _id: result.insertedId, ...doc }, previousBalance: current }, { status: 201 })
 }
