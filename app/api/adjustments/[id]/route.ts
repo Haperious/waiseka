@@ -8,7 +8,10 @@ import { historyWindowStart, isPremium } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
-import { accountFigureAsOf, adjustmentDelta, readAdjustmentInput } from '@/lib/services/balanceAdjustment'
+import {
+  BEFORE_OPENING_DATE_ERROR, accountFigureAsOf, adjustmentDelta, endOfUtcDay, isBeforeOpeningDate,
+  readAdjustmentInput, startOfUtcDay,
+} from '@/lib/services/balanceAdjustment'
 
 /**
  * PUT /api/adjustments/[id] { targetBalance?, date?, note? }
@@ -47,6 +50,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json(
         { error: 'That date is outside your history window. Upgrade to Premium for extended history.' },
         { status: 403 }
+      )
+    }
+  }
+
+  if (isBeforeOpeningDate(account, date)) {
+    return NextResponse.json({ error: BEFORE_OPENING_DATE_ERROR }, { status: 400 })
+  }
+  // One checkpoint per account per day - don't let an edit land on another one's day
+  if (input.date) {
+    const clash = await col.findOne({
+      _id: { $ne: _id },
+      userId: session.user.id,
+      type: 'adjustment',
+      accountId: existing.accountId,
+      isArchived: { $ne: true },
+      date: { $gte: startOfUtcDay(date), $lte: endOfUtcDay(date) },
+    })
+    if (clash) {
+      return NextResponse.json(
+        { error: 'This account already has a balance adjustment on that date. Edit that one instead.' },
+        { status: 409 }
       )
     }
   }

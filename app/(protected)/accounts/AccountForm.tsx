@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { format } from 'date-fns'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
@@ -33,6 +34,9 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
     // Only chosen on create - an account's currency is locked once it has transactions
     currency: primaryCurrency as CurrencyCode,
     openingBalance: account?.openingBalance != null ? String(account.openingBalance) : '0',
+    // New accounts: today. Older accounts made before this field: blank (counts every entry).
+    // slice keeps the server's UTC day, so the shown date is the one the balance math uses.
+    openingBalanceDate: account ? (account.openingBalanceDate?.slice(0, 10) ?? '') : format(new Date(), 'yyyy-MM-dd'),
     creditLimit: account?.creditLimit != null ? String(account.creditLimit) : '',
     dueDay: account?.dueDay != null ? String(account.dueDay) : '',
     lowBalanceThreshold: account?.lowBalanceThreshold != null ? String(account.lowBalanceThreshold) : '',
@@ -74,6 +78,7 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
         institution: form.institution || undefined,
         type: form.type,
         openingBalance: form.openingBalance === '' ? 0 : Number(form.openingBalance),
+        openingBalanceDate: form.openingBalanceDate || null,
       }
       if (!account) payload.currency = form.currency
       if (form.type === 'credit') {
@@ -122,6 +127,19 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
       onChange={(e) => setForm({ ...form, openingBalance: e.target.value })}
       error={errors.openingBalance}
     />
+  )
+
+  const balanceAsOfInput = (
+    <Field hint={account && !account.openingBalanceDate ? t('accountForm.balanceAsOfLegacyHint') : t('accountForm.balanceAsOfHint')}>
+      <Input
+        id="account-opening-date"
+        label={t('accountForm.balanceAsOf')}
+        type="date"
+        max={format(new Date(), 'yyyy-MM-dd')}
+        value={form.openingBalanceDate}
+        onChange={(e) => setForm({ ...form, openingBalanceDate: e.target.value })}
+      />
+    </Field>
   )
 
   return (
@@ -221,6 +239,7 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
               />
             </Field>
           </div>
+          {balanceAsOfInput}
         </div>
       ) : (
         <div className={formStyles.paleBlock}>
@@ -239,6 +258,7 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
               error={errors.lowBalanceThreshold}
             />
           </div>
+          {balanceAsOfInput}
         </div>
       )}
     </FormModalLayout>

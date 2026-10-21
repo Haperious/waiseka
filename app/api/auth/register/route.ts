@@ -116,6 +116,7 @@ export async function POST(req: NextRequest) {
       name: 'Cash on Hand',
       type: 'debit',
       openingBalance: 0,
+      openingBalanceDate: now,
       currency: 'PHP',
       creditLimit: null,
       dueDay: null,

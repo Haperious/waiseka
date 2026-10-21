@@ -9,6 +9,7 @@ import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
 import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
 import { getAccountActivityMap, computeAssetBalance, computeOutstanding } from '@/lib/services/accountBalance'
+import { readOpeningBalanceDate } from '@/lib/services/balanceAdjustment'
 
 export async function GET() {
   const session = await requireVerifiedSession()
@@ -69,6 +70,14 @@ export async function POST(req: NextRequest) {
   if (openingBalance !== undefined && (typeof openingBalance !== 'number' || !isFinite(openingBalance))) {
     return NextResponse.json({ error: 'openingBalance must be a number' }, { status: 400 })
   }
+  // The day the opening balance is true on. Defaults to today: what the bank shows now
+  // already includes everything before, so older entries mustn't count twice.
+  let openingBalanceDate = new Date()
+  if (body.openingBalanceDate !== undefined && body.openingBalanceDate !== null) {
+    const checked = readOpeningBalanceDate(body.openingBalanceDate)
+    if ('error' in checked) return badRequest(checked.error)
+    if (checked.date) openingBalanceDate = checked.date
+  }
   if (lowBalanceThreshold !== undefined && lowBalanceThreshold !== null) {
     if (typeof lowBalanceThreshold !== 'number' || !isFinite(lowBalanceThreshold) || lowBalanceThreshold < 0) {
       return NextResponse.json({ error: 'lowBalanceThreshold must be a non-negative number or null' }, { status: 400 })
@@ -111,6 +120,7 @@ export async function POST(req: NextRequest) {
     institution: institution || undefined,
     type,
     openingBalance: openingBalance ?? 0,
+    openingBalanceDate,
     currency: currency ?? primaryCurrencyOf(user),
     creditLimit: type === 'credit' ? (creditLimit ?? null) : null,
     dueDay: type === 'credit' ? (dueDay ?? null) : null,

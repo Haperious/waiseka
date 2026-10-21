@@ -1,16 +1,21 @@
 import type { Db, ObjectId } from 'mongodb'
 import type { IAccount } from '@/lib/models/Account'
 import { MAX_DESCRIPTION_LENGTH, parseDateInput } from '@/lib/transactionInput'
-import { computeAssetBalance, computeOutstanding, getAccountActivityMap } from '@/lib/services/accountBalance'
+import { computeAssetBalance, computeOutstanding, getAccountActivityMap, utcDay } from '@/lib/services/accountBalance'
 
 /**
- * Balance adjustments: the user types what their bank shows, and we save the difference
- * as a `type: 'adjustment'` transaction on that account. The difference is worked out on
- * the server, against the balance as of the adjustment's date, so it can't be spoofed.
+ * Balance adjustments: the user types what their bank shows, and we save it as a
+ * `type: 'adjustment'` transaction on that account - a checkpoint ("the bank showed X at
+ * the end of this day"). The balance math (buildLedger) works out each checkpoint's
+ * difference on every read, so later edits to older entries can't knock it off again.
+ * The difference saved on the row is only a snapshot from when it was saved.
  */
 
 /** Category stored on every adjustment. Lists show a translated label instead. */
 export const ADJUSTMENT_CATEGORY = 'Balance adjustment'
+
+export const BEFORE_OPENING_DATE_ERROR =
+  "That date is before this account's opening balance date, which already covers it. Pick a later date, or move the opening balance date back in the account settings."
 
 /** Upper bound on a typed balance - well past any real account, stops absurd values. */
 const MAX_BALANCE = 1_000_000_000_000
@@ -82,6 +87,30 @@ export function readAdjustmentInput(
   }
 
   return { input }
+}
+
+/** Start of the date's UTC calendar day. */
+export function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+}
+
+/**
+ * Reads an account's openingBalanceDate from a request body. null clears it (count every
+ * entry). A day ahead of now is allowed so a user east of UTC can pick their "today".
+ */
+export function readOpeningBalanceDate(value: unknown): { date: Date | null } | { error: string } {
+  if (value === null) return { date: null }
+  const date = parseDateInput(value)
+  if (!date) return { error: 'openingBalanceDate must be a valid date' }
+  if (date.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
+    return { error: "openingBalanceDate can't be in the future" }
+  }
+  return { date }
+}
+
+/** True when `date` falls on a day before the account's opening balance date. */
+export function isBeforeOpeningDate(account: Pick<IAccount, 'openingBalanceDate'>, date: Date): boolean {
+  return !!account.openingBalanceDate && utcDay(date) < utcDay(new Date(account.openingBalanceDate))
 }
 
 /** Change needed to go from `current` to `target`, or null when they already match. */

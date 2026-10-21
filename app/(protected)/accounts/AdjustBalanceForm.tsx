@@ -73,6 +73,8 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
   }, [account._id, adjustment, date, reloadKey])
 
   const fmt = (v: number) => formatAmount(v, account.currency)
+  // The server's UTC day; adjustments can't go before the opening balance's date
+  const openingDay = account.openingBalanceDate?.slice(0, 10) ?? null
   const targetNumber = Number(target)
   const targetValid = target !== "" && target !== "-" && Number.isFinite(targetNumber)
   const delta = targetValid && current != null ? round2(targetNumber - current) : null
@@ -81,6 +83,9 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
     e.preventDefault()
     if (!targetValid) return setError(t("accountForm.errAmount"))
     if (!date) return setError(t("bulkForm.selectDate"))
+    if (openingDay && date < openingDay) {
+      return setError(t("adjust.beforeOpening").replace("{date}", format(new Date(`${openingDay}T12:00:00`), "MMM d, yyyy")))
+    }
     if (delta === 0) return setError(t("adjust.matches"))
     if (delta == null) return
     setError("")
@@ -224,6 +229,7 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
           id="adjust-date"
           label={t("common.date")}
           type="date"
+          min={openingDay ?? undefined}
           value={date}
           onChange={(e) => { setDate(e.target.value); setError("") }}
         />

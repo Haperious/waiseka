@@ -9,6 +9,12 @@ export interface IAccount {
   type: 'debit' | 'credit' | 'savings' | 'time_deposit' | 'cash' | 'e_wallet'
   /** Anchor for the derived balance calculation - the real balance when the account was added. */
   openingBalance: number
+  /**
+   * Day the opening balance was true on. Entries dated before it are already inside the
+   * opening balance, so they don't move the balance. Unset on accounts made before this
+   * field existed - those keep counting every entry.
+   */
+  openingBalanceDate?: Date | null
   currency: CurrencyCode
   /** Credit-only. Ignored for all other account types. */
   creditLimit?: number | null

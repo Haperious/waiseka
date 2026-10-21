@@ -74,7 +74,16 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   const accountId = form.accountId ?? defaultAccountId
   // Still loading and untouched: the server will apply the default on save
   const accountPending = form.accountId === null && !defaultReady
-  const currency = activeAccounts.find((a) => a._id === accountId)?.currency ?? primaryCurrency
+  const selectedAccount = activeAccounts.find((a) => a._id === accountId)
+  const currency = selectedAccount?.currency ?? primaryCurrency
+  // Entries before the account's opening date are already inside its opening balance,
+  // so they won't move it - say so instead of letting the balance look "stuck"
+  const openingDay = selectedAccount?.openingBalanceDate?.slice(0, 10)
+  const beforeOpeningNote = selectedAccount && openingDay && form.date && form.date < openingDay
+    ? t('form.beforeOpening')
+        .replace('{account}', selectedAccount.name)
+        .replace('{date}', format(new Date(`${openingDay}T12:00:00`), 'MMM d, yyyy'))
+    : undefined
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -217,7 +226,7 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
           options={accountOptions}
           placeholder={accountPending ? t('common.defaultAccount') : t('common.unassigned')}
         />
-        <Field label={t('common.date')} error={errors.date}>
+        <Field label={t('common.date')} error={errors.date} hint={beforeOpeningNote}>
           <div style={{ position: 'relative' }}>
             <Segmented ariaLabel={t('common.date')} options={dateOptions} value={dateChoice} onChange={pickDate} />
             <input

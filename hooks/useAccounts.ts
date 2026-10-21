@@ -11,6 +11,8 @@ export interface Account {
   institution?: string
   type: 'debit' | 'credit' | 'savings' | 'time_deposit' | 'cash' | 'e_wallet'
   openingBalance: number
+  /** ISO date the opening balance was true on; entries before it don't move the balance. Null on older accounts. */
+  openingBalanceDate?: string | null
   currency: CurrencyCode
   creditLimit?: number | null
   dueDay?: number | null

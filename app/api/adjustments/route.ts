@@ -8,7 +8,8 @@ import type { ITransaction } from '@/lib/models/Transaction'
 import type { IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
 import {
-  ADJUSTMENT_CATEGORY, accountFigureAsOf, adjustmentDelta, readAdjustmentInput,
+  ADJUSTMENT_CATEGORY, BEFORE_OPENING_DATE_ERROR, accountFigureAsOf, adjustmentDelta, endOfUtcDay,
+  isBeforeOpeningDate, readAdjustmentInput, roundMoney, startOfUtcDay,
 } from '@/lib/services/balanceAdjustment'
 
 /**
@@ -19,8 +20,9 @@ import {
  *      confirm step can show "from X to Y". excludeId leaves out an adjustment being edited.
  *
  * POST /api/adjustments { accountId, targetBalance, date, note? }
- *      Saves the difference as a `type: 'adjustment'` transaction. Like transfers, the type
- *      keeps it out of income, spending, budgets, savings and reports. Edited via
+ *      Saves a checkpoint as a `type: 'adjustment'` transaction. Like transfers, the type
+ *      keeps it out of income, spending, budgets, savings and reports. A second one for the
+ *      same account and day replaces the first (200, replaced: true). Edited via
  *      PUT /api/adjustments/[id]; deleted via DELETE /api/transactions/[id].
  */
 
@@ -87,13 +89,49 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  if (isBeforeOpeningDate(account, date)) {
+    return NextResponse.json({ error: BEFORE_OPENING_DATE_ERROR }, { status: 400 })
+  }
+
   const current = await accountFigureAsOf(db, session.user.id, account, date)
   const delta = adjustmentDelta(current, targetBalance)
   if (delta === null) {
     return NextResponse.json({ error: 'The balance already matches - nothing to adjust.' }, { status: 409 })
   }
 
+  const col = db.collection<ITransaction>('transactions')
   const now = new Date()
+
+  // One checkpoint per account per day: the bank shows one balance at the end of a day,
+  // so a second adjustment that day replaces the first instead of stacking on it.
+  const sameDay = await col.findOne(
+    {
+      userId: session.user.id,
+      type: 'adjustment',
+      accountId: account._id,
+      isArchived: { $ne: true },
+      date: { $gte: startOfUtcDay(date), $lte: endOfUtcDay(date) },
+    },
+    { sort: { createdAt: -1 } }
+  )
+  if (sameDay) {
+    const before = await accountFigureAsOf(db, session.user.id, account, date, sameDay._id)
+    const replacedDelta = roundMoney(targetBalance - before)
+    const update: Partial<ITransaction> = {
+      amount: Math.abs(replacedDelta),
+      adjustmentDelta: replacedDelta,
+      adjustmentTarget: targetBalance,
+      updatedAt: now,
+    }
+    if (note !== undefined) update.description = note
+    const adjustment = await col.findOneAndUpdate(
+      { _id: sameDay._id, userId: session.user.id, type: 'adjustment' },
+      { $set: update },
+      { returnDocument: 'after' }
+    )
+    return NextResponse.json({ adjustment, previousBalance: current, replaced: true })
+  }
+
   const doc: Omit<ITransaction, '_id'> = {
     userId: session.user.id,
     amount: Math.abs(delta),

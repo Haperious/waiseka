@@ -5,6 +5,7 @@ import { getDb } from '@/lib/mongodb'
 import { objectIdParam } from '@/lib/route-params'
 import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
 import { INVALID_CURRENCY_MESSAGE, isCurrencyCode } from '@/lib/services/currencyScope'
+import { readOpeningBalanceDate } from '@/lib/services/balanceAdjustment'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireVerifiedSession()
@@ -38,6 +39,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'openingBalance must be a number' }, { status: 400 })
     }
     update.openingBalance = body.openingBalance
+  }
+  if (body.openingBalanceDate !== undefined) {
+    // null = count every entry (how accounts made before this field behave)
+    const checked = readOpeningBalanceDate(body.openingBalanceDate)
+    if ('error' in checked) return badRequest(checked.error)
+    update.openingBalanceDate = checked.date
   }
   if (body.currency !== undefined) {
     if (!isCurrencyCode(body.currency)) {

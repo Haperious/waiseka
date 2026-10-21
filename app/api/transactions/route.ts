@@ -11,6 +11,7 @@ import { readPaging, readTransactionFields } from '@/lib/transactionInput'
 import { checkSpendingAlert } from '@/lib/notifications'
 import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 import { resolveDefaultAccount } from '@/lib/services/defaultAccount'
+import { getAccountLedger } from '@/lib/services/accountBalance'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -89,6 +90,18 @@ export async function GET(req: NextRequest) {
     col.countDocuments(query),
     col.find(query).sort({ date: -1, createdAt: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
   ])
+
+  // An adjustment's difference depends on the entries before it, which may have changed
+  // since it was saved - show the live one, the same figure the balances use
+  if (transactions.some((t) => t.type === 'adjustment')) {
+    const { adjustmentDeltas } = await getAccountLedger(db, session.user.id)
+    for (const t of transactions) {
+      const live = t.type === 'adjustment' ? adjustmentDeltas.get(t._id.toString()) : undefined
+      if (live === undefined) continue
+      t.adjustmentDelta = live
+      t.amount = Math.abs(live)
+    }
+  }
 
   return NextResponse.json({ transactions, total, page, totalPages: Math.ceil(total / limit) })
 }
