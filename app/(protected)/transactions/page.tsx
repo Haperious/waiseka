@@ -67,8 +67,11 @@ export default function TransactionsPage() {
   const [filters, setFilters] = useState<TransactionFilterValues>(() => ({
     ...NO_FILTERS,
     search: searchParams.get('search') ?? '',
-    // Linked from the accounts page's "not linked to an account" notice
-    account: searchParams.get('account') === 'unassigned' ? 'unassigned' : NO_FILTERS.account,
+    // Linked from the accounts page's "not linked to an account" notice ('unassigned') and
+    // from the adjust form's gap hints (an account id)
+    account: /^(unassigned|[0-9a-f]{24})$/.test(searchParams.get('account') ?? '')
+      ? searchParams.get('account')!
+      : NO_FILTERS.account,
   }))
   const [addOpen, setAddOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)

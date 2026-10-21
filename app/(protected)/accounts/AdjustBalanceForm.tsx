@@ -12,6 +12,7 @@ import type { Account } from "@/hooks/useAccounts"
 import type { Transaction } from "@/hooks/useTransactions"
 import { AmountField, FormModalLayout } from "@/components/forms/FormParts"
 import formStyles from "@/components/forms/forms.module.css"
+import AdjustGapHints from "./AdjustGapHints"
 
 interface AdjustBalanceFormProps {
   account: Account
@@ -158,6 +159,8 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
             {" · "}{format(new Date(`${date}T12:00:00`), "MMM d, yyyy")}
           </div>
         </div>
+
+        <AdjustGapHints account={account} date={date} target={round2(targetNumber)} excludeId={adjustment?._id} />
 
         <div className={formStyles.warningBlock} role="alert">
           {t("adjust.confirmWarning")}
