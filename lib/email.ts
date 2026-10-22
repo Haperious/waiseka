@@ -25,7 +25,7 @@ export function getMailTransporter(): Transporter {
 
 async function sendMail(to: string, subject: string, html: string) {
   await getMailTransporter().sendMail({
-    from: process.env.EMAIL_FROM ?? 'Waiseka <noreply@waiseka.app>',
+    from: process.env.EMAIL_FROM ?? 'WaiseKa <noreply@waiseka.app>',
     to,
     subject,
     html,

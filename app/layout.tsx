@@ -18,7 +18,7 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: 'Waiseka | Personal Budgeting',
+  title: 'WaiseKa | Personal Budgeting',
   description: 'Track your income, expenses, budgets and financial goals.',
 }
 

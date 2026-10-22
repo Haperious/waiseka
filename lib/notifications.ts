@@ -158,7 +158,7 @@ export async function sendPushNotification({
   await getMessaging().send({
     token: fcmToken,
     notification: {
-      title: 'Waiseka',
+      title: 'WaiseKa',
       body: message,
     },
   })
