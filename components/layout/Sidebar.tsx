@@ -121,7 +121,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               className={cn('text-lg font-bold', collapsed ? 'lg:hidden' : '')}
               style={{ color: 'var(--color-text-primary)' }}
             >
-              Waiseka
+              WaiseKa
             </span>
           </Link>
           <button
