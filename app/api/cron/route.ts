@@ -1,5 +1,5 @@
-import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
+import { secretMatches } from '@/lib/security'
 import {
   resetAiQueries,
   sendMonthlyReports,
@@ -48,14 +48,6 @@ function dueJobs(now: Date): string[] {
   if (day === 15 && hour === 9) due.push('budget-reminders') // 0 9 15 * *
 
   return due
-}
-
-/** Constant-time comparison, so response timing can't reveal how much of a guess was right. */
-function secretMatches(provided: string | null, secret: string): boolean {
-  if (provided === null) return false
-  // Hashing first gives equal-length buffers, which timingSafeEqual requires
-  const digest = (value: string) => crypto.createHash('sha256').update(value).digest()
-  return crypto.timingSafeEqual(digest(provided), digest(secret))
 }
 
 export async function POST(req: NextRequest) {

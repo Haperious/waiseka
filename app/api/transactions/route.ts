@@ -12,6 +12,7 @@ import { checkSpendingAlert } from '@/lib/notifications'
 import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 import { resolveDefaultAccount } from '@/lib/services/defaultAccount'
 import { getAccountLedger } from '@/lib/services/accountBalance'
+import { escapeRegex } from '@/lib/security'
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -73,8 +74,7 @@ export async function GET(req: NextRequest) {
     ]
   }
   if (search) {
-    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const searchRegex = { $regex: escapedSearch, $options: 'i' }
+    const searchRegex = { $regex: escapeRegex(search), $options: 'i' }
     query.$or = [
       { description: searchRegex },
       { category: searchRegex },

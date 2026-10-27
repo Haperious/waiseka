@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readJsonBody } from '@/lib/request'
+import { badRequest, cleanText, readJsonBody } from '@/lib/request'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
@@ -13,6 +13,20 @@ const ONBOARDING_STEPS: OnboardingStepId[] = [
   'goals',
   'reports',
 ]
+
+const MAX_NAME_LENGTH = 100
+const MAX_AVATAR_URL_LENGTH = 500
+
+/** An absolute http(s) link - anything else (javascript:, data:, a bare word) is refused. */
+function isAvatarUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.trim().length > MAX_AVATAR_URL_LENGTH) return false
+  try {
+    const { protocol } = new URL(value.trim())
+    return protocol === 'https:' || protocol === 'http:'
+  } catch {
+    return false
+  }
+}
 
 const EXCLUDE = {
   password: 0,
@@ -44,10 +58,20 @@ export async function PUT(req: NextRequest) {
   if (body instanceof NextResponse) return body
   const { name, avatar } = body
 
-  const db = await getDb()
   const update: Record<string, unknown> = { updatedAt: new Date() }
-  if (name) update.name = name
-  if (avatar !== undefined) update.avatar = avatar
+  if (name !== undefined) {
+    // Same limit as sign-up (api/auth/register)
+    const cleaned = cleanText(name, MAX_NAME_LENGTH)
+    if (!cleaned) return badRequest(`Name is required (up to ${MAX_NAME_LENGTH} characters)`)
+    update.name = cleaned
+  }
+  if (avatar !== undefined) {
+    if (avatar === null || avatar === '') update.avatar = null
+    else if (isAvatarUrl(avatar)) update.avatar = avatar.trim()
+    else return badRequest('Avatar must be an http(s) link of up to 500 characters')
+  }
+
+  const db = await getDb()
 
   const user = await db
     .collection<IUser>('users')

@@ -12,6 +12,11 @@ const EXPIRY_MINUTES = 30
 // 3 requests per IP per 15 minutes
 const RATE_LIMIT = 3
 const RATE_WINDOW_MS = 15 * 60 * 1000
+// 3 reset emails per address per hour, from any number of IPs
+const EMAIL_RATE_LIMIT = 3
+const EMAIL_RATE_WINDOW_MS = 60 * 60 * 1000
+
+const GENERIC_REPLY = 'If that email exists, a reset link has been sent.'
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
@@ -23,11 +28,19 @@ export async function POST(req: NextRequest) {
   const { email } = body
   if (!email || typeof email !== 'string') return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
+  // The per-IP limit alone lets someone with many IPs flood one inbox. Over this limit the
+  // request gets the usual reply but sends nothing - the same for any email, registered or
+  // not, so it can't be used to tell which emails have accounts.
+  // Trimmed like sign-up does, so a pasted " me@x.com " still finds the account
+  const normalizedEmail = email.trim().toLowerCase()
+  const perEmail = await rateLimit(`forgot-password:email:${normalizedEmail}`, EMAIL_RATE_LIMIT, EMAIL_RATE_WINDOW_MS)
+  if (!perEmail.allowed) return NextResponse.json({ message: GENERIC_REPLY })
+
   const db = await getDb()
-  const user = await db.collection<IUser>('users').findOne({ email: email.toLowerCase() })
+  const user = await db.collection<IUser>('users').findOne({ email: normalizedEmail })
 
   // Always return 200 to prevent email enumeration
-  if (!user) return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' })
+  if (!user) return NextResponse.json({ message: GENERIC_REPLY })
 
   const { token, tokenHash } = createEmailToken()
   const expiresAt = new Date(Date.now() + EXPIRY_MINUTES * 60 * 1000)
@@ -68,7 +81,7 @@ export async function POST(req: NextRequest) {
     .then(() => logEmail(db, { userId: user._id.toString(), type: 'reset_password' }))
     .catch((err) => console.error('[forgot-password] email error:', err))
 
-  return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' })
+  return NextResponse.json({ message: GENERIC_REPLY })
 }
 
 function parseUserAgent(ua: string): string {

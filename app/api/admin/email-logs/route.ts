@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { EmailLogType } from '@/lib/models/EmailLog'
+import { escapeRegex } from '@/lib/security'
 
 export async function GET(req: NextRequest) {
   const session = await requireAdminSession()
@@ -12,14 +13,16 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, parseInt(searchParams.get('limit') ?? '20'))
   const skip  = (page - 1) * limit
   const type  = searchParams.get('type') as EmailLogType | null
-  const search = searchParams.get('search')?.trim() ?? ''
+  const search = searchParams.get('search')?.trim().slice(0, 100) ?? ''
 
   const db = await getDb()
 
   // If searching, resolve matching userIds first
   let userIdFilter: string[] | null = null
   if (search) {
-    const regex = new RegExp(search, 'i')
+    // Escaped so the text matches literally: a raw pattern like "(" throws a 500
+    // and a crafted one like "(a+)+$" can hang the query
+    const regex = new RegExp(escapeRegex(search), 'i')
     const matchedUsers = await db.collection('users')
       .find(
         { $or: [{ name: regex }, { email: regex }] },
