@@ -1,418 +1,436 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
+import {
+  ArrowRight, Bot, ChevronRight, Menu, Mic, Moon, MoveHorizontal, Sun, Wallet, X,
+} from 'lucide-react'
 import { WKIcon } from '@/components/ui/WKIcon'
 import { LegalLinks } from '@/components/legal/LegalLinks'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTheme } from '@/context/ThemeContext'
-import { useCurrency } from '@/context/CurrencyContext'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
-import type { CurrencyCode } from '@/lib/currency'
-import type { TranslationKey } from '@/lib/translations'
-import { tips } from '@/lib/tipsContent'
-import {
-  Menu, X, ArrowRight, Banknote, PieChart, Target, Bot, Mic, Landmark,
-  CalendarDays, Users, BookOpen,
-} from 'lucide-react'
 import styles from './LandingPage.module.css'
 
-// ─── Cutoff timeline amounts, per currency (no conversion) ──────────────────
+// ─── Cutoff ribbon demo (static, PHP only) ──────────────────────────────────
 
-const CUTOFF_AMOUNTS: Record<CurrencyCode, {
-  income: string
-  rent: string
-  padala: string
-  diningSpent: string
-  diningCeiling: string
-  left: string
-  perDay: string
-}> = {
-  PHP: { income: '₱21,250', rent: '₱9,800',  padala: '₱3,000', diningSpent: '₱4,200', diningCeiling: '₱5,000', left: '₱4,250', perDay: '₱708'   },
-  QAR: { income: '﷼2,900',  rent: '﷼1,340',  padala: '﷼410',   diningSpent: '﷼570',   diningCeiling: '﷼680',   left: '﷼580',   perDay: '﷼97'    },
-  USD: { income: '$375',    rent: '$173',    padala: '$53',    diningSpent: '$74',    diningCeiling: '$88',    left: '$75',    perDay: '$12.50' },
+const DEMO = { symbol: '₱', income: 21250, rent: 9800, padala: 3000, dining: 4200, ceil: 5000, left: 4250 }
+const CUTOFF_DAYS = 15
+const DEFAULT_DAY = 9
+const START_DATE = 15 // Sep 15
+
+function fmt(value: number): string {
+  return (value < 0 ? '−' : '') + DEMO.symbol + Math.round(Math.abs(value)).toLocaleString('en-US')
 }
 
-// ─── Featured tips (Tagalog framing + first sentence of body) ───────────────
+const sepDate = (day: number) => `Sep ${START_DATE - 1 + day}`
 
-const FEATURED_TIP_IDS = ['tip-50-30-20', 'tip-13th-month', 'tip-gcash-maya-save']
-
-function firstSentence(body: string): string {
-  const idx = body.indexOf('. ')
-  return idx === -1 ? body : `${body.slice(0, idx)}.`
+/** Figures for a given day of the cutoff. Day 9 lands exactly on DEMO.left. */
+function cutoffAt(day: number) {
+  const varSpend = ((DEMO.income - DEMO.rent - DEMO.padala - DEMO.left) * day) / DEFAULT_DAY
+  const left = DEMO.income - (day >= 2 ? DEMO.rent : 0) - (day >= 3 ? DEMO.padala : 0) - varSpend
+  const daysLeft = CUTOFF_DAYS - day
+  return {
+    left,
+    daysLeft,
+    perDay: daysLeft > 0 ? left / daysLeft : left,
+    dining: Math.min((DEMO.dining * day) / DEFAULT_DAY, DEMO.ceil),
+  }
 }
 
-// ─── Main Landing Page ───────────────────────────────────────────────────────
+/** Event markers on the track: position and the day they appear from. */
+const MARKERS = [
+  { pct: 0, color: 'var(--color-income)', from: 1 },
+  { pct: 7.14, color: 'var(--color-expense)', from: 2 },
+  { pct: 14.28, color: 'var(--color-expense)', from: 3 },
+  { pct: 57.14, color: 'var(--color-warning)', from: 9 },
+]
+
+const WAVE_BARS = 14
+const WAVE_BARS_MOBILE = 10
+const SWELDO_CELLS = 13
+const SWELDOS_SAVED = 3
+
+// ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
   const { t } = useLanguage()
-  const { theme } = useTheme()
-  const { currency } = useCurrency()
-  const isDark = theme === 'dark'
-
+  const { toggleTheme } = useTheme()
+  const [day, setDay] = useState(DEFAULT_DAY)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const [rowsIn, setRowsIn] = useState(false)
-  const [howVisible, setHowVisible] = useState(false)
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
-
-  const howRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
-  useEffect(() => {
-    const id = setTimeout(() => setRowsIn(true), reducedMotion ? 0 : 150)
-    return () => clearTimeout(id)
-  }, [reducedMotion])
+  const { left, daysLeft, perDay, dining } = cutoffAt(day)
+  const opacityFrom = (from: number) => (day >= from ? 1 : 0.3)
+  const daysLeftLabel =
+    daysLeft === 0 ? t('landing.ribbon.nextSweldo')
+    : daysLeft === 1 ? t('landing.ribbon.daysLeftOne')
+    : t('landing.ribbon.daysLeft').replace('{n}', String(daysLeft))
 
-  useEffect(() => {
-    const el = howRef.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setHowVisible(true)
-          obs.disconnect()
-        }
-      },
-      { threshold: 0.3 },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-
-  const amounts = CUTOFF_AMOUNTS[currency]
-
-  const timelineRows: {
-    labelKey: TranslationKey
-    metaKey: TranslationKey
-    amount: string
-    dotVar: string
-  }[] = [
-    { labelKey: 'landing.timeline.row1.label', metaKey: 'landing.timeline.row1.meta', amount: `+${amounts.income}`, dotVar: 'var(--color-income)' },
-    { labelKey: 'landing.timeline.row2.label', metaKey: 'landing.timeline.row2.meta', amount: `−${amounts.rent}`,   dotVar: 'var(--color-expense)' },
-    { labelKey: 'landing.timeline.row3.label', metaKey: 'landing.timeline.row3.meta', amount: `−${amounts.padala}`, dotVar: 'var(--color-expense)' },
-    { labelKey: 'landing.timeline.row4.label', metaKey: 'landing.timeline.row4.meta', amount: `${amounts.diningSpent} / ${amounts.diningCeiling}`, dotVar: 'var(--color-warning)' },
+  const tiles = [
+    { meta: t('landing.ribbon.row1.meta'), label: t('landing.ribbon.row1.label'), amount: `+${fmt(DEMO.income)}`, color: 'var(--color-income)', from: 1 },
+    { meta: t('landing.ribbon.row2.meta'), label: t('landing.ribbon.row2.label'), amount: fmt(-DEMO.rent), color: 'var(--color-expense)', from: 2 },
+    { meta: t('landing.ribbon.row3.meta'), label: t('landing.ribbon.row3.label'), amount: fmt(-DEMO.padala), color: 'var(--color-expense)', from: 3 },
+    { meta: t('landing.ribbon.row4.meta'), label: t('landing.ribbon.row4.label'), amount: `${fmt(dining)} / ${fmt(DEMO.ceil)}`, color: 'var(--color-warning)', from: 9, warn: true },
   ]
 
-  const features: { icon: React.ElementType; titleKey: TranslationKey; descKey: TranslationKey }[] = [
-    { icon: Banknote,  titleKey: 'landing.feat1.title', descKey: 'landing.feat1.desc' },
-    { icon: PieChart,  titleKey: 'landing.feat2.title', descKey: 'landing.feat2.desc' },
-    { icon: Target,    titleKey: 'landing.feat3.title', descKey: 'landing.feat3.desc' },
-    { icon: Bot,       titleKey: 'landing.feat4.title', descKey: 'landing.feat4.desc' },
-    { icon: Mic,       titleKey: 'landing.feat5.title', descKey: 'landing.feat5.desc' },
-    { icon: Landmark,  titleKey: 'landing.feat6.title', descKey: 'landing.feat6.desc' },
+  const stats = [
+    { value: t('landing.stat1.value'), label: t('landing.stat1.label'), accent: true },
+    { value: t('landing.stat2.value'), label: t('landing.stat2.label') },
+    { value: t('landing.stat3.value'), label: t('landing.stat3.label') },
+    { value: t('landing.stat4.value'), label: t('landing.stat4.label') },
   ]
 
-  const filCards: { icon: React.ElementType; titleKey: TranslationKey; descKey: TranslationKey }[] = [
-    { icon: CalendarDays, titleKey: 'landing.fil1.title', descKey: 'landing.fil1.desc' },
-    { icon: Users,        titleKey: 'landing.fil2.title', descKey: 'landing.fil2.desc' },
-    { icon: Banknote,     titleKey: 'landing.fil3.title', descKey: 'landing.fil3.desc' },
-    { icon: BookOpen,     titleKey: 'landing.fil4.title', descKey: 'landing.fil4.desc' },
+  const accounts = [
+    { name: t('landing.accounts.row1'), value: '₱67,900', stripe: 'var(--color-income)' },
+    { name: t('landing.accounts.row2'), value: '−₱2,200', stripe: 'var(--color-warning)', negative: true },
+    { name: t('landing.accounts.row3'), value: '₱150', stripe: 'var(--color-income)' },
   ]
 
-  const howSteps: { eyebrowKey: TranslationKey; titleKey: TranslationKey; descKey: TranslationKey; opacity: number }[] = [
-    { eyebrowKey: 'landing.how.s1.eyebrow', titleKey: 'landing.how.s1.title', descKey: 'landing.how.s1.desc', opacity: 0.9 },
-    { eyebrowKey: 'landing.how.s2.eyebrow', titleKey: 'landing.how.s2.title', descKey: 'landing.how.s2.desc', opacity: 0.6 },
-    { eyebrowKey: 'landing.how.s3.eyebrow', titleKey: 'landing.how.s3.title', descKey: 'landing.how.s3.desc', opacity: 0.35 },
+  const navLinks = [
+    { href: '#features', label: t('landing.nav.features') },
+    { href: '#whats-new', label: t('landing.nav.whatsNew') },
+    { href: '#how', label: t('landing.nav.howItWorks') },
+    { href: '/tips', label: t('landing.nav.tips') },
   ]
 
-  const featuredTips = FEATURED_TIP_IDS
-    .map(id => tips.find(tip => tip.id === id))
-    .filter((tip): tip is NonNullable<typeof tip> => Boolean(tip))
+  const [answerBefore, answerAfter] = t('landing.ai.answer').split('{left}')
+
+  const logo = (
+    <span aria-hidden="true">
+      <span className={`${styles.logoMark} ${styles.onLight}`}><WKIcon size={32} scope="light" /></span>
+      <span className={`${styles.logoMark} ${styles.onDark}`}><WKIcon size={32} scope="dark" /></span>
+    </span>
+  )
 
   return (
     <div className={styles.page}>
 
-      {/* ── NAV ───────────────────────────────────────────────────────── */}
-      <nav className={`${styles.nav} ${scrolled ? styles.navScrolled : ''}`}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <WKIcon size={34} scope={isDark ? 'dark' : 'light'} />
-          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-text-primary)' }}>
-            WaiseKa
-          </span>
-        </div>
-
-        <div className={styles.navLinks}>
-          <a href="#features" className={styles.navLink}>{t('landing.nav.features')}</a>
-          <a href="#how" className={styles.navLink}>{t('landing.nav.howItWorks')}</a>
-          <a href="#tips" className={styles.navLink}>{t('landing.nav.tips')}</a>
-        </div>
-
-        <div className={styles.navControls}>
-          <Link href="/login" className={styles.signInLink}>{t('landing.nav.signIn')}</Link>
-          <Link href="/register" className={`${styles.btnGradient} ${styles.navGetStarted}`}>
-            {t('landing.nav.getStarted')}
+      {/* ── 1. NAV ────────────────────────────────────────────────────── */}
+      <header className={styles.navBar}>
+        <nav className={`${styles.shell} ${styles.nav}`}>
+          <Link href="/" className={styles.logo}>
+            {logo}
+            <span className={styles.logoText}>WaiseKa</span>
           </Link>
-          <button
-            onClick={() => setMenuOpen(o => !o)}
-            className={styles.menuTrigger}
-            aria-label="Menu"
-          >
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-      </nav>
 
-      {menuOpen && (
-        <div className={styles.mobileMenu}>
-          <a href="#features" onClick={() => setMenuOpen(false)} className={styles.mobileMenuLink}>
-            {t('landing.nav.features')}
-          </a>
-          <a href="#how" onClick={() => setMenuOpen(false)} className={styles.mobileMenuLink}>
-            {t('landing.nav.howItWorks')}
-          </a>
-          <a href="#tips" onClick={() => setMenuOpen(false)} className={styles.mobileMenuLink}>
-            {t('landing.nav.tips')}
-          </a>
-          <Link href="/login" onClick={() => setMenuOpen(false)} className={styles.mobileMenuLink}>
-            {t('landing.nav.signIn')}
-          </Link>
-        </div>
-      )}
-
-      {/* ── HERO ──────────────────────────────────────────────────────── */}
-      <section className={styles.hero}>
-        <div className={styles.heroGlow} />
-        <div className={`${styles.container} ${styles.heroGrid}`}>
-          <div>
-            <div className={styles.heroBadge}>
-              <span style={{ fontSize: 15 }}>🇵🇭</span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--color-accent)', letterSpacing: '0.02em' }}>
-                {t('landing.hero.badge')}
-              </span>
-            </div>
-
-            <h1 className={styles.heroH1}>
-              {t('landing.hero.headline1')}
-              <br />
-              <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>
-                {t('landing.hero.headline2')}
-              </em>
-            </h1>
-
-            <p className={styles.heroSub}>{t('landing.hero.sub')}</p>
-
-            <div className={styles.heroCtas}>
-              <Link href="/register" className={`${styles.btnGradient} ${styles.btnGradientLg}`}>
-                {t('landing.hero.cta')}
-                <ArrowRight size={15} />
-              </Link>
-            </div>
-
-            <p className={styles.heroFine}>
-              ✓ {t('landing.hero.fine1')} · {t('landing.hero.fine2')} · {t('landing.hero.fine3')}
-            </p>
+          <div className={styles.navLinks}>
+            {navLinks.map((l) => (
+              <Link key={l.href} href={l.href} className={styles.link}>{l.label}</Link>
+            ))}
           </div>
 
-          <div className={styles.timelineCard}>
-            <div className={styles.timelineHeader}>
-              <span className={styles.timelineEyebrow}>{t('landing.timeline.eyebrow')}</span>
-              <span className={styles.timelineDay}>{t('landing.timeline.day')}</span>
-            </div>
-
-            <div>
-              {timelineRows.map((row, i) => (
-                <div
-                  key={row.labelKey}
-                  className={`${styles.timelineRow} ${rowsIn ? styles.timelineRowIn : ''}`}
-                  style={reducedMotion ? undefined : { transitionDelay: `${i * 100}ms` }}
-                >
-                  <div className={styles.timelineDotCol}>
-                    <span className={styles.timelineDot} style={{ background: row.dotVar }} />
-                    {i < timelineRows.length - 1 && <span className={styles.timelineLine} />}
-                  </div>
-                  <div className={styles.timelineRowBody}>
-                    <div>
-                      <div className={styles.timelineLabel}>{t(row.labelKey)}</div>
-                      <div className={styles.timelineMeta}>{t(row.metaKey)}</div>
-                    </div>
-                    <span className={styles.timelineAmount} style={{ color: row.dotVar }}>{row.amount}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.timelineFooter}>
-              <div>
-                <div className={styles.timelineEyebrow}>{t('landing.timeline.footer.eyebrow')}</div>
-                <div className={styles.timelineFooterValue}>{amounts.left}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#ECF4EE' }}>
-                  {t('landing.timeline.footer.daysLeft')}
-                </div>
-                <div style={{ fontSize: 11.5, color: 'rgba(235,244,238,0.5)', marginTop: 2 }}>
-                  ≈ {amounts.perDay} / {t('landing.timeline.footer.perDay')}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── STAT BAND ─────────────────────────────────────────────────── */}
-      <section className={styles.statBand}>
-        {([
-          { valueKey: 'landing.stat1.value', labelKey: 'landing.stat1.label', accent: true },
-          { valueKey: 'landing.stat2.value', labelKey: 'landing.stat2.label', accent: false },
-          { valueKey: 'landing.stat3.value', labelKey: 'landing.stat3.label', accent: false },
-          { valueKey: 'landing.stat4.value', labelKey: 'landing.stat4.label', accent: false },
-        ] as { valueKey: TranslationKey; labelKey: TranslationKey; accent: boolean }[]).map(stat => (
-          <div key={stat.valueKey} className={styles.statCell}>
-            <div
-              className={styles.statValue}
-              style={{ color: stat.accent ? 'var(--color-accent)' : 'var(--color-text-primary)' }}
+          <div className={styles.navRight}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`${styles.iconBtn} ${styles.themeBtn}`}
+              aria-label={t('landing.nav.toggleTheme')}
             >
-              {t(stat.valueKey)}
-            </div>
-            <div className={styles.statLabel}>{t(stat.labelKey)}</div>
+              <Moon className={styles.onLight} />
+              <Sun className={styles.onDark} />
+            </button>
+            <Link href="/login" className={`${styles.link} ${styles.signIn}`}>{t('landing.nav.signIn')}</Link>
+            <Link href="/register" className={`${styles.cta} ${styles.navCta}`}>{t('landing.nav.getStarted')}</Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              className={`${styles.iconBtn} ${styles.menuBtn}`}
+              aria-label={menuOpen ? t('landing.nav.closeMenu') : t('landing.nav.menu')}
+              aria-expanded={menuOpen}
+              aria-controls="landing-menu"
+            >
+              {menuOpen ? <X /> : <Menu />}
+            </button>
           </div>
-        ))}
-      </section>
+        </nav>
 
-      {/* ── FEATURES ──────────────────────────────────────────────────── */}
-      <section id="features" className={styles.section}>
-        <div className={styles.container}>
-          <div className={styles.sectionHead}>
+        {menuOpen && (
+          <div id="landing-menu" className={styles.drawer}>
+            {[...navLinks, { href: '/login', label: t('landing.nav.signIn') }].map((l) => (
+              <Link key={l.href} href={l.href} className={styles.drawerLink} onClick={() => setMenuOpen(false)}>
+                {l.label}
+                <ChevronRight size={16} />
+              </Link>
+            ))}
+          </div>
+        )}
+      </header>
+
+      <main>
+        {/* ── 2. HERO + 3. CUTOFF RIBBON ──────────────────────────────── */}
+        <section className={styles.hero}>
+          <div className={styles.glows} aria-hidden="true">
+            <div className={`${styles.glow} ${styles.glowTop}`} />
+            <div className={`${styles.glow} ${styles.glowBottom}`} />
+          </div>
+
+          <div className={styles.shell}>
+            <div className={styles.heroGrid}>
+              <div>
+                <div className={styles.badge}>
+                  <span className={styles.badgeFlag} aria-hidden="true">🇵🇭</span>
+                  <span className={styles.badgeText}>{t('landing.hero.badge')}</span>
+                </div>
+                <h1 className={styles.h1}>
+                  {t('landing.hero.headline1')}{' '}
+                  <br className={styles.h1Break} />
+                  <em className={styles.accentEm}>{t('landing.hero.headline2')}</em>
+                </h1>
+              </div>
+
+              <div className={styles.heroAside}>
+                <p className={styles.heroSub}>{t('landing.hero.sub')}</p>
+                <Link href="/register" className={`${styles.cta} ${styles.heroCta}`}>
+                  {t('landing.hero.cta')}
+                  <ArrowRight size={15} />
+                </Link>
+                <p className={styles.heroFine}>
+                  ✓ {t('landing.hero.fine1')} · {t('landing.hero.fine2')} · {t('landing.hero.fine3')}
+                </p>
+              </div>
+            </div>
+
+            <div id="how" className={styles.ribbon}>
+              <div className={styles.hint} aria-hidden="true">
+                <MoveHorizontal />
+                {t('landing.ribbon.hint')}
+              </div>
+
+              <div className={styles.ribbonHead}>
+                <div>
+                  <div className={styles.ribbonEyebrow}>
+                    {t('landing.ribbon.eyebrow').replace('{day}', String(day))}
+                  </div>
+                  <div className={styles.amountRow}>
+                    <span className={styles.amount}>{fmt(left)}</span>
+                    <span className={styles.amountLabel}>{t('landing.ribbon.left')}</span>
+                  </div>
+                </div>
+                <div className={styles.perDayBlock}>
+                  <span className={styles.perDay}>
+                    ≈ {fmt(perDay)}
+                    <span className={styles.perDayUnit}> {t('landing.ribbon.perDay')}</span>
+                  </span>
+                  <span className={styles.daysLeft}>{daysLeftLabel}</span>
+                </div>
+              </div>
+
+              <div className={styles.trackWrap}>
+                <div className={styles.track}>
+                  <div className={styles.fill} style={{ width: `${((day - 1) / (CUTOFF_DAYS - 1)) * 100}%` }} />
+                  {MARKERS.map((m) => (
+                    <span
+                      key={m.pct}
+                      className={styles.marker}
+                      style={{ left: `${m.pct}%`, background: m.color, opacity: opacityFrom(m.from) }}
+                    />
+                  ))}
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={CUTOFF_DAYS}
+                  step={1}
+                  value={day}
+                  onChange={(e) => setDay(Number(e.target.value))}
+                  className={styles.range}
+                  aria-label={t('landing.ribbon.slider')}
+                  aria-valuetext={t('landing.ribbon.sliderValue')
+                    .replace('{day}', String(day))
+                    .replace('{date}', sepDate(day))
+                    .replace('{left}', fmt(left))}
+                />
+
+                <div className={styles.ticks} aria-hidden="true">
+                  {Array.from({ length: CUTOFF_DAYS }, (_, i) => (
+                    <span key={i}>{i === 0 || i === CUTOFF_DAYS - 1 || i + 1 === day ? sepDate(i + 1) : i + 1}</span>
+                  ))}
+                </div>
+                <div className={styles.ticksMobile} aria-hidden="true">
+                  <span>{sepDate(1)}</span>
+                  <span className={styles.ticksCurrent}>
+                    {t('landing.ribbon.dayLabel').replace('{day}', String(day)).replace('{date}', sepDate(day))}
+                  </span>
+                  <span>{sepDate(CUTOFF_DAYS)}</span>
+                </div>
+              </div>
+
+              <div className={styles.tiles}>
+                {tiles.map((tile) => (
+                  <div
+                    key={tile.label}
+                    className={`${styles.tile} ${tile.warn ? styles.tileWarn : ''}`}
+                    style={{ opacity: opacityFrom(tile.from) }}
+                  >
+                    <div className={styles.tileMeta}>{tile.meta}</div>
+                    <div className={styles.tileRow}>
+                      <span>{tile.label}</span>
+                      <span className={styles.tileAmount} style={{ color: tile.color }}>{tile.amount}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 4. STAT STRIP ───────────────────────────────────────────── */}
+        <div className={styles.shell}>
+          <section className={styles.stats}>
+            {stats.map((s) => (
+              <div key={s.value} className={styles.stat}>
+                <div className={`${styles.statValue} ${s.accent ? styles.statAccent : ''}`}>{s.value}</div>
+                <div className={styles.statLabel}>{s.label}</div>
+              </div>
+            ))}
+          </section>
+        </div>
+
+        {/* ── 5. FEATURE BENTO ────────────────────────────────────────── */}
+        <section id="features" className={`${styles.shell} ${styles.features}`}>
+          <div className={styles.featuresHead}>
             <h2 className={styles.h2}>
               {t('landing.features.title')}{' '}
-              <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>{t('landing.features.titleEm')}</em>
+              <br className={styles.h2Break} />
+              <em className={styles.accentEm}>{t('landing.features.titleEm')}</em>
             </h2>
-            <p className={styles.sectionSub}>{t('landing.features.sub')}</p>
+            <p className={styles.featuresSub}>{t('landing.features.sub')}</p>
           </div>
 
-          <div className={styles.featuresGrid}>
-            {features.map(({ icon: Icon, titleKey, descKey }) => (
-              <div key={titleKey} className={styles.featureCard}>
-                <div className={styles.iconTile}>
-                  <Icon size={16} color="var(--color-accent)" strokeWidth={2} />
-                </div>
-                <h3 className={styles.cardH3}>{t(titleKey)}</h3>
-                <p className={styles.cardBody}>{t(descKey)}</p>
+          <div className={styles.bento}>
+            {/* A: Log expenses faster */}
+            <article id="whats-new" className={`${styles.card} ${styles.cardFaster} ${styles.lift}`}>
+              <div className={styles.fasterText}>
+                <span className={styles.newTag}>{t('landing.features.new')}</span>
+                <h3 className={styles.fasterH3}>{t('landing.faster.title')}</h3>
+                <p className={styles.fasterBody}>{t('landing.faster.desc')}</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              <Image
+                src="/landing/faster-adding.png"
+                alt={t('landing.faster.alt')}
+                width={1200}
+                height={675}
+                sizes="(min-width: 1024px) 800px, 100vw"
+                className={styles.fasterImg}
+              />
+            </article>
 
-      {/* ── BUILT FOR FILIPINOS ──────────────────────────────────────── */}
-      <section className={styles.filBand}>
-        <div className={styles.section} style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div className={styles.filGrid}>
-            <div>
-              <h2 className={`${styles.h2} ${styles.h2Band}`}>
-                {t('landing.fil.title')}{' '}
-                <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>{t('landing.fil.titleEm')}</em>
-              </h2>
-              <p className={styles.sectionSubLeft}>{t('landing.fil.sub')}</p>
-            </div>
-
-            <div className={styles.filCardsGrid}>
-              {filCards.map(({ icon: Icon, titleKey, descKey }) => (
-                <div key={titleKey} className={styles.filCard}>
-                  <div className={styles.filCardHead}>
-                    <Icon size={18} color="var(--color-accent)" strokeWidth={2} />
-                    <h3 className={styles.cardH3} style={{ margin: 0 }}>{t(titleKey)}</h3>
+            {/* B: Every account in one view */}
+            <article className={`${styles.card} ${styles.cardB} ${styles.lift}`}>
+              <div className={styles.cardHead}>
+                <span className={styles.eyebrow}>{t('landing.accounts.eyebrow')}</span>
+                <Wallet size={16} color="var(--color-accent)" aria-hidden="true" />
+              </div>
+              <div className={styles.totalMoney}>₱65,850.00</div>
+              <div className={styles.accounts}>
+                {accounts.map((a) => (
+                  <div key={a.name} className={styles.account} style={{ '--stripe': a.stripe } as React.CSSProperties}>
+                    <span className={styles.accountName}>{a.name}</span>
+                    <span className={styles.accountValue} style={a.negative ? { color: 'var(--color-expense)' } : undefined}>
+                      {a.value}
+                    </span>
                   </div>
-                  <p className={styles.cardBody}>{t(descKey)}</p>
+                ))}
+              </div>
+              <h3 className={styles.cardH3}>{t('landing.accounts.title')}</h3>
+              <p className={styles.cardBody}>{t('landing.accounts.desc')}</p>
+            </article>
+
+            {/* C: Budgets and goals */}
+            <article className={`${styles.card} ${styles.cardGoals} ${styles.lift}`}>
+              <span className={styles.newTag}>{t('landing.features.new')}</span>
+              <div className={styles.goalName}>{t('landing.goals.goal')}</div>
+              <div className={styles.goalAmountRow}>
+                <span className={styles.goalAmount}>₱2,350</span>
+                <span className={styles.goalUnit}>{t('landing.goals.perCutoff')}</span>
+              </div>
+              <div className={styles.sweldoCells} aria-hidden="true">
+                {Array.from({ length: SWELDO_CELLS }, (_, i) => (
+                  <span key={i} className={`${styles.sweldoCell} ${i < SWELDOS_SAVED ? styles.sweldoCellDone : ''}`} />
+                ))}
+              </div>
+              <div className={styles.sweldoCaption}>{t('landing.goals.sweldos')}</div>
+              <h3 className={styles.cardH3}>{t('landing.goals.title')}</h3>
+              <p className={styles.cardBody}>{t('landing.goals.desc')}</p>
+            </article>
+
+            {/* D: AI coach */}
+            <article className={`${styles.card} ${styles.cardStack}`}>
+              <div className={styles.stackHead}>
+                <span className={styles.iconTile}><Bot size={16} aria-hidden="true" /></span>
+                <h3 className={styles.cardH3}>{t('landing.ai.title')}</h3>
+              </div>
+              <div className={styles.bubbleUser}>{t('landing.ai.question')}</div>
+              <div className={styles.bubbleBot}>
+                {answerBefore}<b>{fmt(DEMO.left)}</b>{answerAfter}
+              </div>
+            </article>
+
+            {/* E: Voice & PDF import */}
+            <article className={`${styles.card} ${styles.cardStack}`}>
+              <div className={styles.stackHead}>
+                <span className={styles.iconTile}><Mic size={16} aria-hidden="true" /></span>
+                <h3 className={styles.cardH3}>{t('landing.voice.title')}</h3>
+              </div>
+              <div className={styles.voiceRow}>
+                <div className={styles.wave} aria-hidden="true">
+                  {Array.from({ length: WAVE_BARS }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`${styles.waveBar} ${i >= WAVE_BARS_MOBILE ? styles.waveExtra : ''}`}
+                      style={{ '--dur': `${0.9 + (i % 4) * 0.15}s`, '--delay': `${i * 0.07}s` } as React.CSSProperties}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
-      <section id="how" className={styles.section} ref={howRef}>
-        <div className={styles.container}>
-          <div className={styles.sectionHead}>
-            <h2 className={styles.h2}>{t('landing.how.title')}</h2>
-          </div>
-
-          <div className={styles.howGrid}>
-            {howSteps.map((step, i) => (
-              <div key={step.eyebrowKey}>
-                <div className={styles.howEyebrow}>{t(step.eyebrowKey)}</div>
-                <div
-                  className={`${styles.howRule} ${howVisible ? styles.howRuleIn : ''}`}
-                  style={{
-                    background: `rgba(74,222,128,${step.opacity})`,
-                    ...(reducedMotion ? {} : { transitionDelay: `${i * 150}ms` }),
-                  }}
-                />
-                <h3 className={styles.cardH3}>{t(step.titleKey)}</h3>
-                <p className={styles.cardBody}>{t(step.descKey)}</p>
+                <div className={styles.voicePhrase}>{t('landing.voice.phrase')}</div>
+                <span className={styles.voiceAmount}>−₱320</span>
               </div>
-            ))}
+              <p className={styles.cardBody}>{t('landing.voice.desc')}</p>
+            </article>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── TIPS & GABAY ─────────────────────────────────────────────── */}
-      <section id="tips" className={styles.section}>
-        <div className={styles.container}>
-          <div className={styles.tipsHead}>
-            <h2 className={styles.h2} style={{ margin: 0 }}>
-              {t('landing.tips.title')}{' '}
-              <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>{t('landing.tips.titleEm')}</em>
-            </h2>
-            <Link href="/tips" className={styles.tipsReadAll}>{t('landing.tips.readAll')}</Link>
-          </div>
-
-          <div className={styles.tipsGrid}>
-            {featuredTips.map(tip => (
-              <div key={tip.id} className={styles.tipCard}>
-                <h3 className={styles.cardH3}>{tip.title}</h3>
-                <p className={styles.tipFraming}>{tip.filipinoFraming}</p>
-                <p className={styles.cardBody}>{firstSentence(tip.body)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ───────────────────────────────────────────────────────── */}
-      <section className={styles.ctaBand}>
-        <div className={`${styles.container} ${styles.ctaGrid}`}>
-          <div className={styles.ctaCopy}>
-            <h2 className={styles.h2} style={{ marginBottom: 10 }}>
+        {/* ── 6. CLOSING CTA ──────────────────────────────────────────── */}
+        <div className={`${styles.shell} ${styles.closingWrap}`}>
+          <section className={styles.closing}>
+            <div className={styles.closingGlow} aria-hidden="true" />
+            <h2 className={styles.closingH2}>
               {t('landing.cta.title')}{' '}
-              <em style={{ color: 'var(--color-accent)', fontStyle: 'italic' }}>{t('landing.cta.titleEm')}</em>
+              <em className={styles.accentEm}>{t('landing.cta.titleEm')}</em>
             </h2>
-            <p className={styles.cardBody} style={{ fontSize: 15 }}>{t('landing.cta.sub')}</p>
-          </div>
-          <Link href="/register" className={`${styles.btnGradient} ${styles.btnGradientLg}`}>
-            {t('landing.cta.button')}
-            <ArrowRight size={16} />
+            <p className={styles.closingSub}>{t('landing.cta.sub')}</p>
+            <Link href="/register" className={`${styles.cta} ${styles.closingCta}`}>
+              {t('landing.cta.button')}
+              <ArrowRight size={16} />
+            </Link>
+          </section>
+        </div>
+      </main>
+
+      {/* ── 7. FOOTER ─────────────────────────────────────────────────── */}
+      <footer className={styles.footerBar}>
+        <div className={`${styles.shell} ${styles.footer}`}>
+          <Link href="/" className={`${styles.logo} ${styles.footerLogo}`}>
+            {logo}
+            <span className={styles.logoText}>WaiseKa</span>
           </Link>
-        </div>
-      </section>
-
-      {/* ── FOOTER ────────────────────────────────────────────────────── */}
-      <footer className={styles.footer}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <WKIcon size={26} scope={isDark ? 'dark' : 'light'} />
-          <div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>WaiseKa</span>
-            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 1 }}>
-              {t('landing.footer.tagline')}
-            </p>
+          <div className={styles.footerRight}>
+            <div className={styles.footerLinks}>
+              <Link href="#features" className={styles.link}>{t('landing.footer.features')}</Link>
+              <Link href="/tips" className={styles.link}>{t('landing.footer.tips')}</Link>
+              <LegalLinks className={styles.legalLinks} linkClassName={styles.link} />
+            </div>
+            <span>© {new Date().getFullYear()} WaiseKa</span>
           </div>
-        </div>
-
-        <div className={styles.footerLinks}>
-          <a href="#features" className={styles.footerLink}>{t('landing.footer.features')}</a>
-          <a href="#tips" className={styles.footerLink}>{t('landing.footer.tips')}</a>
-          <LegalLinks className={styles.footerLegal} linkClassName={styles.footerLink} />
-          <span className={styles.footerRights}>© {new Date().getFullYear()} WaiseKa, {t('landing.footer.rights')}</span>
         </div>
       </footer>
-
     </div>
   )
 }
