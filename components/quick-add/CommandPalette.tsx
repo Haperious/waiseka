@@ -8,7 +8,7 @@ import { useDefaultAccount } from "@/hooks/useDefaultAccount"
 import { accountIdForSubmit } from "@/lib/accountSelection"
 import { useVoiceKeywords } from "@/hooks/useVoiceKeywords"
 import { useCurrency } from "@/context/CurrencyContext"
-import { parseSpeechToTransaction } from "@/lib/parseSpeechToTransaction"
+import { parseQuickAdd } from "@/lib/parseSpeechToTransaction"
 import { emitTransactionSaved } from "@/lib/transactionEvents"
 import { useToast } from "@/components/ui/Toast"
 
@@ -62,7 +62,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose])
 
-  const parsed = useMemo(() => (query.trim() ? parseSpeechToTransaction(query, keywords) : null), [query, keywords])
+  const parsed = useMemo(() => (query.trim() ? parseQuickAdd(query, keywords) : null), [query, keywords])
 
   const matchedAccount = useMemo(() => {
     if (!query.trim()) return null

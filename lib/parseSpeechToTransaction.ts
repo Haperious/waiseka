@@ -134,3 +134,16 @@ export function parseSpeechToTransaction(
 
   return result
 }
+
+// Typed quick-add (search bar): most entries are expenses, so "grab 285 gcash"
+// logs an expense without needing "paid"/"spent". A bare number stays a search.
+export function parseQuickAdd(
+  text: string,
+  customKeywords: VoiceKeyword[] = []
+): ParsedTransaction {
+  const result = parseSpeechToTransaction(text, customKeywords)
+  if (!result.type && result.amount && /\p{L}/u.test(text)) {
+    result.type = 'expense'
+  }
+  return result
+}
