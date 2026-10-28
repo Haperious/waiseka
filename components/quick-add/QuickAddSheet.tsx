@@ -18,7 +18,6 @@ import { useVoiceKeywords } from "@/hooks/useVoiceKeywords"
 import { parseSpeechToTransaction, ParsedTransaction } from "@/lib/parseSpeechToTransaction"
 import { emitTransactionSaved } from "@/lib/transactionEvents"
 import type { Transaction } from "@/hooks/useTransactions"
-import Badge from "@/components/ui/Badge"
 import { cn } from "@/lib/utils"
 import Keypad from "@/components/quick-add/Keypad"
 import { orderCategoryChips } from "@/lib/categoryChips"
@@ -452,18 +451,8 @@ export function CategoryPicker({
 
 function VoiceMode({ onDone }: { onDone: () => void }) {
   const { t } = useLanguage()
-  const { toast } = useToast()
-  // Voice entries go to the default account (server resolves it if still loading),
-  // so amounts show in that account's currency (unassigned → primary)
-  const { formatAmountIn } = useCurrency()
-  const { accounts } = useAccounts()
-  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
-  const defaultCurrency = accounts.find((a) => a._id === defaultAccountId)?.currency
-  const { categories } = useCategories()
   const { keywords } = useVoiceKeywords()
   const { transcript, isListening, isSupported, startListening, stopListening, clearTranscript } = useSpeechToText()
-
-  const [saving, setSaving] = useState(false)
 
   // Derived from the transcript - mic clicks and retry both clear it, which resets these
   const voiceResult = useMemo<ParsedTransaction | null>(
@@ -484,46 +473,6 @@ function VoiceMode({ onDone }: { onDone: () => void }) {
   }
 
   const handleRetry = () => clearTranscript()
-
-  const resolvedCategory = useMemo(() => {
-    if (!parsed) return ""
-    if (parsed.category && categories.some((c) => c.name === parsed.category)) return parsed.category
-    const type = parsed.type ?? "expense"
-    const fallback = categories.find((c) => c.type === type || c.type === "both")
-    return fallback?.name ?? ""
-  }, [parsed, categories])
-
-  const handleConfirm = async () => {
-    if (!parsed || saving) return
-    setSaving(true)
-    try {
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: parsed.type ?? "expense",
-          amount: parsed.amount ?? 0,
-          category: resolvedCategory,
-          description: parsed.description ?? "",
-          date: format(new Date(), "yyyy-MM-dd"),
-          isRecurring: false,
-          accountId: accountIdForSubmit(null, defaultAccountId, defaultReady),
-        }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        toast(data.error ?? t("quickAdd.saveFailedToast"), "error")
-        return
-      }
-      toast(t("quickAdd.addedToast"), "success")
-      emitTransactionSaved()
-      onDone()
-    } catch {
-      toast(t("common.genericError"), "error")
-    } finally {
-      setSaving(false)
-    }
-  }
 
   if (!isSupported) {
     return (
@@ -580,38 +529,191 @@ function VoiceMode({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
-      {parsed && (
-        <div
-          className="w-full rounded-xl p-4 space-y-3"
-          style={{ backgroundColor: "var(--color-card)", borderLeft: "3px solid var(--color-accent)" }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--color-text-muted)" }}>
-            {t("quickAdd.voice.heard")}
-          </p>
-          {parsed.description && (
-            <p className="text-sm italic" style={{ color: "var(--color-text-secondary)" }}>
-              &ldquo;{parsed.description}&rdquo;
-            </p>
-          )}
-          <div className="flex flex-wrap gap-1.5">
-            {parsed.type && (
-              <Badge variant={parsed.type === "expense" ? "danger" : parsed.type === "savings" ? "savings" : "success"}>
-                {parsed.type}
-              </Badge>
-            )}
-            {parsed.amount !== undefined && <Badge variant="default">{formatAmountIn(parsed.amount, defaultCurrency)}</Badge>}
-            {resolvedCategory && <Badge variant="default">{resolvedCategory}</Badge>}
-          </div>
+      {/* Keyed so a new recording re-seeds the editable fields */}
+      {parsed && <VoiceReview key={transcript} parsed={parsed} onRetry={handleRetry} onDone={onDone} />}
+    </div>
+  )
+}
+
+/** Digits with up to 2 decimals - the same amounts the keypad allows. */
+const AMOUNT_PATTERN = /^\d{0,10}(\.\d{0,2})?$/
+
+/**
+ * What the recognizer heard, shown as editable fields so the user can fix the
+ * type, amount, category or note before saving instead of re-recording.
+ */
+function VoiceReview({
+  parsed,
+  onRetry,
+  onDone,
+}: {
+  parsed: ParsedTransaction
+  onRetry: () => void
+  onDone: () => void
+}) {
+  const { t } = useLanguage()
+  const { toast } = useToast()
+  const { currency: primaryCurrency } = useCurrency()
+  const { categories } = useCategories()
+  // Voice entries go to the default account (server resolves it if still loading),
+  // so amounts show in that account's currency (unassigned → primary)
+  const { accounts } = useAccounts()
+  const { defaultAccountId, ready: defaultReady } = useDefaultAccount()
+  const currencySymbol = getCurrencySymbol(
+    accounts.find((a) => a._id === defaultAccountId)?.currency ?? primaryCurrency,
+  )
+
+  const [type, setType] = useState<TxType>(parsed.type ?? "expense")
+  const [amountStr, setAmountStr] = useState(() => {
+    const heard = parsed.amount ? String(parsed.amount) : ""
+    return AMOUNT_PATTERN.test(heard) ? heard : ""
+  })
+  // null = not picked by hand, so the suggested category is used
+  const [chosenCategory, setChosenCategory] = useState<string | null>(null)
+  const [description, setDescription] = useState(parsed.description ?? "")
+  const [saving, setSaving] = useState(false)
+
+  const fitsType = (c: { type: string }, tx: TxType) => c.type === tx || c.type === "both" || tx === "savings"
+  const categoryOptions = useMemo(() => categories.filter((c) => fitsType(c, type)), [categories, type])
+  const orderedCategories = useMemo(() => orderCategoryChips(categoryOptions, ""), [categoryOptions])
+
+  // The heard category when it fits the type, else the most used one for the type
+  const suggestedCategory =
+    parsed.category && categoryOptions.some((c) => c.name === parsed.category)
+      ? parsed.category
+      : orderedCategories[0]?.name ?? ""
+  const category = chosenCategory ?? suggestedCategory
+
+  const handleType = (next: TxType) => {
+    setType(next)
+    // Keep a hand-picked category only if it still exists for the new type
+    if (chosenCategory && !categories.some((c) => c.name === chosenCategory && fitsType(c, next))) {
+      setChosenCategory(null)
+    }
+  }
+
+  const handleAmount = (value: string) => {
+    const cleaned = value.replace(/,/g, "")
+    if (AMOUNT_PATTERN.test(cleaned)) setAmountStr(cleaned)
+  }
+
+  const amountValue = Number(amountStr)
+  const canSave = amountStr !== "" && amountValue > 0 && !!category
+
+  const handleConfirm = async () => {
+    if (!canSave || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          amount: amountValue,
+          category,
+          description: description.trim(),
+          date: format(new Date(), "yyyy-MM-dd"),
+          isRecurring: false,
+          accountId: accountIdForSubmit(null, defaultAccountId, defaultReady),
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast(data.error ?? t("quickAdd.saveFailedToast"), "error")
+        return
+      }
+      toast(t("quickAdd.addedToast"), "success")
+      emitTransactionSaved()
+      onDone()
+    } catch {
+      toast(t("common.genericError"), "error")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="w-full rounded-xl p-4 flex flex-col gap-3"
+      style={{ backgroundColor: "var(--color-card)", borderLeft: "3px solid var(--color-accent)" }}
+    >
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--color-text-muted)" }}>
+          {t("quickAdd.voice.heard")}
+        </p>
+        <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+          {t("quickAdd.voice.reviewHint")}
+        </p>
+      </div>
+
+      <div className={styles.types}>
+        {(["expense", "income", "savings"] as TxType[]).map((opt) => (
           <button
-            onClick={handleConfirm}
-            disabled={saving || !parsed.amount}
-            className="w-full py-3 rounded-xl font-bold text-white transition-opacity disabled:opacity-40"
-            style={{ background: "linear-gradient(135deg, var(--color-primary), var(--color-accent))" }}
+            key={opt}
+            type="button"
+            onClick={() => handleType(opt)}
+            className={styles.typePill}
+            aria-pressed={type === opt}
+            style={type === opt ? { backgroundColor: `var(--color-${opt}-bg)`, color: TYPE_COLOR_VAR[opt] } : undefined}
           >
-            {saving ? t("quickAdd.saving") : t("quickAdd.voice.confirm")}
+            {t(`common.${opt}` as const)}
           </button>
-        </div>
-      )}
+        ))}
+      </div>
+
+      <label className={styles.pill}>
+        <span className="font-semibold" style={{ color: "var(--color-text-muted)" }}>
+          {currencySymbol}
+        </span>
+        <input
+          type="text"
+          inputMode="decimal"
+          className={styles.noteInput}
+          style={{ fontWeight: 700, color: TYPE_COLOR_VAR[type] }}
+          aria-label={t("common.amount")}
+          placeholder={t("quickAdd.enterAmount")}
+          value={amountStr}
+          onChange={(e) => handleAmount(e.target.value)}
+          enterKeyHint="done"
+        />
+        <PenLine size={14} />
+      </label>
+
+      <CategoryPicker categories={orderedCategories} value={category} onChange={setChosenCategory} />
+
+      <label className={styles.pill}>
+        <PenLine size={15} />
+        <input
+          type="text"
+          className={styles.noteInput}
+          aria-label={t("common.description")}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={t("quickAdd.notePlaceholder")}
+          enterKeyHint="done"
+        />
+      </label>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={saving}
+          className="py-3 px-4 rounded-xl font-semibold transition-opacity disabled:opacity-40"
+          style={{ backgroundColor: "var(--color-elevated)", color: "var(--color-text-secondary)" }}
+        >
+          {t("quickAdd.voice.retry")}
+        </button>
+        <button
+          type="button"
+          onClick={handleConfirm}
+          disabled={!canSave || saving}
+          className="flex-1 py-3 rounded-xl font-bold text-white transition-opacity disabled:opacity-40"
+          style={{ background: "linear-gradient(135deg, var(--color-primary), var(--color-accent))" }}
+        >
+          {saving ? t("quickAdd.saving") : t("quickAdd.voice.confirm")}
+        </button>
+      </div>
     </div>
   )
 }
