@@ -17,6 +17,10 @@ export interface Tip {
     | 'subscriptionAudit'
     | 'lifestyleInflation'
     | 'walletSave'
+    | 'cutoff'
+    | 'installments'
+    | 'padala'
+    | 'sinkingFund'
   body: string
   steps: string[]
   cta?: TipCta
@@ -35,6 +39,19 @@ export const tips: Tip[] = [
       'Move your 20% savings share out on day one, hindi after everything else.',
     ],
     cta: { label: 'Try the 50-30-20 split with your numbers', route: '/budgets' },
+  },
+  {
+    id: 'tip-per-cutoff',
+    title: 'Budget Per Cutoff, Not Per Month',
+    filipinoFraming: '"Kinsenas Ka, Hindi Buwanan"',
+    iconKey: 'cutoff',
+    body: 'Most of us get paid every 15th and 30th, pero ang budget natin, pang-buwanan. So the first cutoff feels like extra money - kain sa labas, konting shopping - and the second cutoff ends up carrying rent, bills, and everything else. Instead of one big monthly plan, give each cutoff its own job: which bills it pays, how much goes to savings, and how much is free to spend until the next sweldo.',
+    steps: [
+      'List your bills with their due dates, then assign each one to the cutoff that lands before it.',
+      'Split your savings across both cutoffs para hindi isang sweldo lang ang nagbubuhat.',
+      'Whatever\'s left per cutoff is your spending money until the next payday - hindi para sa buong buwan.',
+    ],
+    cta: { label: 'Set budgets that fit your cutoff', route: '/budgets' },
   },
   {
     id: 'tip-save-first',
@@ -74,6 +91,19 @@ export const tips: Tip[] = [
       'Park it somewhere boring but reachable - not your daily-swipe wallet.',
     ],
     cta: { label: 'Create a separate Emergency Fund goal', route: '/goals' },
+  },
+  {
+    id: 'tip-sinking-funds',
+    title: 'Sinking Funds for "Surprise" Expenses',
+    filipinoFraming: '"Hindi Emergency \'Yan, Alam Mo Namang Darating"',
+    iconKey: 'sinkingFund',
+    body: 'Enrollment sa June. Regalo sa Pasko. Ninong or ninang ka na naman sa binyag. Birthday ni Mama, car registration, annual insurance premium. None of these are real emergencies - alam mo namang darating sila - pero pag dumating na, parang biglaan pa rin. A sinking fund fixes that: save a small amount every cutoff for each expense you know is coming, so the full amount is ready when the bill shows up and your emergency fund stays untouched.',
+    steps: [
+      'List the big expenses you expect in the next 12 months and roughly how much each one costs.',
+      'Divide each amount by the number of cutoffs left before it\'s due - that\'s your per-sweldo target.',
+      'Keep each fund separate so you always know kung magkano na ang naipon for each one.',
+    ],
+    cta: { label: 'Create a goal for each expense you see coming', route: '/goals' },
   },
   {
     id: 'tip-13th-month',
@@ -125,6 +155,32 @@ export const tips: Tip[] = [
       'Give yourself a small lifestyle reward too, para hindi masyadong strict. The goal is balance, not punishment.',
     ],
     cta: { label: 'Update your savings goal to match your new income', route: '/goals' },
+  },
+  {
+    id: 'tip-bnpl-trap',
+    title: 'Watch Out for the BNPL Trap',
+    filipinoFraming: '"Hulugan Lang Naman... Times Five"',
+    iconKey: 'installments',
+    body: 'SPayLater for the air fryer, GGives for the new phone, Home Credit for the laptop, plus a 0% installment sa credit card. Each one feels manageable on its own - ₱500 here, ₱1,200 there. Pero pag pinagsama-sama mo, baka ang laking parte na ng bawat cutoff ang naka-reserve sa hulog bago ka pa makabili ng kahit ano. Buy now, pay later is easy to start and easy to forget, and missed payments can come with fees and penalties.',
+    steps: [
+      'List every active installment and loan - app, store, and credit card - with its monthly amount and end date.',
+      'Add them all up and compare the total to one cutoff. Kung malaki na ang kinakain, that\'s your signal.',
+      'Pause new installments until at least one is fully paid, and log each payment para kita mo ang progress.',
+    ],
+    cta: { label: 'Log your installment payments', route: '/transactions' },
+  },
+  {
+    id: 'tip-padala-budget',
+    title: 'Set a Padala Budget',
+    filipinoFraming: '"Mahal Mo Sila, Pero May Limit Din"',
+    iconKey: 'padala',
+    body: 'Pang-tuition ng kapatid, pambayad ng kuryente sa probinsya, "pahiram muna" from a tita. Helping family is part of who we are, and there\'s nothing wrong with it. The hard part is when every request gets answered on the spot - then your own bills, savings, and plans quietly get pushed aside. Setting a fixed padala amount each cutoff lets you keep helping without guilt and without putting yourself at risk.',
+    steps: [
+      'Decide on a fixed amount you can give each cutoff without touching your bills or savings.',
+      'Treat it as its own budget line, para malinaw kung magkano pa ang natitira para sa padala this month.',
+      'When a request goes over the limit, it\'s okay to say "next cutoff na lang" - you\'re still helping, just with a plan.',
+    ],
+    cta: { label: 'Create a budget for family support', route: '/budgets' },
   },
   {
     id: 'tip-gcash-maya-save',

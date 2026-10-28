@@ -90,6 +90,43 @@ function TipIcon({ iconKey }: { iconKey: Tip['iconKey'] }) {
           <path d="M11 18.5h2" />
         </svg>
       )
+    case 'cutoff':
+      // Calendar split down the middle: two paydays per month
+      return (
+        <svg {...shared}>
+          <rect x="4" y="5" width="16" height="15" rx="1.5" />
+          <path d="M4 9.5h16M8 3v4M16 3v4" />
+          <path d="M12 9.5V20" />
+          <path d="M7 13.5h2.5M7 16.5h2.5M14.5 13.5h2.5M14.5 16.5h2.5" />
+        </svg>
+      )
+    case 'installments':
+      // Stack of cards: several installments piling up
+      return (
+        <svg {...shared}>
+          <path d="M7 4h12a2 2 0 0 1 2 2v8" />
+          <path d="M5 6.5h12a2 2 0 0 1 2 2v8" />
+          <rect x="3" y="9" width="14" height="10" rx="2" />
+          <path d="M3 12.5h14M6 16h3" />
+        </svg>
+      )
+    case 'padala':
+      // House with heart: support for family back home
+      return (
+        <svg {...shared}>
+          <path d="M4 11l8-7 8 7" />
+          <path d="M6 9.5V20h12V9.5" />
+          <path d="M12 17.5s-3-1.8-3-3.7a1.5 1.5 0 0 1 3-.6 1.5 1.5 0 0 1 3 .6c0 1.9-3 3.7-3 3.7Z" />
+        </svg>
+      )
+    case 'sinkingFund':
+      // Jar filling up in layers
+      return (
+        <svg {...shared}>
+          <path d="M8 3.5h8M9 3.5v2.5L6.5 9v9.5A1.5 1.5 0 0 0 8 20h8a1.5 1.5 0 0 0 1.5-1.5V9L15 6V3.5" />
+          <path d="M6.5 13h11M6.5 16.5h11" />
+        </svg>
+      )
   }
 }
 
