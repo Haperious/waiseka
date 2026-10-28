@@ -1,0 +1,262 @@
+/* Tips & Gabay: list + reader layout.
+   Desktop (>= 1024px) shows both panes side by side.
+   Mobile shows one at a time, picked by data-view on .page. */
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+
+.scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-elevated) transparent;
+}
+
+/* ── Tip list ─────────────────────────────────────────────────── */
+
+.list {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+/* Hover only on real pointers, so the tint doesn't stick after a tap */
+@media (hover: hover) {
+  .row:hover {
+    background-color: var(--color-elevated);
+  }
+}
+
+.row:active {
+  transform: scale(0.98);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.row[aria-current='true'] {
+  background-color: var(--color-sage);
+}
+
+.rowNumber {
+  width: 16px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding-top: 2px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.rowText {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowTitle {
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+}
+
+.row[aria-current='true'] .rowTitle {
+  color: var(--color-accent);
+}
+
+.rowFraming {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowChevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+/* ── Reader ───────────────────────────────────────────────────── */
+
+.reader {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.backRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 20px 0;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.backRow:hover {
+  opacity: 0.8;
+}
+
+.readerScroll {
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.title {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: 1.7rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 62ch;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background-color: var(--color-elevated);
+  border: 1px solid var(--color-border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: opacity 0.12s ease;
+}
+
+.cta:hover {
+  opacity: 0.8;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  border-radius: 0 0 16px 16px;
+  /* Mobile: pinned on top of BottomNav (49px tall + safe-area inset). Sticky offsets start
+     inside <main>'s 80px bottom padding (pb-20), so subtract that back out. */
+  position: sticky;
+  bottom: calc(49px + env(safe-area-inset-bottom) - 80px);
+}
+
+/* Mobile: one pane at a time */
+@media (max-width: 1023.98px) {
+  .page[data-view='list'] .reader,
+  .page[data-view='reader'] .list,
+  .page[data-view='reader'] .header {
+    display: none;
+  }
+
+  /* No tip is open on the mobile list, so don't highlight the default one */
+  .page[data-view='list'] .row[aria-current='true'] {
+    background-color: transparent;
+  }
+
+  .page[data-view='list'] .row[aria-current='true'] .rowTitle {
+    color: var(--color-text-primary);
+  }
+}
+
+/* ── Desktop ──────────────────────────────────────────────────── */
+
+@media (min-width: 1024px) {
+  /* Fill the viewport below the 64px navbar and the main area's 24px top + bottom padding */
+  .page {
+    height: calc(100dvh - 64px - 48px);
+    min-height: 480px;
+  }
+
+  .panes {
+    grid-template-columns: 330px minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+  }
+
+  .list,
+  .reader {
+    min-height: 0;
+  }
+
+  .list {
+    overflow-y: auto;
+  }
+
+  .row {
+    min-height: 0;
+  }
+
+  .rowChevron,
+  .backRow {
+    display: none;
+  }
+
+  .readerScroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 36px 48px 28px;
+  }
+
+  .title {
+    font-size: 2.1rem;
+  }
+
+  .footer {
+    position: static;
+  }
+}

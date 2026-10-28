@@ -1,275 +1,296 @@
 'use client'
 
+import { Suspense, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { tips } from '@/lib/tipsContent'
-import type { Tip } from '@/lib/tipsContent'
+import { useRouter, useSearchParams } from 'next/navigation'
+import {
+  ArrowLeft,
+  CalendarDays,
+  CalendarRange,
+  ChartPie,
+  ChevronRight,
+  Coins,
+  CreditCard,
+  HandHeart,
+  Layers,
+  PiggyBank,
+  Receipt,
+  RefreshCw,
+  Shield,
+  Smartphone,
+  TrendingUp,
+  type LucideIcon,
+} from 'lucide-react'
+import Button from '@/components/ui/Button'
+import { useLanguage } from '@/context/LanguageContext'
+import { tips, tipTopics, type Tip } from '@/lib/tipsContent'
+import styles from './tips.module.css'
 
-// ── Inline SVG icons matching the mockup stroke style ────────────────────────
-function TipIcon({ iconKey }: { iconKey: Tip['iconKey'] }) {
-  const shared = {
-    width: 20,
-    height: 20,
-    viewBox: '0 0 24 24',
-    fill: 'none' as const,
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-  }
-
-  switch (iconKey) {
-    case 'pie':
-      return (
-        <svg {...shared}>
-          <circle cx="12" cy="12" r="8.5" />
-          <path d="M12 3.5V12L18 16" />
-          <path d="M12 12L6.5 17" />
-        </svg>
-      )
-    case 'piggy':
-      return (
-        <svg {...shared}>
-          <rect x="4" y="10" width="16" height="9" rx="2" />
-          <path d="M12 3v8M9 8l3 3 3-3" />
-          <path d="M9 14.5h6" />
-        </svg>
-      )
-    case 'autoTransfer':
-      return (
-        <svg {...shared}>
-          <path d="M5 9a7 7 0 0 1 12.5-3.5M19 5v4h-4" />
-          <path d="M19 15a7 7 0 0 1-12.5 3.5M5 19v-4h4" />
-        </svg>
-      )
-    case 'shield':
-      return (
-        <svg {...shared}>
-          <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z" />
-          <path d="M9 12l2 2 4-4" />
-        </svg>
-      )
-    case 'calendar':
-      return (
-        <svg {...shared}>
-          <rect x="4" y="9" width="16" height="11" rx="1.5" />
-          <path d="M4 13h16M12 9v11" />
-          <path d="M12 9c-1.5-3-5-3-5 0M12 9c1.5-3 5-3 5 0" />
-        </svg>
-      )
-    case 'receipt':
-      return (
-        <svg {...shared} strokeWidth={1.6}>
-          <path d="M6 3h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3V3Z" />
-          <path d="M9 8h6M9 11h6M9 14h3" />
-        </svg>
-      )
-    case 'subscriptionAudit':
-      return (
-        <svg {...shared}>
-          <rect x="3.5" y="5" width="13" height="10" rx="1.5" />
-          <path d="M9.5 8.2l3.2 1.8-3.2 1.8V8.2Z" />
-          <circle cx="16.5" cy="16" r="3" />
-          <path d="M18.7 18.2L20.5 20" />
-        </svg>
-      )
-    case 'lifestyleInflation':
-      return (
-        <svg {...shared}>
-          <path d="M4 20h16" />
-          <rect x="6" y="13.5" width="4" height="6.5" />
-          <rect x="14" y="8" width="4" height="12" />
-          <path d="M13 6l3-3 3 3" />
-          <path d="M16 3.2v4.3" />
-        </svg>
-      )
-    case 'walletSave':
-      return (
-        <svg {...shared}>
-          <rect x="6.5" y="3" width="11" height="18" rx="2" />
-          <path d="M9.5 13.5l2 2 3.5-4.5" />
-          <path d="M11 18.5h2" />
-        </svg>
-      )
-    case 'cutoff':
-      // Calendar split down the middle: two paydays per month
-      return (
-        <svg {...shared}>
-          <rect x="4" y="5" width="16" height="15" rx="1.5" />
-          <path d="M4 9.5h16M8 3v4M16 3v4" />
-          <path d="M12 9.5V20" />
-          <path d="M7 13.5h2.5M7 16.5h2.5M14.5 13.5h2.5M14.5 16.5h2.5" />
-        </svg>
-      )
-    case 'installments':
-      // Stack of cards: several installments piling up
-      return (
-        <svg {...shared}>
-          <path d="M7 4h12a2 2 0 0 1 2 2v8" />
-          <path d="M5 6.5h12a2 2 0 0 1 2 2v8" />
-          <rect x="3" y="9" width="14" height="10" rx="2" />
-          <path d="M3 12.5h14M6 16h3" />
-        </svg>
-      )
-    case 'padala':
-      // House with heart: support for family back home
-      return (
-        <svg {...shared}>
-          <path d="M4 11l8-7 8 7" />
-          <path d="M6 9.5V20h12V9.5" />
-          <path d="M12 17.5s-3-1.8-3-3.7a1.5 1.5 0 0 1 3-.6 1.5 1.5 0 0 1 3 .6c0 1.9-3 3.7-3 3.7Z" />
-        </svg>
-      )
-    case 'sinkingFund':
-      // Jar filling up in layers
-      return (
-        <svg {...shared}>
-          <path d="M8 3.5h8M9 3.5v2.5L6.5 9v9.5A1.5 1.5 0 0 0 8 20h8a1.5 1.5 0 0 0 1.5-1.5V9L15 6V3.5" />
-          <path d="M6.5 13h11M6.5 16.5h11" />
-        </svg>
-      )
-  }
+const TIP_ICONS: Record<Tip['iconKey'], LucideIcon> = {
+  pie: ChartPie,
+  piggy: PiggyBank,
+  autoTransfer: RefreshCw,
+  shield: Shield,
+  calendar: CalendarDays,
+  receipt: Receipt,
+  subscriptionAudit: CreditCard,
+  lifestyleInflation: TrendingUp,
+  walletSave: Smartphone,
+  cutoff: CalendarRange,
+  installments: Layers,
+  padala: HandHeart,
+  sinkingFund: Coins,
 }
 
-// ── Single tip card ───────────────────────────────────────────────────────────
-function TipCard({ tip }: { tip: Tip }) {
+const eyebrowStyle: React.CSSProperties = {
+  fontSize: '0.68rem',
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  color: 'var(--color-text-secondary)',
+}
+
+const mono = "'DM Mono', monospace"
+
+/** True when a key press belongs to a text field, so arrow keys and j/k should not change tips. */
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+  return target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)
+}
+
+function TipsView() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { t } = useLanguage()
+
+  // A missing or unknown ?tip= shows the first tip (desktop) or the list (mobile)
+  const requested = tips.findIndex((item) => item.id === searchParams.get('tip'))
+  const hasTip = requested !== -1
+  const activeIndex = hasTip ? requested : 0
+  const tip = tips[activeIndex]
+  const Icon = TIP_ICONS[tip.iconKey]
+  const titleId = `${tip.id}-title`
+  const isFirst = activeIndex === 0
+  const isLast = activeIndex === tips.length - 1
+
+  const listRef = useRef<HTMLElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const focusTitleNext = useRef(false)
+  const lastViewed = useRef<string | null>(null)
+
+  const goTo = useCallback(
+    (index: number, viaKeyboard = false) => {
+      const next = tips[index]
+      if (!next || (hasTip && index === activeIndex)) return
+      focusTitleNext.current = viaKeyboard
+      router.push(`/tips?tip=${next.id}`, { scroll: false })
+    },
+    [router, hasTip, activeIndex],
+  )
+
+  const showList = useCallback(() => router.push('/tips', { scroll: false }), [router])
+
+  // ← / → and j / k step through tips
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      if (isTypingTarget(e.target) || document.querySelector('[aria-modal="true"]')) return
+      const delta = e.key === 'ArrowRight' || e.key === 'j' ? 1 : e.key === 'ArrowLeft' || e.key === 'k' ? -1 : 0
+      if (!delta) return
+      const next = activeIndex + delta
+      if (next < 0 || next >= tips.length) return
+      e.preventDefault()
+      goTo(next, true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [activeIndex, goTo])
+
+  // On every tip change: read from the top, keep the list row in view, and move focus for keyboard users
+  useEffect(() => {
+    const main = scrollRef.current?.closest('main')
+    if (hasTip) {
+      scrollRef.current?.scrollTo({ top: 0 })
+      main?.scrollTo({ top: 0 })
+      listRef.current?.querySelector(`[data-tip="${tip.id}"]`)?.scrollIntoView({ block: 'nearest' })
+      lastViewed.current = tip.id
+    } else if (lastViewed.current) {
+      // Back on the mobile list: return to the tip the user just read
+      listRef.current?.querySelector(`[data-tip="${lastViewed.current}"]`)?.scrollIntoView({ block: 'center' })
+    }
+    if (focusTitleNext.current) {
+      focusTitleNext.current = false
+      titleRef.current?.focus({ preventScroll: true })
+    }
+  }, [tip.id, hasTip])
+
   return (
-    <article
-      style={{
-        backgroundColor: 'var(--color-card)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 16,
-        padding: '18px 18px 16px',
-      }}
-    >
-      {/* Header: icon + titles */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-        <div
+    <div className={styles.page} data-view={hasTip ? 'reader' : 'list'}>
+      <header className={styles.header}>
+        <h1
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            backgroundColor: 'var(--color-elevated)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            color: 'var(--color-primary)',
-          }}
-        >
-          <TipIcon iconKey={tip.iconKey} />
-        </div>
-        <div style={{ paddingTop: 2 }}>
-          <p style={{
-            fontSize: '0.93rem',
-            fontWeight: 600,
+            fontFamily: 'var(--font-playfair), Georgia, serif',
+            fontWeight: 900,
+            fontSize: '1.6rem',
+            lineHeight: 1.1,
             color: 'var(--color-text-primary)',
-            marginBottom: 3,
-            lineHeight: 1.3,
-          }}>
-            {tip.title}
-          </p>
-          <p style={{
-            fontSize: '0.75rem',
-            color: 'var(--color-text-secondary)',
-            fontStyle: 'italic',
-          }}>
-            {tip.filipinoFraming}
-          </p>
-        </div>
-      </div>
-
-      {/* Body */}
-      <p style={{
-        fontSize: '0.82rem',
-        lineHeight: 1.65,
-        color: 'var(--color-text-primary)',
-        opacity: 0.92,
-        marginBottom: 14,
-      }}>
-        {tip.body}
-      </p>
-
-      {/* Steps */}
-      <ul style={{
-        listStyle: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        marginBottom: tip.cta ? 14 : 2,
-        padding: 0,
-      }}>
-        {tip.steps.map((step, i) => (
-          <li key={i} style={{ display: 'flex', gap: 9, fontSize: '0.79rem', lineHeight: 1.45, color: 'var(--color-text-primary)' }}>
-            <span style={{
-              width: 16,
-              height: 16,
-              borderRadius: '50%',
-              border: '1.5px solid var(--color-accent)',
-              flexShrink: 0,
-              marginTop: 1,
-              display: 'inline-block',
-            }} />
-            {step}
-          </li>
-        ))}
-      </ul>
-
-      {/* Optional CTA */}
-      {tip.cta && (
-        <Link
-          href={tip.cta.route}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '9px 13px',
-            borderRadius: 10,
-            backgroundColor: 'var(--color-elevated)',
-            border: '1px solid var(--color-border)',
-            fontSize: '0.77rem',
-            fontWeight: 600,
-            color: 'var(--color-primary)',
-            textDecoration: 'none',
-            transition: 'border-color 0.15s',
+            marginBottom: 6,
           }}
-          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
         >
-          <span>{tip.cta.label}</span>
-          <span style={{ fontFamily: "'DM Mono', monospace" }}>→</span>
-        </Link>
-      )}
-    </article>
+          {t('nav.tips')}
+        </h1>
+        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+          {t('tips.subtitle')}
+        </p>
+      </header>
+
+      <div className={styles.panes}>
+        {/* ── Tip list ── */}
+        <nav ref={listRef} aria-label={t('tips.listLabel')} className={`${styles.list} ${styles.scroll}`}>
+          {tips.map((item, i) => (
+            <button
+              key={item.id}
+              type="button"
+              data-tip={item.id}
+              className={styles.row}
+              aria-current={i === activeIndex ? 'true' : undefined}
+              onClick={() => goTo(i)}
+            >
+              <span className={styles.rowNumber}>{String(i + 1).padStart(2, '0')}</span>
+              <span className={styles.rowText}>
+                <span className={styles.rowTitle}>{item.title}</span>
+                <span className={styles.rowFraming}>{item.filipinoFraming}</span>
+              </span>
+              <ChevronRight className={styles.rowChevron} size={18} strokeWidth={2} aria-hidden />
+            </button>
+          ))}
+        </nav>
+
+        {/* ── Reader ── */}
+        <article className={styles.reader} aria-labelledby={titleId}>
+          <button type="button" className={styles.backRow} onClick={showList}>
+            <ArrowLeft size={16} strokeWidth={2} aria-hidden />
+            {t('tips.allTips')}
+          </button>
+
+          <div ref={scrollRef} className={`${styles.readerScroll} ${styles.scroll}`}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 9,
+                  backgroundColor: 'var(--color-sage)',
+                  color: 'var(--color-accent)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon size={20} strokeWidth={2} aria-hidden />
+              </div>
+              <p style={eyebrowStyle}>
+                {tipTopics[tip.topic]} ·{' '}
+                {t('tips.position').replace('{n}', String(activeIndex + 1)).replace('{total}', String(tips.length))}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <h2 id={titleId} ref={titleRef} tabIndex={-1} className={styles.title}>
+                {tip.title}
+              </h2>
+              <p
+                style={{
+                  fontFamily: 'var(--font-playfair), Georgia, serif',
+                  fontStyle: 'italic',
+                  fontSize: '1.1rem',
+                  lineHeight: 1.4,
+                  color: 'var(--color-accent)',
+                }}
+              >
+                {tip.filipinoFraming}
+              </p>
+            </div>
+
+            <p
+              style={{
+                fontSize: '1rem',
+                lineHeight: 1.75,
+                color: 'var(--color-text-primary)',
+                maxWidth: '62ch',
+                textWrap: 'pretty',
+              }}
+            >
+              {tip.body}
+            </p>
+
+            <section aria-labelledby={`${tip.id}-steps`}>
+              <h3 id={`${tip.id}-steps`} style={{ ...eyebrowStyle, marginBottom: 14 }}>
+                {t('tips.tryThis')}
+              </h3>
+              <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {tip.steps.map((step, i) => (
+                  <li key={i} style={{ display: 'flex', gap: 14, maxWidth: '62ch' }}>
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--color-sage)',
+                        color: 'var(--color-accent)',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span style={{ fontSize: '0.93rem', lineHeight: 1.6, color: 'var(--color-text-primary)', paddingTop: 2 }}>
+                      {step}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            {tip.cta && (
+              <Link href={tip.cta.route} className={styles.cta}>
+                <span>{tip.cta.label}</span>
+                <span aria-hidden style={{ fontFamily: mono }}>→</span>
+              </Link>
+            )}
+          </div>
+
+          <div className={styles.footer}>
+            <Button variant="ghost" size="sm" disabled={isFirst} onClick={() => goTo(activeIndex - 1)}>
+              <span aria-hidden style={{ marginRight: 6 }}>←</span>
+              {t('tips.previous')}
+            </Button>
+            <span style={{ fontFamily: mono, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              {activeIndex + 1} / {tips.length}
+            </span>
+            <Button variant="secondary" size="sm" disabled={isLast} onClick={() => goTo(activeIndex + 1)}>
+              {t('tips.next')}
+              <span aria-hidden style={{ marginLeft: 6 }}>→</span>
+            </Button>
+          </div>
+        </article>
+      </div>
+    </div>
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
 export default function TipsPage() {
+  // useSearchParams needs a Suspense boundary so the rest of the route can prerender
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-      {/* Header */}
-      <div>
-        <h1 style={{
-          fontSize: '1.6rem',
-          fontWeight: 800,
-          color: 'var(--color-text-primary)',
-          letterSpacing: '-0.02em',
-          marginBottom: 4,
-        }}>
-          Tips &amp; Gabay
-        </h1>
-        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-          Walang judgment, just friendly reminders to help your sweldo go further.
-        </p>
-      </div>
-
-      {/* Tip cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {tips.map(tip => (
-          <TipCard key={tip.id} tip={tip} />
-        ))}
-      </div>
-    </div>
+    <Suspense fallback={null}>
+      <TipsView />
+    </Suspense>
   )
 }

@@ -3,8 +3,17 @@ export interface TipCta {
   route: string
 }
 
+export type TipTopic = 'sweldo' | 'safety' | 'leaks'
+
+export const tipTopics: Record<TipTopic, string> = {
+  sweldo: 'Sweldo Day',
+  safety: 'Safety Net',
+  leaks: 'Spending Leaks',
+}
+
 export interface Tip {
   id: string
+  topic: TipTopic
   title: string
   filipinoFraming: string
   iconKey:
@@ -29,6 +38,7 @@ export interface Tip {
 export const tips: Tip[] = [
   {
     id: 'tip-50-30-20',
+    topic: 'sweldo',
     title: 'The 50-30-20 Rule',
     filipinoFraming: '"Tatlong Hati ng Sweldo"',
     iconKey: 'pie',
@@ -42,6 +52,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-per-cutoff',
+    topic: 'sweldo',
     title: 'Budget Per Cutoff, Not Per Month',
     filipinoFraming: '"Kinsenas Ka, Hindi Buwanan"',
     iconKey: 'cutoff',
@@ -55,6 +66,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-save-first',
+    topic: 'sweldo',
     title: 'Save First, Not Save After',
     filipinoFraming: '"Bayaran Mo Muna ang Sarili Mo"',
     iconKey: 'piggy',
@@ -68,6 +80,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-auto-transfer',
+    topic: 'sweldo',
     title: 'Auto-Transfer on Payday',
     filipinoFraming: '"I-set Mo Na, Bahala na ang System"',
     iconKey: 'autoTransfer',
@@ -81,6 +94,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-emergency-fund',
+    topic: 'safety',
     title: 'Build Your Emergency Fund First',
     filipinoFraming: '"Hiwalay na Pondo Para sa \'Kung Sakali\'"',
     iconKey: 'shield',
@@ -94,6 +108,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-sinking-funds',
+    topic: 'safety',
     title: 'Sinking Funds for "Surprise" Expenses',
     filipinoFraming: '"Hindi Emergency \'Yan, Alam Mo Namang Darating"',
     iconKey: 'sinkingFund',
@@ -107,6 +122,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-13th-month',
+    topic: 'sweldo',
     title: 'Plan Your 13th Month Pay Early',
     filipinoFraming: '"Bago Pa Man Dumating ang Bonus"',
     iconKey: 'calendar',
@@ -120,6 +136,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-tingi-leaks',
+    topic: 'leaks',
     title: 'Watch Out for "Tingi" Leaks',
     filipinoFraming: '"Maliit Lang Naman \'To" - famous last words',
     iconKey: 'receipt',
@@ -133,6 +150,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-subscription-audit',
+    topic: 'leaks',
     title: 'Audit Your Subscriptions',
     filipinoFraming: '"Nagbabayad Ka Pa Ba Doon?"',
     iconKey: 'subscriptionAudit',
@@ -145,6 +163,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-lifestyle-inflation',
+    topic: 'leaks',
     title: 'Don\'t Let Lifestyle Inflation Eat Your Raise',
     filipinoFraming: '"Tumaas ang Sweldo, Huwag Hayaang Sumabay ang Gastos"',
     iconKey: 'lifestyleInflation',
@@ -158,6 +177,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-bnpl-trap',
+    topic: 'leaks',
     title: 'Watch Out for the BNPL Trap',
     filipinoFraming: '"Hulugan Lang Naman... Times Five"',
     iconKey: 'installments',
@@ -171,6 +191,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-padala-budget',
+    topic: 'sweldo',
     title: 'Set a Padala Budget',
     filipinoFraming: '"Mahal Mo Sila, Pero May Limit Din"',
     iconKey: 'padala',
@@ -184,6 +205,7 @@ export const tips: Tip[] = [
   },
   {
     id: 'tip-gcash-maya-save',
+    topic: 'safety',
     title: 'Use GCash Save or Maya Savings',
     filipinoFraming: '"Nasa Wallet Mo Na Pala ang Tool"',
     iconKey: 'walletSave',

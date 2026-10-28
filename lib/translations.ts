@@ -22,6 +22,15 @@ export const translations = {
     "nav.quickAdd": "Add",
     "nav.appName": "WaiseKa",
 
+    // ── Tips & Gabay ─────────────────────────────────────────────────
+    "tips.subtitle": "Walang judgment, just friendly reminders to help your sweldo go further.",
+    "tips.listLabel": "Tips",
+    "tips.tryThis": "Try this",
+    "tips.position": "Tip {n} of {total}",
+    "tips.previous": "Previous",
+    "tips.next": "Next tip",
+    "tips.allTips": "All tips",
+
     // ── Common ───────────────────────────────────────────────────────
     "common.loading": "Loading...",
     "common.noData": "No data available",
@@ -697,6 +706,15 @@ export const translations = {
     "nav.more": "Iba Pa",
     "nav.quickAdd": "Magdagdag",
     "nav.appName": "WaiseKa",
+
+    // ── Tips & Gabay ─────────────────────────────────────────────────
+    "tips.subtitle": "Walang judgment, mga paalala lang para mas umabot ang sweldo mo.",
+    "tips.listLabel": "Mga tip",
+    "tips.tryThis": "Subukan ito",
+    "tips.position": "Tip {n} sa {total}",
+    "tips.previous": "Nakaraan",
+    "tips.next": "Susunod na tip",
+    "tips.allTips": "Lahat ng tip",
 
     // ── Common ───────────────────────────────────────────────────────
     "common.loading": "Naglo-load...",
