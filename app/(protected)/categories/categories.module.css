@@ -1,0 +1,514 @@
+/* Categories: chip cloud + type filter.
+   Mobile-first; desktop (>= 1024px) overrides at the bottom.
+   The page fills the viewport so only the chip card scrolls. */
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  /* Below the 64px navbar, minus <main>'s 16px top and 80px bottom (BottomNav) padding */
+  height: calc(100dvh - 64px - 16px - 80px);
+  min-height: 420px;
+  /* <main> gives 12px side padding under 640px; the design wants 16px */
+  padding-inline: 4px;
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.addButton {
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.addLong {
+  display: none;
+}
+
+/* ── Toolbar: filter + search ─────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.countLabel {
+  display: none;
+}
+
+.search {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 44px;
+  padding-left: 38px;
+  padding-right: 38px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.searchInput:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+.searchClear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.searchClear:hover {
+  color: var(--color-text-primary);
+}
+
+/* ── Chip card ────────────────────────────────────────────────── */
+
+.card {
+  flex: 1;
+  min-height: 0;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-elevated) transparent;
+}
+
+.group {
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group + .group {
+  border-top: 1px solid var(--color-border);
+}
+
+.groupHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.groupDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.groupLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+.groupCount {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background-color: var(--color-elevated);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  height: 40px;
+  max-width: 100%;
+  padding: 0 14px 0 12px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background-color: var(--color-elevated);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.12s ease, opacity 0.12s ease, transform 0.12s ease;
+}
+
+.chipName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hover only on real pointers, so it doesn't stick after a tap */
+@media (hover: hover) {
+  .chip:hover {
+    opacity: 0.8;
+  }
+}
+
+.chip:active {
+  transform: scale(0.98);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.chip[aria-pressed='true'] {
+  background-color: var(--color-sage);
+  border-color: var(--color-accent);
+  font-weight: 600;
+  color: var(--color-accent);
+  opacity: 1;
+}
+
+.dot {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Two classes so it beats the Skeleton's own Tailwind rounded-md */
+.chips .skeletonPill {
+  height: 34px;
+  border-radius: 999px;
+}
+
+/* ── Empty / no results ───────────────────────────────────────── */
+
+.empty {
+  padding: 40px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.clearLink {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ── Close button (bar + sheet) ───────────────────────────────── */
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* ── Selection bar (desktop) ──────────────────────────────────── */
+
+.bar,
+.barSpacer {
+  display: none;
+}
+
+@keyframes barIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.barInfo {
+  min-width: 140px;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+.barName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barType {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.barClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.barClose:hover {
+  background-color: var(--color-card);
+}
+
+/* ── Bottom sheet (mobile) ────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sheetIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Above BottomNav (z-40), below the edit Modal (z-50) */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background-color: var(--color-backdrop);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 46;
+  background-color: var(--color-card);
+  border-top: 1px solid var(--color-border);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: sheetIn 0.3s ease;
+}
+
+.handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background-color: var(--color-elevated);
+  align-self: center;
+}
+
+.sheetInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sheetTile {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sheetText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheetName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheetType {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.sheetClose {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+}
+
+.sheetActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sheetButton {
+  width: 100%;
+  height: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .sheet,
+  .bar {
+    animation: none !important;
+  }
+}
+
+/* ── Small tablets ────────────────────────────────────────────── */
+
+@media (min-width: 640px) {
+  .page {
+    /* <main> top padding grows to 24px from sm up */
+    height: calc(100dvh - 64px - 24px - 80px);
+    padding-inline: 0;
+  }
+}
+
+/* ── Desktop ──────────────────────────────────────────────────── */
+
+@media (min-width: 1024px) {
+  .page {
+    gap: 22px;
+    /* Navbar 64px + <main>'s 24px top and bottom padding */
+    height: calc(100dvh - 64px - 48px);
+    min-height: 480px;
+  }
+
+  .addLong {
+    display: inline;
+  }
+
+  .addShort {
+    display: none;
+  }
+
+  .toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .countLabel {
+    display: inline;
+  }
+
+  .search {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .searchInput {
+    height: 40px;
+  }
+
+  .group {
+    padding: 18px 20px 20px;
+  }
+
+  .chip {
+    height: 34px;
+    font-size: 0.84rem;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: absolute;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    z-index: 5;
+    padding: 8px 8px 8px 16px;
+    background-color: var(--color-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    animation: barIn 0.2s ease;
+  }
+
+  .barSpacer {
+    display: block;
+    height: 72px;
+  }
+
+  .backdrop,
+  .sheet {
+    display: none;
+  }
+}

@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Pencil, Trash2, Tag, Search, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Plus, Search, X } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
+import Segmented from '@/components/ui/Segmented'
 import { useToast } from '@/components/ui/Toast'
 import { useLanguage } from '@/context/LanguageContext'
 import { useCategories, type Category } from '@/hooks/useCategories'
 import { Skeleton } from '@/components/ui/Skeleton'
+import styles from './categories.module.css'
 
 const COLORS = [
   '#f97316', '#3b82f6', '#8b5cf6', '#ec4899', '#22c55e',
@@ -17,19 +19,34 @@ const COLORS = [
   '#e11d48', '#0ea5e9', '#6b7280',
 ]
 
+type CategoryType = Category['type']
+type TypeFilter = 'all' | CategoryType
+
+const TYPES: readonly CategoryType[] = ['expense', 'income', 'both']
+
+const TYPE_COLOR: Record<CategoryType, string> = {
+  expense: 'var(--color-expense)',
+  income:  'var(--color-income)',
+  both:    'var(--color-accent)',
+}
+
+// Loading placeholder: three groups of pill skeletons with varied widths
+const SKELETON_GROUPS = [
+  [120, 96, 150, 110, 132, 90, 140, 104],
+  [110, 140, 92, 126, 100, 156],
+  [130, 100, 118, 144, 96, 112, 160],
+]
+
 interface FormState {
   name: string
-  type: 'income' | 'expense' | 'both'
+  type: CategoryType
   color: string
 }
 
 const defaultForm = (): FormState => ({ name: '', type: 'expense', color: COLORS[0] })
 
-const cardStyle: React.CSSProperties = {
-  backgroundColor: 'var(--color-card)',
-  borderRadius: 16,
-  border: '1px solid var(--color-border)',
-  overflow: 'hidden',
+function Dot({ color, size }: { color: string; size: number }) {
+  return <span aria-hidden className={styles.dot} style={{ width: size, height: size, backgroundColor: color }} />
 }
 
 export default function CategoriesPage() {
@@ -38,6 +55,8 @@ export default function CategoriesPage() {
   const { categories, loading, refetch } = useCategories()
 
   const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const [form, setForm] = useState<FormState>(defaultForm())
@@ -45,17 +64,58 @@ export default function CategoriesPage() {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const TYPE_OPTIONS = [
-    { value: 'expense', label: t('common.expense') },
-    { value: 'income',  label: t('common.income') },
-    { value: 'both',    label: t('cat.both') },
-  ]
-
-  const TYPE_LABELS: Record<string, string> = {
+  const TYPE_LABELS: Record<CategoryType, string> = {
     income:  t('common.income'),
     expense: t('common.expense'),
     both:    t('cat.both'),
   }
+
+  const TYPE_OPTIONS = TYPES.map((value) => ({ value, label: TYPE_LABELS[value] }))
+
+  // Filter counts come from all categories, ignoring the search
+  const counts = useMemo(() => {
+    const c: Record<CategoryType, number> = { expense: 0, income: 0, both: 0 }
+    for (const cat of categories) c[cat.type]++
+    return c
+  }, [categories])
+
+  // Categories matching the search AND the type filter, grouped by type
+  const grouped = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    const g: Record<CategoryType, Category[]> = { expense: [], income: [], both: [] }
+    for (const cat of categories) {
+      if (typeFilter !== 'all' && cat.type !== typeFilter) continue
+      if (q && !cat.name.toLowerCase().includes(q)) continue
+      g[cat.type].push(cat)
+    }
+    return g
+  }, [categories, searchQuery, typeFilter])
+
+  const visibleTypes = TYPES.filter((type) => grouped[type].length > 0)
+  const selected = selectedId ? visibleTypes.flatMap((type) => grouped[type]).find((c) => c._id === selectedId) ?? null : null
+
+  // The selected category was filtered out or deleted: drop the selection so it
+  // doesn't pop back when the filter changes again
+  if (selectedId && !selected && !loading) setSelectedId(null)
+
+  // Escape clears the selection (the Modal handles its own Escape)
+  useEffect(() => {
+    if (!selectedId || modalOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId, modalOpen])
+
+  const filterOptions = [
+    { value: 'all', label: <>{t('common.all')}<span className={styles.countLabel}> · {categories.length}</span></> },
+    ...TYPES.map((type) => ({
+      value: type,
+      color: TYPE_COLOR[type],
+      label: <>{TYPE_LABELS[type]}<span className={styles.countLabel}> · {counts[type]}</span></>,
+    })),
+  ]
 
   const openAdd = () => {
     setEditing(null)
@@ -112,6 +172,7 @@ export default function CategoriesPage() {
       const res = await fetch(`/api/categories/${cat._id}`, { method: 'DELETE' })
       if (res.ok) {
         toast('Category deleted', 'success')
+        setSelectedId((id) => (id === cat._id ? null : id))
         refetch()
       } else {
         const data = await res.json()
@@ -124,231 +185,186 @@ export default function CategoriesPage() {
     }
   }
 
-  const filtered = searchQuery
-    ? categories.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : categories
+  const toggleSelect = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
+  const clearSelection = () => setSelectedId(null)
 
-  const grouped = {
-    expense: filtered.filter((c) => c.type === 'expense'),
-    income:  filtered.filter((c) => c.type === 'income'),
-    both:    filtered.filter((c) => c.type === 'both'),
-  }
+  const query = searchQuery.trim()
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className={styles.page}>
 
       {/* ── Header ───────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <h1 style={{
-            fontSize: '1.6rem', fontWeight: 900,
-            color: 'var(--color-text-primary)',
-            fontFamily: 'var(--font-playfair), Georgia, serif',
-            lineHeight: 1.1,
-          }}>
-            {t('cat.title')}
-          </h1>
-          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-            {t('cat.subtitle')}
-          </p>
+      <div className={styles.header}>
+        <div style={{ minWidth: 0 }}>
+          <h1 className={styles.title}>{t('cat.title')}</h1>
+          <p className={styles.subtitle}>{t('cat.subtitle')}</p>
         </div>
-        <Button onClick={openAdd} size="sm">
-          <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
-          <span className="hidden sm:inline">{t('cat.add')}</span>
+        <Button onClick={openAdd} size="sm" className={styles.addButton}>
+          <Plus aria-hidden style={{ width: 14, height: 14 }} />
+          <span className={styles.addLong}>{t('cat.add')}</span>
+          <span className={styles.addShort}>{t('cat.addShort')}</span>
         </Button>
       </div>
 
-      {/* ── Search ───────────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative' }}>
-        <Search style={{
-          position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-          width: 15, height: 15, color: 'var(--color-text-muted)', pointerEvents: 'none',
-        }} />
-        <input
-          style={{
-            width: '100%', height: 42,
-            paddingLeft: 38, paddingRight: searchQuery ? 38 : 12,
-            borderRadius: 12,
-            border: '1px solid var(--color-border)',
-            backgroundColor: 'var(--color-card)',
-            color: 'var(--color-text-primary)',
-            fontSize: '0.85rem',
-            outline: 'none',
-            transition: 'border-color 0.15s',
-            boxSizing: 'border-box',
-          }}
-          placeholder={t('cat.searchPlaceholder')}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-accent)' }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)' }}
+      {/* ── Toolbar: type filter + search ────────────────────────────────────── */}
+      <div className={styles.toolbar}>
+        <Segmented
+          options={filterOptions}
+          value={typeFilter}
+          onChange={(v) => setTypeFilter(v as TypeFilter)}
+          ariaLabel={t('cat.filterLabel')}
         />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            aria-label={t('cat.clearSearch')}
-            style={{
-              position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center',
-            }}
-          >
-            <X style={{ width: 14, height: 14 }} />
-          </button>
+        <div className={styles.search}>
+          <Search aria-hidden className={styles.searchIcon} />
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder={t('cat.searchPlaceholder')}
+            aria-label={t('cat.searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label={t('cat.clearSearch')}
+              className={styles.searchClear}
+            >
+              <X style={{ width: 14, height: 14 }} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Chip card ────────────────────────────────────────────────────────── */}
+      <div className={styles.card}>
+        {loading ? (
+          SKELETON_GROUPS.map((widths, g) => (
+            <div key={g} className={styles.group} aria-hidden>
+              <Skeleton className="h-3 w-24" />
+              <div className={styles.chips}>
+                {widths.map((w, i) => <Skeleton key={i} className={styles.skeletonPill} style={{ width: w }} />)}
+              </div>
+            </div>
+          ))
+        ) : categories.length === 0 ? (
+          <div className={styles.empty}>
+            <p>{t('cat.noCategories')}</p>
+          </div>
+        ) : visibleTypes.length === 0 ? (
+          <div className={styles.empty}>
+            <p>{t('cat.noResults')} &ldquo;{query}&rdquo;</p>
+            {searchQuery && (
+              <button type="button" onClick={() => setSearchQuery('')} className={styles.clearLink}>
+                {t('cat.clearSearch')}
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {visibleTypes.map((type) => (
+              <section key={type} className={styles.group} aria-labelledby={`cat-group-${type}`}>
+                <div className={styles.groupHeading}>
+                  <span aria-hidden className={styles.groupDot} style={{ backgroundColor: TYPE_COLOR[type] }} />
+                  <h2 id={`cat-group-${type}`} className={styles.groupLabel}>{TYPE_LABELS[type]}</h2>
+                  <span className={styles.groupCount}>{grouped[type].length}</span>
+                </div>
+                <div className={styles.chips}>
+                  {grouped[type].map((cat) => (
+                    <button
+                      key={cat._id}
+                      type="button"
+                      aria-pressed={cat._id === selectedId}
+                      className={styles.chip}
+                      onClick={() => toggleSelect(cat._id)}
+                    >
+                      <Dot color={cat.color} size={9} />
+                      <span className={styles.chipName}>{cat.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+            {/* Room so the floating selection bar never covers the last row (desktop) */}
+            {selected && <div aria-hidden className={styles.barSpacer} />}
+          </>
         )}
       </div>
 
-      {/* ── Category groups ──────────────────────────────────────────────────── */}
-      {loading ? (
-        <div style={cardStyle}>
-          <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-          </div>
-        </div>
-      ) : (
-        (['expense', 'income', 'both'] as const).map((type) =>
-          grouped[type].length > 0 ? (
-            <div key={type} style={cardStyle}>
-              {/* Section header */}
-              <div style={{
-                padding: '12px 20px',
-                borderBottom: '1px solid var(--color-border)',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  backgroundColor:
-                    type === 'income'  ? 'var(--color-income)'  :
-                    type === 'expense' ? 'var(--color-expense)' :
-                    'var(--color-accent)',
-                }} />
-                <h2 style={{
-                  fontSize: '0.78rem', fontWeight: 700,
-                  color: 'var(--color-text-primary)',
-                  textTransform: 'uppercase', letterSpacing: '0.07em',
-                }}>
-                  {TYPE_LABELS[type]}
-                </h2>
-                <span style={{
-                  fontSize: '0.68rem', fontWeight: 600,
-                  color: 'var(--color-text-muted)',
-                  backgroundColor: 'var(--color-elevated)',
-                  padding: '1px 7px', borderRadius: 999,
-                }}>
-                  {grouped[type].length}
-                </span>
-              </div>
-
-              {/* Category rows */}
-              {grouped[type].map((cat, idx) => (
-                <div
-                  key={cat._id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 20px',
-                    borderTop: idx > 0 ? '1px solid var(--color-border)' : 'none',
-                    transition: 'background-color 0.1s',
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--color-elevated)' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent' }}
-                >
-                  <div style={{
-                    width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-                    backgroundColor: cat.color,
-                  }} />
-                  <Tag style={{ width: 14, height: 14, color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: '0.88rem', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                    {cat.name}
-                  </span>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button
-                      onClick={() => openEdit(cat)}
-                      aria-label={t('common.edit')}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 30, height: 30, borderRadius: 8,
-                        border: 'none', backgroundColor: 'transparent',
-                        color: 'var(--color-text-muted)', cursor: 'pointer',
-                        transition: 'all 0.12s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--color-sage)'
-                        e.currentTarget.style.color = 'var(--color-accent)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                        e.currentTarget.style.color = 'var(--color-text-muted)'
-                      }}
-                    >
-                      <Pencil style={{ width: 13, height: 13 }} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cat)}
-                      disabled={deletingId === cat._id}
-                      aria-label={t('common.delete')}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 30, height: 30, borderRadius: 8,
-                        border: 'none', backgroundColor: 'transparent',
-                        color: 'var(--color-text-muted)', cursor: 'pointer',
-                        transition: 'all 0.12s',
-                        opacity: deletingId === cat._id ? 0.4 : 1,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--color-expense-bg)'
-                        e.currentTarget.style.color = 'var(--color-expense)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                        e.currentTarget.style.color = 'var(--color-text-muted)'
-                      }}
-                    >
-                      <Trash2 style={{ width: 13, height: 13 }} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+      {/* ── Selection: floating bar (desktop) / bottom sheet (mobile) ────────── */}
+      {selected && (
+        <>
+          <div role="region" aria-label={selected.name} className={styles.bar}>
+            <Dot color={selected.color} size={10} />
+            <div className={styles.barInfo}>
+              <span className={styles.barName}>{selected.name}</span>
+              <span className={styles.barType}>{TYPE_LABELS[selected.type]}</span>
             </div>
-          ) : null
-        )
-      )}
+            <Button variant="secondary" size="sm" onClick={() => openEdit(selected)}>
+              {t('common.edit')}
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={deletingId === selected._id}
+              onClick={() => handleDelete(selected)}
+            >
+              {t('common.delete')}
+            </Button>
+            <button
+              type="button"
+              aria-label={t('common.close')}
+              onClick={clearSelection}
+              className={`${styles.iconButton} ${styles.barClose}`}
+            >
+              <X style={{ width: 15, height: 15 }} />
+            </button>
+          </div>
 
-      {/* ── Empty state ──────────────────────────────────────────────────────── */}
-      {!loading && categories.length === 0 && (
-        <div style={{
-          ...cardStyle,
-          padding: '48px 24px',
-          textAlign: 'center',
-        }}>
-          <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)' }}>
-            {t('cat.noCategories')}
-          </p>
-        </div>
-      )}
-
-      {/* ── No search results ────────────────────────────────────────────────── */}
-      {!loading && categories.length > 0 && filtered.length === 0 && searchQuery && (
-        <div style={{
-          ...cardStyle,
-          padding: '40px 24px',
-          textAlign: 'center',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        }}>
-          <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)' }}>
-            {t('cat.noResults')} &ldquo;{searchQuery}&rdquo;
-          </p>
-          <button
-            onClick={() => setSearchQuery('')}
-            style={{
-              fontSize: '0.78rem', fontWeight: 600,
-              color: 'var(--color-accent)',
-              background: 'none', border: 'none', cursor: 'pointer',
-              textDecoration: 'underline',
-            }}
-          >
-            {t('cat.clearSearch')}
-          </button>
-        </div>
+          <div aria-hidden className={styles.backdrop} onClick={clearSelection} />
+          <div role="dialog" aria-label={selected.name} className={styles.sheet}>
+            <div aria-hidden className={styles.handle} />
+            <div className={styles.sheetInfo}>
+              {/* ~14% alpha tint of the category colour (category colours are #rrggbb) */}
+              <div aria-hidden className={styles.sheetTile} style={{ backgroundColor: `${selected.color}24` }}>
+                <Dot color={selected.color} size={14} />
+              </div>
+              <div className={styles.sheetText}>
+                <span className={styles.sheetName}>{selected.name}</span>
+                <span className={styles.sheetType}>{TYPE_LABELS[selected.type]}</span>
+              </div>
+              <button
+                type="button"
+                aria-label={t('common.close')}
+                onClick={clearSelection}
+                className={`${styles.iconButton} ${styles.sheetClose}`}
+              >
+                <X style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
+            <div className={styles.sheetActions}>
+              <Button
+                variant="danger"
+                className={styles.sheetButton}
+                loading={deletingId === selected._id}
+                onClick={() => handleDelete(selected)}
+              >
+                {t('common.delete')}
+              </Button>
+              <Button
+                className={styles.sheetButton}
+                onClick={() => {
+                  // Close the sheet so it isn't left sitting under the modal
+                  clearSelection()
+                  openEdit(selected)
+                }}
+              >
+                {t('common.edit')}
+              </Button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* ── Add / Edit modal ─────────────────────────────────────────────────── */}
