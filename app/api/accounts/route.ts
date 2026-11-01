@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { badRequest, cleanText, isHexColor, isOptionalText, readJsonBody } from '@/lib/request'
+import { badRequest, cleanText, isHexColor, readJsonBody, readOptionalText } from '@/lib/request'
+import { readAmount, readBalance, readNonNegativeAmount } from '@/lib/money'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
@@ -8,7 +9,7 @@ import { FREE_ACCOUNT_LIMIT } from '@/lib/constants'
 import { ACCOUNT_TYPES, type IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
 import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
-import { getAccountLedger, computeAssetBalance, computeOutstanding } from '@/lib/services/accountBalance'
+import { getAccountLedger, computeAssetBalance, computeAvailableCredit, computeOutstanding } from '@/lib/services/accountBalance'
 import {
   adjustmentPattern, statementCheckDue, verificationProbes, verificationStatus, verifiedDaysAgo,
 } from '@/lib/services/verification'
@@ -47,7 +48,7 @@ export async function GET() {
       return {
         ...account,
         outstandingBalance,
-        availableCredit: account.creditLimit != null ? account.creditLimit - outstandingBalance : null,
+        availableCredit: computeAvailableCredit(account.creditLimit, outstandingBalance),
         ...checks,
       }
     }
@@ -74,18 +75,19 @@ export async function POST(req: NextRequest) {
   }
   const accountName = cleanText(name, 100)
   if (!accountName) return badRequest('name must be 1-100 characters')
-  if (!isOptionalText(institution, 100)) return badRequest('institution must be up to 100 characters')
+  const accountInstitution = readOptionalText(institution, 100)
+  if (accountInstitution === null) return badRequest('institution must be up to 100 characters')
   if (color != null && !isHexColor(color)) return badRequest('color must be a hex colour like #3b82f6')
-  if (!isOptionalText(icon, 50)) return badRequest('icon must be up to 50 characters')
+  const accountIcon = readOptionalText(icon, 50)
+  if (accountIcon === null) return badRequest('icon must be up to 50 characters')
   if (!ACCOUNT_TYPES.includes(type)) {
     return NextResponse.json({ error: `type must be one of: ${ACCOUNT_TYPES.join(', ')}` }, { status: 400 })
   }
   if (currency !== undefined && currency !== null && !isCurrencyCode(currency)) {
     return NextResponse.json({ error: INVALID_CURRENCY_MESSAGE }, { status: 400 })
   }
-  if (openingBalance !== undefined && (typeof openingBalance !== 'number' || !isFinite(openingBalance))) {
-    return NextResponse.json({ error: 'openingBalance must be a number' }, { status: 400 })
-  }
+  const opening = openingBalance === undefined || openingBalance === null ? 0 : readBalance(openingBalance)
+  if (opening === null) return badRequest('openingBalance must be a number up to 1,000,000,000,000')
   // The day the opening balance is true on. Defaults to today: what the bank shows now
   // already includes everything before, so older entries mustn't count twice.
   let openingBalanceDate = new Date()
@@ -94,13 +96,17 @@ export async function POST(req: NextRequest) {
     if ('error' in checked) return badRequest(checked.error)
     if (checked.date) openingBalanceDate = checked.date
   }
+  let threshold: number | null = null
   if (lowBalanceThreshold !== undefined && lowBalanceThreshold !== null) {
-    if (typeof lowBalanceThreshold !== 'number' || !isFinite(lowBalanceThreshold) || lowBalanceThreshold < 0) {
+    threshold = readNonNegativeAmount(lowBalanceThreshold)
+    if (threshold === null) {
       return NextResponse.json({ error: 'lowBalanceThreshold must be a non-negative number or null' }, { status: 400 })
     }
   }
+  let limit: number | null = null
   if (type === 'credit' && creditLimit !== undefined && creditLimit !== null) {
-    if (typeof creditLimit !== 'number' || !isFinite(creditLimit) || creditLimit <= 0) {
+    limit = readAmount(creditLimit)
+    if (limit === null) {
       return NextResponse.json({ error: 'creditLimit must be a positive number' }, { status: 400 })
     }
   }
@@ -139,22 +145,22 @@ export async function POST(req: NextRequest) {
   const result = await db.collection<IAccount>('accounts').insertOne({
     userId: session.user.id,
     name: accountName,
-    institution: institution || undefined,
+    institution: accountInstitution || undefined,
     type,
-    openingBalance: openingBalance ?? 0,
+    openingBalance: opening,
     openingBalanceDate,
     // Adding the account counts as a check: the opening balance is what the bank showed
     lastVerifiedAt: now,
     lastVerifiedBalance: null,
     lastVerifiedDate: null,
     currency: currency ?? primaryCurrencyOf(user),
-    creditLimit: type === 'credit' ? (creditLimit ?? null) : null,
+    creditLimit: type === 'credit' ? limit : null,
     dueDay: type === 'credit' ? (dueDay ?? null) : null,
     statementDay: type === 'credit' ? (statementDay ?? null) : null,
     // Low-balance alerts only make sense for asset accounts; credit uses utilization instead.
-    lowBalanceThreshold: type === 'credit' ? null : (lowBalanceThreshold ?? null),
+    lowBalanceThreshold: type === 'credit' ? null : threshold,
     color: color ?? null,
-    icon: icon ?? null,
+    icon: accountIcon || null,
     displayOrder: 0,
     isArchived: false,
     includeInTotal: includeInTotal !== false,

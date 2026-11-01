@@ -12,6 +12,7 @@ import { getAllCurrencies, CurrencyCode } from '@/lib/currency'
 import { Field, FormModalLayout, Segmented, type SegmentOption } from '@/components/forms/FormParts'
 import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_KEYS } from '@/components/forms/accountTypes'
 import formStyles from '@/components/forms/forms.module.css'
+import { isBlankText } from '@/lib/text'
 
 interface AccountFormProps {
   account?: Account
@@ -51,7 +52,7 @@ export default function AccountForm({ account, onSuccess, onCancel, onCapHit }: 
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.name.trim()) e.name = t('accountForm.errName')
+    if (isBlankText(form.name)) e.name = t('accountForm.errName')
     if (form.openingBalance !== '' && isNaN(Number(form.openingBalance)))
       e.openingBalance = t('accountForm.errAmount')
     if (form.type === 'credit' && form.creditLimit && (isNaN(Number(form.creditLimit)) || Number(form.creditLimit) <= 0))

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
+import { readYear } from '@/lib/queryParams'
 import { isPremium, historyWindowStart } from '@/lib/tier'
 import { MONTH_LABELS } from '@/lib/constants'
 import type { ITransaction } from '@/lib/models/Transaction'
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const now = new Date()
-  const year = parseInt(searchParams.get('year') ?? String(now.getFullYear()))
+  const year = readYear(searchParams, now)
 
   const db = await getDb()
 
@@ -60,33 +61,32 @@ export async function GET(req: NextRequest) {
     },
   ]).toArray()
 
-  // Build a map: category -> month index (0-based) -> total
-  const categoryMonthMap: Record<string, number[]> = {}
-  const categoryAnnualTotal: Record<string, number> = {}
+  // Build a map: category -> month index (0-based) -> total. Maps, not objects: a category
+  // named "__proto__" or "constructor" would hit the object's built-in properties.
+  const categoryMonthMap = new Map<string, number[]>()
+  const categoryAnnualTotal = new Map<string, number>()
 
   for (const row of rows) {
     const cat   = row._id.category as string
     const month = (row._id.month as number) - 1  // convert to 0-based
     const total = row.total as number
 
-    if (!categoryMonthMap[cat]) {
-      categoryMonthMap[cat] = new Array(12).fill(0)
-    }
-    categoryMonthMap[cat][month] = total
-    categoryAnnualTotal[cat] = (categoryAnnualTotal[cat] ?? 0) + total
+    const months = categoryMonthMap.get(cat) ?? new Array(12).fill(0)
+    months[month] = total
+    categoryMonthMap.set(cat, months)
+    categoryAnnualTotal.set(cat, (categoryAnnualTotal.get(cat) ?? 0) + total)
   }
 
   // Skip categories with zero activity
-  const activeCategories = Object.keys(categoryMonthMap).filter(
-    (cat) => (categoryAnnualTotal[cat] ?? 0) > 0
-  )
+  const annual = (cat: string) => categoryAnnualTotal.get(cat) ?? 0
+  const activeCategories = [...categoryMonthMap.keys()].filter((cat) => annual(cat) > 0)
 
   if (activeCategories.length === 0) {
     return NextResponse.json({ months: MONTH_LABELS, categories: [], restricted: !userIsPremium })
   }
 
   // Sort by annual total desc - show all active categories, no cap
-  const sorted = activeCategories.sort((a, b) => (categoryAnnualTotal[b] ?? 0) - (categoryAnnualTotal[a] ?? 0))
+  const sorted = activeCategories.sort((a, b) => annual(b) - annual(a))
 
   // Fetch stored colors from the categories collection for all active categories
   const categoryDocs = await db.collection<ICategory>('categories')
@@ -94,15 +94,15 @@ export async function GET(req: NextRequest) {
     .project({ name: 1, color: 1 })
     .toArray()
 
-  const colorMap: Record<string, string> = {}
+  const colorMap = new Map<string, string>()
   for (const doc of categoryDocs) {
-    if (doc.color) colorMap[doc.name] = doc.color
+    if (doc.color) colorMap.set(doc.name, doc.color)
   }
 
   const result = sorted.map((cat, i) => ({
     name:  cat,
-    color: colorMap[cat] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
-    data:  categoryMonthMap[cat],
+    color: colorMap.get(cat) ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+    data:  categoryMonthMap.get(cat)!,
   }))
 
   return NextResponse.json({

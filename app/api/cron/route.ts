@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
   }
 
   const jobNames = override ? [override] : dueJobs(new Date())
-  const invalid = jobNames.filter((name) => !JOBS[name])
+  // Own keys only: "constructor" or "toString" would otherwise find a built-in
+  const invalid = jobNames.filter((name) => !Object.hasOwn(JOBS, name))
   if (invalid.length > 0) {
     return NextResponse.json({ error: `Unknown job(s): ${invalid.join(', ')}` }, { status: 400 })
   }

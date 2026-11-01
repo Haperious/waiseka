@@ -4,6 +4,7 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
 import { getCategoryUsage } from '@/lib/services/categoryUsage'
+import { MAX_CATEGORY_NAME, dropDuplicateCategories, findCategoryNamed } from '@/lib/services/categoryNames'
 
 export async function GET() {
   const session = await requireVerifiedSession()
@@ -32,6 +33,10 @@ export async function GET() {
       ...doc,
       _id: result.insertedIds[i],
     } as ICategory)).sort((a, b) => a.name.localeCompare(b.name))
+    // Another request may have seeded at the same moment
+    categories = await dropDuplicateCategories(db, await col.find({ userId: session.user.id }).sort({ name: 1 }).toArray())
+  } else {
+    categories = await dropDuplicateCategories(db, categories)
   }
 
   // usageCount drives the "most used" order of category chips in the add-transaction forms
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
   const body = await readJsonBody(req)
   if (body instanceof NextResponse) return body
   const { type, color } = body
-  const name = cleanText(body.name, 50)
+  const name = cleanText(body.name, MAX_CATEGORY_NAME)
 
   if (!name) return NextResponse.json({ error: 'Name is required (up to 50 characters)' }, { status: 400 })
   if (color != null && !isHexColor(color)) return badRequest('color must be a hex colour like #3b82f6')
@@ -56,7 +61,7 @@ export async function POST(req: NextRequest) {
   const db = await getDb()
   const col = db.collection<ICategory>('categories')
 
-  const existing = await col.findOne({ userId: session.user.id, name })
+  const existing = await findCategoryNamed(db, session.user.id, name)
   if (existing) return NextResponse.json({ error: 'Category already exists' }, { status: 409 })
 
   const now = new Date()

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { badRequest, cleanText, isHexColor, isPositiveAmount, readJsonBody } from '@/lib/request'
+import { badRequest, cleanText, isHexColor, readJsonBody } from '@/lib/request'
+import { readAmount } from '@/lib/money'
+import { readMonthYear } from '@/lib/queryParams'
+import { findDuplicateBudget } from '@/lib/services/budgetSpending'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
@@ -25,8 +28,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const now = new Date()
-  const month = parseInt(searchParams.get('month') ?? String(now.getUTCMonth() + 1))
-  const year = parseInt(searchParams.get('year') ?? String(now.getUTCFullYear()))
+  const { month, year } = readMonthYear(searchParams, now)
 
   const monthStart = new Date(Date.UTC(year, month - 1, 1))
   const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
@@ -70,7 +72,8 @@ export async function POST(req: NextRequest) {
   }
   const budgetCategory = cleanText(category, 100)
   if (!budgetCategory) return badRequest('category must be 1-100 characters')
-  if (!isPositiveAmount(limit)) return badRequest('limit must be a positive number')
+  const budgetLimit = readAmount(limit)
+  if (budgetLimit === null) return badRequest('limit must be a positive number up to 1,000,000,000,000')
   if (period !== undefined && period !== 'monthly' && period !== 'weekly') return badRequest('period must be monthly or weekly')
   if (color != null && !isHexColor(color)) return badRequest('color must be a hex colour like #3b82f6')
   if (currency !== undefined && !isCurrencyCode(currency)) {
@@ -85,25 +88,32 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const userIsPremium = isPremium(user)
-  const budgetLimit = userIsPremium ? PREMIUM_BUDGET_LIMIT : FREE_BUDGET_LIMIT
+  const maxBudgets = userIsPremium ? PREMIUM_BUDGET_LIMIT : FREE_BUDGET_LIMIT
   const existingCount = await db.collection<IBudget>('budgets').countDocuments({ userId: session.user.id })
-  if (existingCount >= budgetLimit) {
+  if (existingCount >= maxBudgets) {
     return NextResponse.json(
       {
         error: userIsPremium
-          ? `Premium plan is limited to ${budgetLimit} budgets.`
-          : `Free plan is limited to ${budgetLimit} budgets. Upgrade to Premium to add more.`,
+          ? `Premium plan is limited to ${maxBudgets} budgets.`
+          : `Free plan is limited to ${maxBudgets} budgets. Upgrade to Premium to add more.`,
       },
       { status: 403 }
     )
   }
 
+  // Two budgets on one category would count the same spending twice
+  const budgetPeriod = period ?? 'monthly'
+  const budgetCurrency = currency ?? primaryCurrencyOf(user)
+  if (await findDuplicateBudget(db, session.user.id, budgetCategory, budgetPeriod, budgetCurrency, primaryCurrencyOf(user))) {
+    return NextResponse.json({ error: 'You already have a budget for this category.' }, { status: 409 })
+  }
+
   const result = await db.collection<IBudget>('budgets').insertOne({
     userId: session.user.id,
     category: budgetCategory,
-    limit,
-    period: period ?? 'monthly',
-    currency: currency ?? primaryCurrencyOf(user),
+    limit: budgetLimit,
+    period: budgetPeriod,
+    currency: budgetCurrency,
     spent: 0,
     color,
     createdAt: now,

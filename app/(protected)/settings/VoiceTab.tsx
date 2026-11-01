@@ -12,6 +12,7 @@ import { useVoiceKeywords, VoiceKeyword } from '@/hooks/useVoiceKeywords'
 import { useCategories } from '@/hooks/useCategories'
 import type { SettingsTabProps } from './shared'
 import styles from './settings.module.css'
+import { cleanUserText } from '@/lib/text'
 
 const VOICE_TYPE_OPTIONS = [
   { value: 'any', label: 'Any type' },
@@ -67,7 +68,7 @@ export default function VoiceTab({ hidden }: SettingsTabProps) {
   }
 
   const handleVoiceSave = () => {
-    const trimmed = voiceForm.keyword.trim()
+    const trimmed = cleanUserText(voiceForm.keyword)
     if (!trimmed) { setVoiceFormError('Enter a keyword phrase'); return }
     if (!voiceForm.category) { setVoiceFormError('Select a category'); return }
     if (editingVoiceKeyword && editingVoiceKeyword !== trimmed.toLowerCase()) {

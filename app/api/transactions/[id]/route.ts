@@ -22,12 +22,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // Whitelist editable fields - never allow userId, _id, or other system fields to be overwritten
   const update: Partial<ITransaction> & { updatedAt: Date } = { updatedAt: new Date() }
-  if (body.amount !== undefined) {
-    if (typeof body.amount !== 'number' || !isFinite(body.amount) || body.amount <= 0) {
-      return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
-    }
-    update.amount = body.amount
-  }
   const checked = readTransactionFields(body)
   if ('error' in checked) return NextResponse.json({ error: checked.error }, { status: 400 })
   // tags stay as they are - the edit forms don't send them
@@ -53,10 +47,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (body.accountId !== undefined) {
     let account: IAccount | null = null
+    const existing = await db.collection<ITransaction>('transactions').findOne(
+      { _id, userId: session.user.id },
+      { projection: { type: 1, accountId: 1 } }
+    )
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    // A transfer's accounts live in fromAccountId/toAccountId; an accountId on one would
+    // make it show up under an account it never touched
+    if (existing.type === 'transfer') {
+      return NextResponse.json({ error: "A transfer's accounts can't be changed. Delete it and record it again." }, { status: 400 })
+    }
     if (body.accountId === null) {
       update.accountId = null
     } else {
-      if (!ObjectId.isValid(body.accountId)) {
+      if (typeof body.accountId !== 'string' || !ObjectId.isValid(body.accountId)) {
         return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
       }
       account = await db.collection<IAccount>('accounts').findOne({
@@ -64,16 +68,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         userId: session.user.id,
       })
       if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
-      update.accountId = new ObjectId(body.accountId)
+      // Editing an entry that already sits on an archived account is fine; moving one onto it isn't
+      if (account.isArchived && !existing.accountId?.equals(account._id)) {
+        return NextResponse.json({ error: 'Cannot move an entry to an archived account' }, { status: 409 })
+      }
+      update.accountId = account._id
     }
 
     // Moving a transaction to another account moves it to that account's currency.
-    // Transfers carry their currency from fromAccountId and are left alone.
-    const existing = await db.collection<ITransaction>('transactions').findOne(
-      { _id, userId: session.user.id },
-      { projection: { type: 1 } }
-    )
-    if (existing && existing.type !== 'transfer') {
+    if (existing.type !== 'adjustment') {
       const user = await db.collection<IUser>('users').findOne(
         { _id: new ObjectId(session.user.id) },
         { projection: { preferences: 1 } }
@@ -84,7 +87,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const transaction = await db.collection<ITransaction>('transactions').findOneAndUpdate(
     // Transfers can't become a regular entry here (or the reverse); they're edited by delete + re-create.
     // Adjustments are never edited here - PUT /api/adjustments/[id] re-works their difference.
-    update.type
+    // A transfer's category is always "Transfer" (it's how lists and reports name it)
+    update.type || update.category
       ? { _id, userId: session.user.id, type: { $nin: ['transfer', 'adjustment'] as ITransaction['type'][] } }
       : { _id, userId: session.user.id, type: { $ne: 'adjustment' as const } },
     { $set: update },

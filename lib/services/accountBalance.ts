@@ -1,3 +1,4 @@
+import { roundMoney } from '@/lib/money'
 import { Db, ObjectId } from 'mongodb'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IAccount } from '@/lib/models/Account'
@@ -94,7 +95,6 @@ export interface AccountLedger {
   checkpointDeltas: { accountId: string; day: string; delta: number }[]
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100
 
 /** How one kind of activity moves the account's figure (balance, or amount owed for cards). */
 function figureSign(isCredit: boolean, kind: ActivityKind): number {
@@ -212,7 +212,7 @@ export function buildLedger(
     for (const { day, at, cp } of events) {
       walkTo(day, at)
       if (!cp) {
-        probeFigures.set(accountId, round2(running))
+        probeFigures.set(accountId, roundMoney(running))
         continue
       }
       if (floor && day < floor) {
@@ -222,7 +222,7 @@ export function buildLedger(
 
       let delta: number
       if (account && cp.adjustmentTarget != null) {
-        delta = round2(cp.adjustmentTarget - running)
+        delta = roundMoney(cp.adjustmentTarget - running)
         running = cp.adjustmentTarget
       } else {
         // Unknown account or an old row without a target: keep its saved difference
@@ -236,7 +236,7 @@ export function buildLedger(
 
     if (list.length > 0) {
       const entry = activity.get(accountId) ?? emptyActivity()
-      entry.adjustment = round2(sum)
+      entry.adjustment = roundMoney(sum)
       activity.set(accountId, entry)
     }
   }
@@ -363,29 +363,30 @@ export async function getAccountActivityMap(
  *   availableCredit = creditLimit - outstanding (null if no creditLimit set)
  */
 export function computeAssetBalance(openingBalance: number, activity: AccountActivity | undefined): number {
-  if (!activity) return openingBalance
-  return openingBalance
+  if (!activity) return roundMoney(openingBalance ?? 0)
+  // Rounded: float sums leave crumbs like -0.0000000000000001, which showed as "-₱0.00"
+  return roundMoney(openingBalance
     + activity.income
     - activity.expense
     - activity.savings
     + activity.transferIn
     - activity.transferOut
-    + (activity.adjustment ?? 0)
+    + (activity.adjustment ?? 0))
 }
 
 export function computeOutstanding(openingBalance: number, activity: AccountActivity | undefined): number {
-  if (!activity) return openingBalance
-  return openingBalance
+  if (!activity) return roundMoney(openingBalance ?? 0)
+  return roundMoney(openingBalance
     + activity.expense
     - activity.income
     - activity.savings
     - activity.transferIn
     + activity.transferOut
-    + (activity.adjustment ?? 0)
+    + (activity.adjustment ?? 0))
 }
 
 export function computeAvailableCredit(creditLimit: number | null | undefined, outstanding: number): number | null {
-  return creditLimit != null ? creditLimit - outstanding : null
+  return creditLimit != null ? roundMoney(creditLimit - outstanding) : null
 }
 
 function daysInMonth(year: number, monthIndex0: number): number {

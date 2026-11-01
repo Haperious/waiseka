@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { badRequest, cleanText, parseDateField, readJsonBody } from "@/lib/request"
+import { badRequest, cleanText, readJsonBody } from "@/lib/request"
+import { MAX_AMOUNT, readAmount, readNonNegativeAmount, roundMoney } from "@/lib/money"
+import { parseDateInput } from "@/lib/transactionInput"
+import { isPremium } from "@/lib/tier"
+import { FREE_GOAL_LIMIT } from "@/lib/constants"
 import { ObjectId, type Db } from "mongodb"
 import { requireVerifiedSession } from "@/lib/auth-helpers"
 import { getDb } from "@/lib/mongodb"
@@ -31,19 +35,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     update.title = title
   }
   if (body.targetAmount !== undefined) {
-    if (typeof body.targetAmount !== "number" || !isFinite(body.targetAmount) || body.targetAmount <= 0) {
-      return NextResponse.json({ error: "targetAmount must be a positive number" }, { status: 400 })
+    const target = readAmount(body.targetAmount)
+    if (target === null) {
+      return NextResponse.json({ error: "targetAmount must be a positive number up to 1,000,000,000,000" }, { status: 400 })
     }
-    update.targetAmount = body.targetAmount
+    update.targetAmount = target
   }
   if (body.savedAmount !== undefined) {
-    if (typeof body.savedAmount !== "number" || !isFinite(body.savedAmount) || body.savedAmount < 0) {
-      return NextResponse.json({ error: "savedAmount must be a non-negative number" }, { status: 400 })
+    const saved = readNonNegativeAmount(body.savedAmount)
+    if (saved === null) {
+      return NextResponse.json({ error: "savedAmount must be a non-negative number up to 1,000,000,000,000" }, { status: 400 })
     }
-    update.savedAmount = body.savedAmount
+    update.savedAmount = saved
   }
   if (body.deadline !== undefined) {
-    const deadline = parseDateField(body.deadline)
+    const deadline = parseDateInput(body.deadline)
     if (!deadline) return badRequest("deadline must be a valid date")
     update.deadline = deadline
   }
@@ -75,19 +81,38 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   })
   if (!beforeGoal) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
+  // Re-opening a paused or finished goal counts against the free plan's active-goal limit,
+  // like adding one - otherwise pausing, adding and un-pausing got past it
+  if (update.status === "active" && beforeGoal.status !== "active") {
+    const user = await db.collection<IUser>("users").findOne({ _id: new ObjectId(session.user.id) })
+    if (user && !isPremium(user)) {
+      const active = await db.collection<IGoal>("goals").countDocuments({ userId: session.user.id, status: "active" })
+      if (active >= FREE_GOAL_LIMIT) {
+        return NextResponse.json(
+          { error: `Free plan is limited to ${FREE_GOAL_LIMIT} active goals. Pause or finish another one, or upgrade to Premium.` },
+          { status: 403 },
+        )
+      }
+    }
+  }
+
   // addAmount: atomic server-side increment - avoids client-side race conditions
   if (body.addAmount !== undefined) {
-    if (typeof body.addAmount !== "number" || !isFinite(body.addAmount) || body.addAmount <= 0) {
-      return NextResponse.json({ error: "addAmount must be a positive number" }, { status: 400 })
+    const addAmount = readAmount(body.addAmount)
+    if (addAmount === null) {
+      return NextResponse.json({ error: "addAmount must be a positive number up to 1,000,000,000,000" }, { status: 400 })
     }
 
-    const newSaved = beforeGoal.savedAmount + body.addAmount
+    const newSaved = roundMoney(beforeGoal.savedAmount + addAmount)
+    if (newSaved > MAX_AMOUNT) {
+      return NextResponse.json({ error: "That would take the saved amount past 1,000,000,000,000" }, { status: 400 })
+    }
     const autoComplete = newSaved >= beforeGoal.targetAmount
 
     const goal = await db.collection<IGoal>("goals").findOneAndUpdate(
       { _id, userId: session.user.id },
       {
-        $inc: { savedAmount: body.addAmount },
+        $inc: { savedAmount: addAmount },
         $set: {
           ...(autoComplete ? { status: "completed" } : {}),
           updatedAt: new Date(),

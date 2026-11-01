@@ -12,6 +12,7 @@ import PasswordInput from '@/components/ui/PasswordInput'
 import { useToast } from '@/components/ui/Toast'
 import { LEGAL_DOCUMENT_PATHS } from '@/lib/legal/legalDocuments'
 import { isLegalPagesPublic } from '@/lib/legal/visibility'
+import { isBlankText } from '@/lib/text'
 
 interface FieldErrors {
   name?: string
@@ -32,7 +33,7 @@ export default function RegisterPage() {
 
   const validate = (): boolean => {
     const e: FieldErrors = {}
-    if (!form.name.trim()) e.name = 'Name is required'
+    if (isBlankText(form.name)) e.name = 'Name is required'
     if (!form.email.trim()) e.email = 'Email is required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email format'
     if (!form.password) e.password = 'Password is required'

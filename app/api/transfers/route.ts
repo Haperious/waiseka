@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readJsonBody } from '@/lib/request'
+import { readJsonBody, readOptionalText } from '@/lib/request'
+import { readAmount } from '@/lib/money'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IAccount } from '@/lib/models/Account'
 import type { IUser } from '@/lib/models/User'
-import { MAX_DESCRIPTION_LENGTH, parseDateInput } from '@/lib/transactionInput'
+import { MAX_DESCRIPTION_LENGTH, MAX_ENTRY_DAYS_AHEAD, isTooFarAhead, parseDateInput } from '@/lib/transactionInput'
 import { historyWindowStart, isPremium } from '@/lib/tier'
 import { getAccountActivityMap, computeOutstanding } from '@/lib/services/accountBalance'
 import { isBeforeOpeningDate } from '@/lib/services/balanceAdjustment'
@@ -34,29 +35,36 @@ export async function POST(req: NextRequest) {
 
   const body = await readJsonBody(req)
   if (body instanceof NextResponse) return body
-  const { fromAccountId, toAccountId, amount, description, date } = body
+  const { fromAccountId, toAccountId, date } = body
 
   if (!fromAccountId || !toAccountId) {
     return NextResponse.json({ error: 'Both fromAccountId and toAccountId are required' }, { status: 400 })
   }
-  if (!ObjectId.isValid(fromAccountId) || !ObjectId.isValid(toAccountId)) {
+  if (typeof fromAccountId !== 'string' || typeof toAccountId !== 'string'
+    || !ObjectId.isValid(fromAccountId) || !ObjectId.isValid(toAccountId)) {
     return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
   }
-  if (fromAccountId === toAccountId) {
+  const fromId = new ObjectId(fromAccountId)
+  const toId = new ObjectId(toAccountId)
+  if (fromId.equals(toId)) {
     return NextResponse.json({ error: 'Cannot transfer to the same account' }, { status: 400 })
   }
-  if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
-    return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
+  const amount = readAmount(body.amount)
+  if (amount === null) {
+    return NextResponse.json({ error: 'amount must be a positive number up to 1,000,000,000,000' }, { status: 400 })
   }
   // An unreadable date used to be saved as Invalid Date, which drops out of every balance
   let transferDate = new Date()
   if (date !== undefined && date !== null && date !== '') {
     const parsed = parseDateInput(date)
     if (!parsed) return NextResponse.json({ error: 'date must be a valid date' }, { status: 400 })
+    if (isTooFarAhead(parsed, MAX_ENTRY_DAYS_AHEAD)) {
+      return NextResponse.json({ error: 'date can be at most a year ahead' }, { status: 400 })
+    }
     transferDate = parsed
   }
-  if (description !== undefined && description !== null
-    && (typeof description !== 'string' || description.length > MAX_DESCRIPTION_LENGTH)) {
+  const description = readOptionalText(body.description, MAX_DESCRIPTION_LENGTH)
+  if (description === null) {
     return NextResponse.json({ error: `description must be text up to ${MAX_DESCRIPTION_LENGTH} characters` }, { status: 400 })
   }
 
@@ -76,12 +84,12 @@ export async function POST(req: NextRequest) {
 
   // Both accounts must belong to the caller - never trust client-supplied ids
   const accounts = await db.collection<IAccount>('accounts').find({
-    _id: { $in: [new ObjectId(fromAccountId), new ObjectId(toAccountId)] },
+    _id: { $in: [fromId, toId] },
     userId: session.user.id,
   }).toArray()
 
-  const fromAccount = accounts.find((a) => a._id.toString() === fromAccountId)
-  const toAccount = accounts.find((a) => a._id.toString() === toAccountId)
+  const fromAccount = accounts.find((a) => a._id.equals(fromId))
+  const toAccount = accounts.find((a) => a._id.equals(toId))
   if (!fromAccount || !toAccount) {
     return NextResponse.json({ error: 'Account not found' }, { status: 404 })
   }
@@ -128,8 +136,8 @@ export async function POST(req: NextRequest) {
     tags: [],
     isRecurring: false,
     accountId: null,
-    fromAccountId: new ObjectId(fromAccountId),
-    toAccountId: new ObjectId(toAccountId),
+    fromAccountId: fromId,
+    toAccountId: toId,
     countsAsSavings,
     isArchived: false,
     createdAt: now,

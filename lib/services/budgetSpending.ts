@@ -1,4 +1,5 @@
-import type { Db } from 'mongodb'
+import type { Db, Filter, ObjectId } from 'mongodb'
+import type { IBudget } from '@/lib/models/Budget'
 import type { CurrencyCode } from '@/lib/currency'
 import type { ITransaction } from '@/lib/models/Transaction'
 
@@ -28,4 +29,26 @@ export async function getSpentByCurrencyAndCategory(
   const key = (currency: string, category: string) => `${currency}|${category}`
   const spent = new Map(rows.map((r) => [key(r._id.currency, r._id.category), r.total]))
   return (currency, category) => spent.get(key(currency, category)) ?? 0
+}
+
+/**
+ * Another budget on the same category, period and currency (budgets saved without a
+ * currency are in the primary), or null. `excludeId` leaves out the budget being edited.
+ */
+export async function findDuplicateBudget(
+  db: Db,
+  userId: string,
+  category: string,
+  period: IBudget['period'],
+  currency: CurrencyCode,
+  primary: CurrencyCode,
+  excludeId?: ObjectId,
+): Promise<IBudget | null> {
+  return db.collection<IBudget>('budgets').findOne({
+    userId,
+    category,
+    period,
+    ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+    $or: currency === primary ? [{ currency }, { currency: { $exists: false } }, { currency: null }] : [{ currency }],
+  } as Filter<IBudget>)
 }

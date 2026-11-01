@@ -501,7 +501,7 @@ function budgetLineFor(s: MonthlyReportSection): string {
 
 function monthlyReportBlocks(s: MonthlyReportSection, monthName: string): string[] {
   const categoryRows = s.topCategories.map((c, i) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td style="width:8px;padding-right:12px"><div style="width:8px;height:8px;border-radius:50%;background:${CATEGORY_DOT[c.name] ?? DOT_PALETTE[i % DOT_PALETTE.length]};font-size:0;line-height:0">&nbsp;</div></td>
+      <td style="width:8px;padding-right:12px"><div style="width:8px;height:8px;border-radius:50%;background:${(Object.hasOwn(CATEGORY_DOT, c.name) ? CATEGORY_DOT[c.name] : null) ?? DOT_PALETTE[i % DOT_PALETTE.length]};font-size:0;line-height:0">&nbsp;</div></td>
       <td style="font-family:${SANS};font-size:13px;font-weight:600;color:${C.text}">${esc(c.name)}</td>
       <td style="font-family:${SANS};width:110px;font-size:12px;color:${C.muted};white-space:nowrap;padding:0 12px">${c.txnCount} transaction${c.txnCount === 1 ? '' : 's'}</td>
       <td align="right" style="width:96px;font-family:${SANS};font-size:13px;font-weight:700;${TNUM};color:${C.expense};white-space:nowrap">${c.totalSpent}</td>

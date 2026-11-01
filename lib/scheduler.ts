@@ -24,8 +24,9 @@ const EMAIL_THRESHOLD: Record<string, number> = { daily: 1, weekly: 7, monthly: 
 
 type CategoryTotal = { _id: string; total: number; count?: number }
 
-function toTotalMap(rows: CategoryTotal[]): Record<string, number> {
-  return Object.fromEntries(rows.map((r) => [r._id, r.total]))
+/** Total per key. A Map, not an object: a category named "constructor" read Object's own function back. */
+function toTotalMap(rows: CategoryTotal[]): Map<string, number> {
+  return new Map(rows.map((r) => [r._id, r.total]))
 }
 
 // ─── AI Query Reset (daily midnight) ─────────────────────────────────────────
@@ -110,12 +111,12 @@ export async function sendBudgetReminders() {
 
         const spentMap = toTotalMap(agg?.spent ?? [])
         const totalIncome = agg?.income[0]?.total ?? 0
-        const totalSpent = Object.values(spentMap).reduce((a, b) => a + b, 0)
+        const totalSpent = [...spentMap.values()].reduce((a, b) => a + b, 0)
         const totalLimit = budgets.reduce((a, b) => a + b.limit, 0)
         const usedPercent = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
 
         const categories = budgets.map((b) => {
-          const spent = spentMap[b.category] ?? 0
+          const spent = spentMap.get(b.category) ?? 0
           const pct = b.limit > 0 ? Math.round((spent / b.limit) * 100) : 0
           return { name: b.category, usedPercent: pct, spent: fmt(spent, sym), limit: fmt(b.limit, sym) }
         }).sort((a, b) => b.usedPercent - a.usedPercent)
@@ -341,8 +342,8 @@ async function buildMonthlyReportSection(
   ]).toArray()
 
   const totals = toTotalMap(agg?.totals ?? [])
-  const totalIncome = totals.income ?? 0
-  const totalSpent = totals.expense ?? 0
+  const totalIncome = totals.get('income') ?? 0
+  const totalSpent = totals.get('expense') ?? 0
   const totalSaved = Math.max(0, totalIncome - totalSpent)
 
   if (totalIncome === 0 && totalSpent === 0) return null
@@ -353,12 +354,12 @@ async function buildMonthlyReportSection(
   // Use every category here, not just the top 5 - otherwise an over-budget category
   // outside the top 5 would be counted as on budget.
   const spentMap = toTotalMap(categories)
-  const categoriesOnBudget = budgets.filter((b) => (spentMap[b.category] ?? 0) <= b.limit).length
+  const categoriesOnBudget = budgets.filter((b) => (spentMap.get(b.category) ?? 0) <= b.limit).length
 
   // Build insight: compare top category vs previous month
   const topCat = topCategories[0]
   const prevSpentMap = toTotalMap(agg?.prevCategories ?? [])
-  const prevTopSpent = topCat ? (prevSpentMap[topCat._id] ?? 0) : 0
+  const prevTopSpent = topCat ? (prevSpentMap.get(topCat._id) ?? 0) : 0
   const currTopSpent = topCat?.total ?? 0
   const changePercent = prevTopSpent > 0
     ? Math.abs(Math.round(((currTopSpent - prevTopSpent) / prevTopSpent) * 100))

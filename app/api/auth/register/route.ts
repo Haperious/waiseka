@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readJsonBody } from '@/lib/request'
+import { cleanUserText } from '@/lib/text'
 import bcrypt from 'bcryptjs'
 import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/mongodb'
@@ -26,7 +27,8 @@ export async function POST(req: NextRequest) {
     const body = await readJsonBody(req)
     if (body instanceof NextResponse) return body
     const { password, confirmPassword } = body
-    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    // Same cleaning as a rename (/api/users/me): a name of invisible characters is no name
+    const name = typeof body.name === 'string' ? cleanUserText(body.name) : ''
     const email = typeof body.email === 'string' ? body.email.trim() : ''
 
     if (!name || !email || !password || !confirmPassword) {
@@ -95,7 +97,14 @@ export async function POST(req: NextRequest) {
       },
       createdAt: now,
       updatedAt: now,
+    }).catch((err: unknown) => {
+      // Another sign-up with this email won the race; the unique index on email refused this one
+      if ((err as { code?: number }).code === 11000) return null
+      throw err
     })
+    if (!result) {
+      return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
+    }
 
     const userId = result.insertedId.toString()
     await db.collection<ICategory>('categories').insertMany(

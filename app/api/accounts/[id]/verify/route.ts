@@ -31,9 +31,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: checked.error.replace('targetBalance', 'balance') }, { status: 400 })
   }
   const { targetBalance: balance, date } = checked.input as { targetBalance: number; date: Date }
-  if (date.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
-    return NextResponse.json({ error: "date can't be in the future" }, { status: 400 })
-  }
 
   const db = await getDb()
   const account = await db.collection<IAccount>('accounts').findOne({ _id, userId: session.user.id })

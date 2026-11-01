@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readJsonBody } from '@/lib/request'
+import { readJsonBody, readOptionalText } from '@/lib/request'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
@@ -13,17 +13,16 @@ export async function POST(req: NextRequest) {
   if (body instanceof NextResponse) return body
   const { rating, comment } = body
 
-  if (!rating || typeof rating !== 'number' || rating < 1 || rating > 5) {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     return NextResponse.json({ error: 'Rating must be a number between 1 and 5' }, { status: 400 })
   }
 
-  if (comment !== undefined && comment !== null) {
-    if (typeof comment !== 'string') {
-      return NextResponse.json({ error: 'Comment must be a string' }, { status: 400 })
-    }
-    if (comment.length > 500) {
-      return NextResponse.json({ error: 'Comment must be 500 characters or fewer' }, { status: 400 })
-    }
+  if (comment !== undefined && comment !== null && typeof comment !== 'string') {
+    return NextResponse.json({ error: 'Comment must be a string' }, { status: 400 })
+  }
+  const text = readOptionalText(comment, 500, { multiline: true })
+  if (text === null) {
+    return NextResponse.json({ error: 'Comment must be 500 characters or fewer' }, { status: 400 })
   }
 
   const db = await getDb()
@@ -34,7 +33,7 @@ export async function POST(req: NextRequest) {
   const survey: Omit<ISurvey, '_id'> = {
     userId: new ObjectId(session.user.id),
     rating: rating as 1 | 2 | 3 | 4 | 5,
-    ...(comment?.trim() ? { comment: comment.trim() } : {}),
+    ...(text ? { comment: text } : {}),
     createdAt: new Date(),
   }
 

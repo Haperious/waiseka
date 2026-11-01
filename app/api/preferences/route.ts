@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readJsonBody } from '@/lib/request'
+import { cleanText, readJsonBody } from '@/lib/request'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
@@ -152,12 +152,9 @@ export async function PUT(req: NextRequest) {
       voiceKeywords.some(
         (k) =>
           !k ||
-          typeof k.keyword !== 'string' ||
-          !k.keyword.trim() ||
-          k.keyword.length > 50 ||
-          typeof k.category !== 'string' ||
-          !k.category ||
-          k.category.length > 100 ||
+          typeof k !== 'object' ||
+          !cleanText(k.keyword, 50) ||
+          !cleanText(k.category, 100) ||
           (k.type !== undefined && !['income', 'expense', 'savings'].includes(k.type))
       )
     ) {
@@ -170,8 +167,8 @@ export async function PUT(req: NextRequest) {
       )
     }
     update['preferences.voiceKeywords'] = voiceKeywords.map((k) => ({
-      keyword: k.keyword.trim().toLowerCase(),
-      category: k.category,
+      keyword: cleanText(k.keyword, 50)!.toLowerCase(),
+      category: cleanText(k.category, 100)!,
       ...(k.type && { type: k.type }),
     }))
   }

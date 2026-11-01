@@ -1,4 +1,8 @@
-import { isEntryType, MAX_CATEGORY_LENGTH, MAX_DESCRIPTION_LENGTH, type EntryType } from '@/lib/transactionInput'
+import {
+  isEntryType, isTooFarAhead, MAX_CATEGORY_LENGTH, MAX_DESCRIPTION_LENGTH, MAX_ENTRY_DAYS_AHEAD, parseDateInput, type EntryType,
+} from '@/lib/transactionInput'
+import { readAmount } from '@/lib/money'
+import { cleanUserText } from '@/lib/text'
 
 /**
  * Validation for the rows /api/import/confirm receives. They come back from the review
@@ -26,21 +30,23 @@ export function sanitizeImportRow(raw: unknown, windowStart: Date, now: Date = n
   if (typeof raw !== 'object' || raw === null) return null
   const row = raw as Record<string, unknown>
 
-  const { amount } = row
-  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) return null
+  const amount = readAmount(row.amount)
+  if (amount === null) return null
 
   const type = row.type ?? 'expense'
   if (!isEntryType(type)) return null
 
   if (row.date !== undefined && row.date !== null && typeof row.date !== 'string') return null
-  const date = row.date ? new Date(row.date) : now
-  if (Number.isNaN(date.getTime()) || date < windowStart) return null
+  // Checked strictly (no Feb 30, no year 9999), but stored at the same moment as before,
+  // so re-importing a statement still matches the rows it saved last time
+  const checked = row.date ? parseDateInput(row.date) : now
+  if (!checked) return null
+  const date = row.date ? new Date((row.date as string).trim()) : now
+  if (date < windowStart || isTooFarAhead(date, MAX_ENTRY_DAYS_AHEAD, now)) return null
 
-  const category = typeof row.category === 'string' && row.category.trim()
-    ? row.category.trim().slice(0, MAX_CATEGORY_LENGTH)
-    : 'Others'
+  const category = (typeof row.category === 'string' && cleanUserText(row.category).slice(0, MAX_CATEGORY_LENGTH)) || 'Others'
   const description = typeof row.description === 'string'
-    ? row.description.slice(0, MAX_DESCRIPTION_LENGTH)
+    ? cleanUserText(row.description).slice(0, MAX_DESCRIPTION_LENGTH)
     : ''
 
   return {

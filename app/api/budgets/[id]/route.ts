@@ -4,7 +4,11 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { objectIdParam } from '@/lib/route-params'
 import type { IBudget } from '@/lib/models/Budget'
-import { INVALID_CURRENCY_MESSAGE, isCurrencyCode } from '@/lib/services/currencyScope'
+import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from '@/lib/services/currencyScope'
+import { readAmount } from '@/lib/money'
+import { findDuplicateBudget } from '@/lib/services/budgetSpending'
+import type { IUser } from '@/lib/models/User'
+import { ObjectId } from 'mongodb'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireVerifiedSession()
@@ -23,10 +27,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     update.category = category
   }
   if (body.limit !== undefined) {
-    if (typeof body.limit !== 'number' || !isFinite(body.limit) || body.limit <= 0) {
-      return NextResponse.json({ error: 'limit must be a positive number' }, { status: 400 })
+    const limit = readAmount(body.limit)
+    if (limit === null) {
+      return NextResponse.json({ error: 'limit must be a positive number up to 1,000,000,000,000' }, { status: 400 })
     }
-    update.limit = body.limit
+    update.limit = limit
   }
   if (body.period !== undefined) {
     if (!['monthly', 'weekly'].includes(body.period)) {
@@ -47,6 +52,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const db = await getDb()
+  if (update.category !== undefined || update.period !== undefined || update.currency !== undefined) {
+    const existing = await db.collection<IBudget>('budgets').findOne({ _id, userId: session.user.id })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const user = await db.collection<IUser>('users').findOne({ _id: new ObjectId(session.user.id) }, { projection: { preferences: 1 } })
+    const primary = primaryCurrencyOf(user)
+    const duplicate = await findDuplicateBudget(
+      db, session.user.id,
+      update.category ?? existing.category,
+      update.period ?? existing.period,
+      update.currency ?? existing.currency ?? primary,
+      primary, _id,
+    )
+    if (duplicate) return NextResponse.json({ error: 'You already have a budget for this category.' }, { status: 409 })
+  }
   const budget = await db.collection<IBudget>('budgets').findOneAndUpdate(
     { _id, userId: session.user.id },
     { $set: update },

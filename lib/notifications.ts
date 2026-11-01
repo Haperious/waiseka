@@ -100,12 +100,14 @@ export async function checkSpendingAlert(
   const fmt = (n: number) => formatCurrency(n, sym)
 
   const allBudgets = await db.collection<IBudget>('budgets').find({ userId, ...scope }).toArray()
-  const spentMap = Object.fromEntries(
+  // A Map, not an object: a category named "constructor" read Object's own function back
+  const spentMap = new Map(
     allBudgetSpent.map((r) => [(r as { _id: string; total: number })._id, (r as { _id: string; total: number }).total])
   )
+  const spentOn = (c: string) => spentMap.get(c) ?? 0
   const surplus = allBudgets
-    .filter((b: IBudget) => b.category !== category && (spentMap[b.category] ?? 0) < b.limit)
-    .sort((a: IBudget, b: IBudget) => (b.limit - (spentMap[b.category] ?? 0)) - (a.limit - (spentMap[a.category] ?? 0)))[0]
+    .filter((b: IBudget) => b.category !== category && spentOn(b.category) < b.limit)
+    .sort((a: IBudget, b: IBudget) => (b.limit - spentOn(b.category)) - (a.limit - spentOn(a.category)))[0]
 
   const daysRemaining = monthEnd.getUTCDate() - now.getUTCDate()
   const monthName = now.toLocaleString('en-US', { month: 'long' })
@@ -128,7 +130,7 @@ export async function checkSpendingAlert(
       amount: fmt(t.amount),
     })),
     surplusCategory: surplus?.category ?? 'Other',
-    surplusCategoryRemaining: surplus ? fmt(surplus.limit - (spentMap[surplus.category] ?? 0)) : fmt(0),
+    surplusCategoryRemaining: surplus ? fmt(surplus.limit - spentOn(surplus.category)) : fmt(0),
   })
 
   await logEmail(db, { userId, type: 'spending_alert', category, currency, sentAt: now })

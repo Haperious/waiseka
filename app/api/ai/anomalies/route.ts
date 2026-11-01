@@ -70,17 +70,19 @@ export async function GET(req: NextRequest): Promise<NextResponse<AnomalyRespons
   }
 
   // ── Build per-category prior month map ───────────────────────────────────
-  const priorByCategory: Record<string, number[]> = {}
+  // A Map, not an object: a category named "constructor" would hit Object's built-ins
+  const priorByCategory = new Map<string, number[]>()
   for (const row of priorRaw) {
-    if (!priorByCategory[row.category]) priorByCategory[row.category] = []
-    priorByCategory[row.category].push(row.total)
+    const list = priorByCategory.get(row.category) ?? []
+    list.push(row.total)
+    priorByCategory.set(row.category, list)
   }
 
   // ── Detect anomalies ─────────────────────────────────────────────────────
   const anomalies: AnomalyItem[] = []
 
   for (const { category, total: currentAmount } of currentRaw) {
-    const categoryPriorMonths = priorByCategory[category]
+    const categoryPriorMonths = priorByCategory.get(category)
 
     // Skip categories without enough prior history
     if (!categoryPriorMonths || categoryPriorMonths.length < MIN_PRIOR_MONTHS) continue

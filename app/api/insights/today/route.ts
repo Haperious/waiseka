@@ -53,7 +53,7 @@ export async function GET() {
   const userId = session.user.id
   const now = new Date()
 
-  const [user, budgets, accounts, plannedTransfers] = await Promise.all([
+  const [user, budgets, accounts, allPlanned] = await Promise.all([
     db.collection<IUser>('users').findOne({ _id: new ObjectId(userId) }, { projection: { preferences: 1 } }),
     db.collection<IBudget>('budgets').find({ userId }).toArray(),
     db.collection<IAccount>('accounts').find({ userId, isArchived: { $ne: true } }).toArray(),
@@ -62,6 +62,11 @@ export async function GET() {
 
   const items: InsightItem[] = []
   const primary = primaryCurrencyOf(user)
+  // A plan between accounts that are archived or gone can't be carried out - don't nag about it
+  const openIds = new Set(accounts.map((a) => a._id.toString()))
+  const plannedTransfers = allPlanned.filter(
+    (p) => openIds.has(String(p.fromAccountId)) && openIds.has(String(p.toAccountId)),
+  )
 
   // ── Budget breach / near-limit ──────────────────────────────────────────
   if (budgets.length > 0) {

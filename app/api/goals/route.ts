@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { badRequest, cleanText, isPositiveAmount, parseDateField, readJsonBody } from '@/lib/request'
+import { badRequest, cleanText, readJsonBody } from '@/lib/request'
+import { readAmount } from '@/lib/money'
+import { parseDateInput } from '@/lib/transactionInput'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium } from '@/lib/tier'
@@ -32,14 +34,17 @@ export async function POST(req: NextRequest) {
   if (body instanceof NextResponse) return body
   const { title, targetAmount, deadline, priority, currency } = body
 
-  if (!title || !targetAmount || !deadline) {
+  if (title == null || targetAmount == null || deadline == null) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
   const goalTitle = cleanText(title, 100)
   if (!goalTitle) return badRequest('title must be 1-100 characters')
-  if (!isPositiveAmount(targetAmount)) return badRequest('targetAmount must be a positive number')
-  const deadlineDate = parseDateField(deadline)
+  const target = readAmount(targetAmount)
+  if (target === null) return badRequest('targetAmount must be a positive number up to 1,000,000,000,000')
+  const deadlineDate = parseDateInput(deadline)
   if (!deadlineDate) return badRequest('deadline must be a valid date')
+  // A day of slack: "today" east of UTC can still be yesterday in UTC
+  if (deadlineDate.getTime() < Date.now() - 24 * 60 * 60 * 1000) return badRequest('deadline must be today or later')
   if (priority !== undefined && !['low', 'medium', 'high'].includes(priority)) {
     return badRequest('priority must be low, medium, or high')
   }
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
   const result = await db.collection<IGoal>('goals').insertOne({
     userId: session.user.id,
     title: goalTitle,
-    targetAmount,
+    targetAmount: target,
     savedAmount: 0,
     currency: currency ?? primaryCurrencyOf(user),
     deadline: deadlineDate,

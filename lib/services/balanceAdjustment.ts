@@ -1,6 +1,8 @@
 import type { Db, ObjectId } from 'mongodb'
 import type { IAccount } from '@/lib/models/Account'
-import { MAX_DESCRIPTION_LENGTH, parseDateInput } from '@/lib/transactionInput'
+import { MAX_DESCRIPTION_LENGTH, isTooFarAhead, parseDateInput } from '@/lib/transactionInput'
+import { readBalance, roundMoney } from '@/lib/money'
+import { cleanUserText } from '@/lib/text'
 import { computeAssetBalance, computeOutstanding, getAccountActivityMap, utcDay } from '@/lib/services/accountBalance'
 
 /**
@@ -18,10 +20,10 @@ export const ADJUSTMENT_CATEGORY = 'Balance adjustment'
 export const BEFORE_OPENING_DATE_ERROR =
   "That date is before this account's opening balance date, which already covers it. Pick a later date, or move the opening balance date back in the account settings."
 
-/** Upper bound on a typed balance - well past any real account, stops absurd values. */
-const MAX_BALANCE = 1_000_000_000_000
+export { roundMoney }
 
-export const roundMoney = (n: number) => Math.round(n * 100) / 100
+/** A checkpoint is what the bank shows by then; tomorrow is allowed for users east of UTC. */
+const MAX_DAYS_AHEAD = 1
 
 /** Last moment of the date's UTC calendar day, so everything dated that day counts. */
 export function endOfUtcDay(date: Date): Date {
@@ -64,25 +66,27 @@ export function readAdjustmentInput(
   const input: AdjustmentInput = {}
 
   if (body.targetBalance !== undefined || requireAll) {
-    const v = body.targetBalance
-    if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) > MAX_BALANCE) {
-      return { error: 'targetBalance must be a number' }
-    }
-    input.targetBalance = roundMoney(v)
+    const v = readBalance(body.targetBalance)
+    if (v === null) return { error: 'targetBalance must be a number' }
+    input.targetBalance = v
   }
 
   if (body.date !== undefined || requireAll) {
     const date = parseDateInput(body.date)
     if (!date) return { error: 'date must be a valid date' }
+    // A future-dated checkpoint swallowed every entry logged before its day, so spending
+    // logged today never moved the balance
+    if (isTooFarAhead(date, MAX_DAYS_AHEAD)) return { error: "date can't be in the future" }
     input.date = date
   }
 
   if (body.note !== undefined && body.note !== null) {
     if (typeof body.note !== 'string') return { error: 'note must be text' }
-    if (body.note.length > MAX_DESCRIPTION_LENGTH) {
+    const note = cleanUserText(body.note)
+    if (note.length > MAX_DESCRIPTION_LENGTH) {
       return { error: `note must be ${MAX_DESCRIPTION_LENGTH} characters or fewer` }
     }
-    input.note = body.note.trim()
+    input.note = note
   } else if (body.note === null) {
     input.note = ''
   }
@@ -103,7 +107,7 @@ export function readOpeningBalanceDate(value: unknown): { date: Date | null } | 
   if (value === null) return { date: null }
   const date = parseDateInput(value)
   if (!date) return { error: 'openingBalanceDate must be a valid date' }
-  if (date.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
+  if (isTooFarAhead(date, MAX_DAYS_AHEAD)) {
     return { error: "openingBalanceDate can't be in the future" }
   }
   return { date }

@@ -24,6 +24,7 @@ import {
   type SegmentOption,
 } from '@/components/forms/FormParts'
 import formStyles from '@/components/forms/forms.module.css'
+import { isBlankText } from '@/lib/text'
 
 
 const NAME_SUGGESTIONS = ['Emergency Fund', 'Boracay trip', 'New laptop', 'Pang-Pasko']
@@ -70,7 +71,7 @@ export default function GoalForm({ goal, onSuccess, onCancel, onCapHit }: GoalFo
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.title.trim()) e.title = t('goalForm.errTitle')
+    if (isBlankText(form.title)) e.title = t('goalForm.errTitle')
     if (!form.targetAmount || isNaN(Number(form.targetAmount)) || Number(form.targetAmount) <= 0)
       e.targetAmount = t('goalForm.errTarget')
     if (!form.deadline) e.deadline = t('goalForm.errDeadline')

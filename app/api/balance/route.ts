@@ -52,10 +52,10 @@ export async function GET(req: NextRequest) {
     date: { $gte: windowStart },
   }
 
-  if (upToParam) {
-    // Use the exact timestamp provided- the caller already handles boundary precision
-    matchStage.date.$lte = new Date(upToParam)
-  }
+  const upTo = upToParam ? new Date(upToParam) : null
+  // Use the exact timestamp provided - the caller already handles boundary precision.
+  // An unreadable one is ignored rather than sent to Mongo as Invalid Date.
+  if (upTo && !Number.isNaN(upTo.getTime())) matchStage.date.$lte = upTo
 
   const col = db.collection<ITransaction>('transactions')
   const [result] = await col

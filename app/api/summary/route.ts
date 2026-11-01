@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
+import { readMonthYear } from '@/lib/queryParams'
 import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
 import type { IUser } from '@/lib/models/User'
@@ -13,8 +14,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const now = new Date()
-  const month = parseInt(searchParams.get('month') ?? String(now.getMonth() + 1))
-  const year = parseInt(searchParams.get('year') ?? String(now.getFullYear()))
+  const { month, year } = readMonthYear(searchParams, now)
 
   const db = await getDb()
 

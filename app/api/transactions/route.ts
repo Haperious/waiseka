@@ -112,20 +112,18 @@ export async function POST(req: NextRequest) {
 
   const body = await readJsonBody(req)
   if (body instanceof NextResponse) return body
-  const { amount, isRecurring, accountId } = body
+  const { isRecurring, accountId } = body
 
-  if (!body.type || !body.category || !body.date) {
+  if (body.type == null || body.category == null || body.date == null || body.amount == null) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
   const checked = readTransactionFields(body)
   if ('error' in checked) return NextResponse.json({ error: checked.error }, { status: 400 })
   const { description, tags } = checked.fields
   // Present for sure: the required-fields check above ran first
-  const { type, category, date } = checked.fields as Required<Pick<typeof checked.fields, 'type' | 'category' | 'date'>>
-  if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
-    return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
-  }
-  if (accountId !== undefined && accountId !== null && !ObjectId.isValid(accountId)) {
+  const { type, amount, category, date } =
+    checked.fields as Required<Pick<typeof checked.fields, 'type' | 'amount' | 'category' | 'date'>>
+  if (accountId !== undefined && accountId !== null && (typeof accountId !== 'string' || !ObjectId.isValid(accountId))) {
     return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
   }
 
@@ -151,6 +149,10 @@ export async function POST(req: NextRequest) {
   if (accountId) {
     account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
     if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+    // Same rule as transfers, adjustments and imports: a closed account takes no new entries
+    if (account.isArchived) {
+      return NextResponse.json({ error: 'Cannot add to an archived account' }, { status: 409 })
+    }
   } else if (accountId === undefined) {
     account = await resolveDefaultAccount(db, session.user.id, postUser?.preferences?.defaultAccountId)
   }

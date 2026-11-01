@@ -12,6 +12,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCategories, type Category } from '@/hooks/useCategories'
 import { Skeleton } from '@/components/ui/Skeleton'
 import styles from './categories.module.css'
+import { isBlankText } from '@/lib/text'
 
 const COLORS = [
   '#f97316', '#3b82f6', '#8b5cf6', '#ec4899', '#22c55e',
@@ -133,7 +134,7 @@ export default function CategoriesPage() {
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.name.trim()) e.name = t('cat.nameRequired')
+    if (isBlankText(form.name)) e.name = t('cat.nameRequired')
     setErrors(e)
     return Object.keys(e).length === 0
   }

@@ -86,6 +86,8 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
     e.preventDefault()
     if (!targetValid) return setError(t("accountForm.errAmount"))
     if (!date) return setError(t("bulkForm.selectDate"))
+    // A balance for a day that hasn't come yet would swallow everything logged before it
+    if (date > format(new Date(), "yyyy-MM-dd")) return setError(t("adjust.futureDate"))
     if (openingDay && date < openingDay) {
       return setError(t("adjust.beforeOpening").replace("{date}", format(new Date(`${openingDay}T12:00:00`), "MMM d, yyyy")))
     }
@@ -264,6 +266,7 @@ export default function AdjustBalanceForm({ account, adjustment, onSuccess, onCa
           label={t("common.date")}
           type="date"
           min={openingDay ?? undefined}
+          max={format(new Date(), "yyyy-MM-dd")}
           value={date}
           onChange={(e) => { setDate(e.target.value); setError("") }}
         />

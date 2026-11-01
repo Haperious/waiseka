@@ -5,21 +5,20 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { isPremium, historyWindowStart } from '@/lib/tier'
 import type { ITransaction } from '@/lib/models/Transaction'
-import { isEntryType } from '@/lib/transactionInput'
+import { MAX_DESCRIPTION_LENGTH, readTransactionFields, type EntryType } from '@/lib/transactionInput'
 import type { IUser } from '@/lib/models/User'
 import type { IAccount } from '@/lib/models/Account'
-import { parseTransactionDate } from '@/lib/utils'
 import { checkSpendingAlert } from '@/lib/notifications'
 import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 import { resolveDefaultAccount } from '@/lib/services/defaultAccount'
 
-interface BulkTransactionItem {
+interface BulkRow {
   amount: number
-  type: 'income' | 'expense' | 'savings'
+  type: EntryType
   category: string
-  description?: string
-  date: string
-  isRecurring?: boolean
+  description: string
+  date: Date
+  isRecurring: boolean
 }
 
 interface ValidationError {
@@ -27,20 +26,44 @@ interface ValidationError {
   fields: Record<string, string>
 }
 
-function validateItem(item: BulkTransactionItem, index: number): ValidationError | null {
-  const fields: Record<string, string> = {}
+const FIELD_MESSAGES: Record<string, string> = {
+  type: 'Type must be income, expense or savings',
+  amount: 'Amount must be a positive number',
+  category: 'Category is required',
+  date: 'Date must be a valid date, at most a year ahead',
+  description: `Description must be text up to ${MAX_DESCRIPTION_LENGTH} characters`,
+}
 
-  if (!item.type) fields.type = 'Type is required'
-  // Transfers and balance adjustments have their own routes
-  else if (!isEntryType(item.type)) fields.type = 'Type must be income, expense or savings'
-  if (!item.category) fields.category = 'Category is required'
-  if (!item.date) fields.date = 'Date is required'
-  if (typeof item.amount !== 'number' || !isFinite(item.amount) || item.amount <= 0) {
-    fields.amount = 'Amount must be a positive number'
+/** The row cleaned like a single add (POST /api/transactions), or what's wrong with each field. */
+function readRow(item: unknown, index: number): { row: BulkRow } | { error: ValidationError } {
+  if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+    return { error: { index, fields: { row: 'Row must be an object' } } }
   }
+  const raw = item as Record<string, unknown>
+  const fields: Record<string, string> = {}
+  // Each field on its own, so the form can mark every bad cell at once
+  for (const key of ['type', 'amount', 'category', 'date', 'description'] as const) {
+    if (key !== 'description' && raw[key] == null) {
+      fields[key] = FIELD_MESSAGES[key]
+      continue
+    }
+    if ('error' in readTransactionFields({ [key]: raw[key] })) fields[key] = FIELD_MESSAGES[key]
+  }
+  if (Object.keys(fields).length > 0) return { error: { index, fields } }
 
-  if (Object.keys(fields).length > 0) return { index, fields }
-  return null
+  const checked = readTransactionFields(raw)
+  if ('error' in checked) return { error: { index, fields: { row: checked.error } } }
+  const f = checked.fields
+  return {
+    row: {
+      amount: f.amount!,
+      type: f.type as EntryType,
+      category: f.category!,
+      description: f.description ?? '',
+      date: f.date!,
+      isRecurring: raw.isRecurring === true,
+    },
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -49,12 +72,12 @@ export async function POST(req: NextRequest) {
 
   const body = await readJsonBody(req)
   if (body instanceof NextResponse) return body
-  const { transactions, accountId } = body as { transactions: BulkTransactionItem[]; accountId?: string | null }
+  const { transactions, accountId } = body as { transactions: unknown; accountId?: unknown }
 
   if (!Array.isArray(transactions) || transactions.length === 0) {
     return NextResponse.json({ error: 'transactions must be a non-empty array' }, { status: 400 })
   }
-  if (accountId && !ObjectId.isValid(accountId)) {
+  if (accountId !== undefined && accountId !== null && (typeof accountId !== 'string' || !ObjectId.isValid(accountId))) {
     return NextResponse.json({ error: 'Invalid account id' }, { status: 400 })
   }
 
@@ -64,10 +87,12 @@ export async function POST(req: NextRequest) {
 
   // Validate all rows before touching the DB
   const validationErrors: ValidationError[] = []
-  for (let i = 0; i < transactions.length; i++) {
-    const err = validateItem(transactions[i], i)
-    if (err) validationErrors.push(err)
-  }
+  const rows: BulkRow[] = []
+  transactions.forEach((item, i) => {
+    const read = readRow(item, i)
+    if ('error' in read) validationErrors.push(read.error)
+    else rows.push(read.row)
+  })
 
   if (validationErrors.length > 0) {
     return NextResponse.json({ error: 'Validation failed', validationErrors }, { status: 422 })
@@ -86,6 +111,9 @@ export async function POST(req: NextRequest) {
   if (accountId) {
     account = await db.collection<IAccount>('accounts').findOne({ _id: new ObjectId(accountId), userId: session.user.id })
     if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+    if (account.isArchived) {
+      return NextResponse.json({ error: 'Cannot add to an archived account' }, { status: 409 })
+    }
   } else if (accountId === undefined) {
     account = await resolveDefaultAccount(db, session.user.id, user?.preferences?.defaultAccountId)
   }
@@ -99,17 +127,17 @@ export async function POST(req: NextRequest) {
 
   const now = new Date()
 
-  const docs = transactions.map((t) => {
+  const docs = rows.map((t) => {
     return {
       userId: session.user.id,
       amount: t.amount,
       currency: resolvedCurrency,
       type: t.type,
       category: t.category,
-      description: t.description ?? '',
-      date: parseTransactionDate(t.date),
+      description: t.description,
+      date: t.date,
       tags: [] as string[],
-      isRecurring: t.isRecurring ?? false,
+      isRecurring: t.isRecurring,
       accountId: account?._id ?? null,
       isArchived: false as const,
       createdAt: now,
@@ -133,7 +161,7 @@ export async function POST(req: NextRequest) {
   // total - one check per row would race past the per-month dedup and send duplicates.
   if (user) {
     const expenseByCategory = new Map<string, { total: number; merchant: string }>()
-    for (const t of transactions) {
+    for (const t of rows) {
       if (t.type !== 'expense') continue
       const entry = expenseByCategory.get(t.category) ?? { total: 0, merchant: t.description || t.category }
       entry.total += t.amount
