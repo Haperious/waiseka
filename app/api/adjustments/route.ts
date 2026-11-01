@@ -122,6 +122,8 @@ export async function POST(req: NextRequest) {
       amount: Math.abs(replacedDelta),
       adjustmentDelta: replacedDelta,
       adjustmentTarget: targetBalance,
+      // The new figure is the balance right now, so entries logged after this count on top
+      adjustmentAt: now,
       updatedAt: now,
     }
     if (note !== undefined) update.description = note
@@ -147,6 +149,7 @@ export async function POST(req: NextRequest) {
     accountId: account._id,
     adjustmentDelta: delta,
     adjustmentTarget: targetBalance,
+    adjustmentAt: now,
     isArchived: false,
     createdAt: now,
     updatedAt: now,

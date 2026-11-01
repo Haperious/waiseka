@@ -6,7 +6,8 @@ import { computeAssetBalance, computeOutstanding, getAccountActivityMap, utcDay 
 /**
  * Balance adjustments: the user types what their bank shows, and we save it as a
  * `type: 'adjustment'` transaction on that account - a checkpoint ("the bank showed X at
- * the end of this day"). The balance math (buildLedger) works out each checkpoint's
+ * the end of this day", or "right now" when made on its own day - entries logged after it
+ * that day count on top). The balance math (buildLedger) works out each checkpoint's
  * difference on every read, so later edits to older entries can't knock it off again.
  * The difference saved on the row is only a snapshot from when it was saved.
  */

@@ -30,6 +30,11 @@ export interface ITransaction {
   /** Adjustment only: the balance the user typed in (what their bank showed on `date`). Kept so an edit can re-work the change. */
   adjustmentTarget?: number
   /**
+   * Adjustment only: when the user read that balance (falls back to createdAt). Entries
+   * logged later on the same day count on top of the adjustment instead of inside it.
+   */
+  adjustmentAt?: Date
+  /**
    * Set when this transaction is beyond the user's tier retention window. Archived transactions
    * are retained but excluded from lists and reports - except account balances, which always
    * count them (see getAccountLedger), so archiving never changes a balance.

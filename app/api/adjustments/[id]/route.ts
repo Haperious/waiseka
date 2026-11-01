@@ -13,6 +13,7 @@ import {
   readAdjustmentInput, startOfUtcDay,
 } from '@/lib/services/balanceAdjustment'
 import { recordVerification } from '@/lib/services/verification'
+import { utcDay } from '@/lib/services/accountBalance'
 
 /**
  * PUT /api/adjustments/[id] { targetBalance?, date?, note? }
@@ -87,13 +88,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     )
   }
 
+  const now = new Date()
   const update: Partial<ITransaction> = {
     amount: Math.abs(delta),
     adjustmentDelta: delta,
     adjustmentTarget: target,
     date,
-    updatedAt: new Date(),
+    updatedAt: now,
   }
+  // A new figure or day is what the bank shows right now. A note-only edit keeps the old moment.
+  const rechecked = target !== existing.adjustmentTarget || utcDay(date) !== utcDay(existing.date)
+  if (rechecked) update.adjustmentAt = now
   if (input.note !== undefined) update.description = input.note
 
   const adjustment = await col.findOneAndUpdate(
@@ -102,6 +107,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     { returnDocument: 'after' }
   )
   if (!adjustment) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  await recordVerification(db, session.user.id, account._id, date, target)
+  // A note-only edit isn't a new look at the bank
+  if (rechecked) await recordVerification(db, session.user.id, account._id, date, target)
   return NextResponse.json({ adjustment, previousBalance: current })
 }

@@ -1,6 +1,6 @@
 import type { Db, ObjectId } from 'mongodb'
 import type { IAccount } from '@/lib/models/Account'
-import { utcDay } from '@/lib/services/accountBalance'
+import { utcDay, type Probe } from '@/lib/services/accountBalance'
 import { endOfUtcDay } from '@/lib/services/balanceAdjustment'
 
 /**
@@ -108,11 +108,18 @@ export function statementCheckDue(
   return closedDay
 }
 
-/** Probe days for getAccountLedger: the day each account was last checked with a figure. */
-export function verificationProbes(accounts: Pick<IAccount, '_id' | 'lastVerifiedBalance' | 'lastVerifiedDate'>[]): Map<string, string> {
-  const probes = new Map<string, string>()
+/**
+ * Probes for getAccountLedger: the day each account was last checked with a figure, and
+ * when. Entries logged after a same-day check aren't a change to what was checked.
+ */
+export function verificationProbes(
+  accounts: Pick<IAccount, '_id' | 'lastVerifiedBalance' | 'lastVerifiedDate' | 'lastVerifiedAt'>[],
+): Map<string, Probe> {
+  const probes = new Map<string, Probe>()
   for (const a of accounts) {
-    if (a.lastVerifiedBalance != null && a.lastVerifiedDate) probes.set(a._id.toString(), utcDay(new Date(a.lastVerifiedDate)))
+    if (a.lastVerifiedBalance != null && a.lastVerifiedDate) {
+      probes.set(a._id.toString(), { day: utcDay(new Date(a.lastVerifiedDate)), at: a.lastVerifiedAt ?? null })
+    }
   }
   return probes
 }
