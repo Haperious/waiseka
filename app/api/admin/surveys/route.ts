@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
+import { readPaging } from '@/lib/transactionInput'
 import type { ISurvey } from '@/lib/models/Survey'
 import type { IUser } from '@/lib/models/User'
 
@@ -10,8 +11,8 @@ export async function GET(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const { searchParams } = new URL(req.url)
-  const page   = Math.max(1, parseInt(searchParams.get('page')  ?? '1'))
-  const limit  = Math.min(100, parseInt(searchParams.get('limit') ?? '20'))
+  // Bounded: a bad ?page= or ?limit= used to crash the query, and limit=0 meant no limit
+  const { page, limit } = readPaging(searchParams)
   const skip   = (page - 1) * limit
 
   const ratingParam = searchParams.get('rating')   // e.g. "1,2,3"

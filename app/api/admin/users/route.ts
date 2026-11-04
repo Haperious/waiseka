@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { IUser } from '@/lib/models/User'
+import { readPaging } from '@/lib/transactionInput'
 
 const USER_PROJECTION = {
   name: 1, email: 1, tier: 1, premiumOverride: 1, isVerified: 1,
@@ -15,8 +16,8 @@ export async function GET(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const { searchParams } = new URL(req.url)
-  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
-  const limit = Math.min(100, parseInt(searchParams.get('limit') ?? '20'))
+  // Bounded: a bad ?page= or ?limit= used to crash the query, and limit=0 meant no limit
+  const { page, limit } = readPaging(searchParams)
   const skip = (page - 1) * limit
 
   const db = await getDb()

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 import { DASHBOARD_PATH, LOGIN_PATH, MFA_STEP_PATH, resolveProxyRedirect, type ProxyRequestState } from './proxy-routing'
 import { LEGAL_DOCUMENT_PATHS } from './legal/legalDocuments'
 
@@ -55,4 +57,25 @@ describe('existing route rules are unchanged', () => {
     expect(resolveProxyRedirect({ pathname: '/admin', ...SIGNED_IN })).toBe(DASHBOARD_PATH)
     expect(resolveProxyRedirect({ pathname: '/admin/users', ...ADMIN })).toBeNull()
   })
+})
+
+describe('every signed-in page is guarded', () => {
+  // Each page folder in app/(protected), read from disk so a new page can't be missed
+  const protectedPages = fs
+    .readdirSync(path.join(__dirname, '..', 'app', '(protected)'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => `/${entry.name}`)
+
+  it('finds the protected pages', () => {
+    expect(protectedPages).toContain('/dashboard')
+  })
+
+  for (const page of protectedPages) {
+    it(`${page} sends signed-out visitors to login`, () => {
+      expect(resolveProxyRedirect({ pathname: page, ...SIGNED_OUT })).toBe(LOGIN_PATH)
+    })
+    it(`${page} keeps a session awaiting MFA on the MFA step`, () => {
+      expect(resolveProxyRedirect({ pathname: page, ...AWAITING_MFA })).toBe(MFA_STEP_PATH)
+    })
+  }
 })

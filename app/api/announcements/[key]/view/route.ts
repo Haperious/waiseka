@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
+import { readJsonBody } from '@/lib/request'
 import type { IAnnouncement } from '@/lib/models/Announcement'
 import type { IAnnouncementView, AnnouncementViewSource } from '@/lib/models/AnnouncementView'
 
@@ -17,7 +18,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
     return NextResponse.json({ error: 'Invalid announcement key' }, { status: 400 })
   }
 
-  const body = await req.json().catch(() => ({}))
+  const body = await readJsonBody(req)
+  if (body instanceof NextResponse) return body
   const source = body.source
   const position = body.position
   const dismissed = body.dismissed === true

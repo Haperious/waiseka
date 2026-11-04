@@ -3,14 +3,15 @@ import { requireAdminSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { EmailLogType } from '@/lib/models/EmailLog'
 import { escapeRegex } from '@/lib/security'
+import { readPaging } from '@/lib/transactionInput'
 
 export async function GET(req: NextRequest) {
   const session = await requireAdminSession()
   if (session instanceof NextResponse) return session
 
   const { searchParams } = new URL(req.url)
-  const page  = Math.max(1, parseInt(searchParams.get('page')  ?? '1'))
-  const limit = Math.min(100, parseInt(searchParams.get('limit') ?? '20'))
+  // Bounded: a bad ?page= or ?limit= used to crash the query, and limit=0 meant no limit
+  const { page, limit } = readPaging(searchParams)
   const skip  = (page - 1) * limit
   const type  = searchParams.get('type') as EmailLogType | null
   const search = searchParams.get('search')?.trim().slice(0, 100) ?? ''
