@@ -12,8 +12,17 @@ package-lock.json
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# testing (all tests stay local, never pushed)
 /coverage
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__snapshots__/
+vitest.config.mts
+vitest.ui.config.mts
+/lib/testing/
+/.local-test/
 
 # next.js
 /.next/
