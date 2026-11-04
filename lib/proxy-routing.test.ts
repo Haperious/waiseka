@@ -31,9 +31,14 @@ describe('existing route rules are unchanged', () => {
     expect(resolveProxyRedirect({ pathname: '/', ...SIGNED_OUT })).toBeNull()
   })
 
-  it('sends signed-in users away from login and register', () => {
+  it('sends signed-in users away from login, register and the landing page', () => {
     expect(resolveProxyRedirect({ pathname: '/login', ...SIGNED_IN })).toBe(DASHBOARD_PATH)
     expect(resolveProxyRedirect({ pathname: '/register', ...SIGNED_IN })).toBe(DASHBOARD_PATH)
+    expect(resolveProxyRedirect({ pathname: '/', ...SIGNED_IN })).toBe(DASHBOARD_PATH)
+  })
+
+  it('sends a session awaiting MFA from the landing page to the MFA step', () => {
+    expect(resolveProxyRedirect({ pathname: '/', ...AWAITING_MFA })).toBe(MFA_STEP_PATH)
   })
 
   it('lets signed-in users through to protected pages', () => {

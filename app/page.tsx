@@ -1,9 +1,7 @@
-import { redirect } from 'next/navigation'
-import { auth } from '@/auth'
 import LandingPage from './LandingPage'
 
-export default async function Home() {
-  const session = await auth()
-  if (session) redirect('/dashboard')
+// Static on purpose: proxy.ts sends signed-in visitors on to the dashboard, so this
+// page never needs the session and can be served from the CDN even on a cold start.
+export default function Home() {
   return <LandingPage />
 }

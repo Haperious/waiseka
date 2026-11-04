@@ -1,0 +1,32 @@
+import type { Db } from 'mongodb'
+
+/**
+ * Creates the MongoDB indexes the app relies on. Safe to run repeatedly: createIndex
+ * is a no-op when the index already exists.
+ */
+export async function ensureIndexes(db: Db): Promise<void> {
+  await Promise.all([
+    db.collection('notifications').createIndex({ userId: 1 }),
+    db.collection('notifications').createIndex({ userId: 1, read: 1 }),
+    // Announcements: do NOT add a TTL index here - expired announcements must persist
+    // for analytics (announcementViews joins back to them). Expiry is a query filter,
+    // not a deletion. See PRD-announcement-popup-2026-07.md §3.1.
+    db.collection('announcements').createIndex({ key: 1 }, { unique: true }),
+    db.collection('announcements').createIndex({ isActive: 1, publishedAt: -1, expiresAt: 1 }),
+    db.collection('announcementViews').createIndex({ userId: 1, announcementKey: 1 }, { unique: true }),
+    db.collection('announcementViews').createIndex({ announcementKey: 1, seenAt: -1 }),
+    // Transactions: serves the table's existing paged query (find({userId}).sort({date:-1})),
+    // which today falls back to a full scan of the date_-1 index filtered by userId in FETCH.
+    // Also serves every additional read the account balance strip adds.
+    db.collection('transactions').createIndex({ userId: 1, date: -1 }),
+    // Serves getAccountActivityMap's $match({userId, isArchived, type}) aggregation, used by
+    // both /api/accounts and the balance strip's per-mutation refetches.
+    db.collection('transactions').createIndex({ userId: 1, isArchived: 1, type: 1 }),
+    // One account per email. Sign-up checks first, but two sign-ups at the same instant
+    // both passed that check; the index makes the second one fail. Emails are stored
+    // lowercased, so this is case-insensitive too. Logged rather than thrown: existing
+    // duplicates would stop the index being built, and that mustn't stop the app starting.
+    db.collection('users').createIndex({ email: 1 }, { unique: true, name: 'email_unique' })
+      .catch((err) => console.error('[startup] users.email unique index not created:', err)),
+  ])
+}

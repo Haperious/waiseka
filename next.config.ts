@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 import { readLegalConfig } from "./lib/legal/legalEnv";
 
-// Fail `next build` / `next dev` early if any legal page value is missing.
-// The legal pages render per request (the root layout reads the session),
-// so without this check a missing var would only surface at runtime.
+// Fail `next build` / `next dev` early if any legal page value is missing,
+// rather than letting a page render with a blank value.
 readLegalConfig(process.env);
 
 const LEGAL_CONTENT_GLOB = "./content/legal/**/*";

@@ -16,21 +16,17 @@ const options = {
 }
 
 declare global {
-  var _mongoClient: MongoClient | undefined
+  var _mongoClientPromise: Promise<MongoClient> | undefined
 }
 
-async function getClient(): Promise<MongoClient> {
-  if (global._mongoClient) return global._mongoClient
-
-  const client = new MongoClient(uri, options)
-  try {
-    await client.connect()
-  } catch (err) {
-    global._mongoClient = undefined
+// The promise is cached, not the client, so callers that arrive while the first
+// connect is still in flight (e.g. startup warm-up + first request) share it
+function getClient(): Promise<MongoClient> {
+  global._mongoClientPromise ??= new MongoClient(uri, options).connect().catch((err) => {
+    global._mongoClientPromise = undefined
     throw err
-  }
-  global._mongoClient = client
-  return client
+  })
+  return global._mongoClientPromise
 }
 
 export async function getDb(): Promise<Db> {

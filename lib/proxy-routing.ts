@@ -3,8 +3,11 @@ import { LEGAL_DOCUMENT_PATHS } from '@/lib/legal/legalDocuments'
 /** Signed-in only; matched by prefix. */
 export const PROTECTED_ROUTE_PREFIXES = ['/dashboard', '/transactions', '/budgets', '/goals', '/reports', '/settings', '/ai', '/admin']
 
-/** Signed-out only (signed-in users are sent to the dashboard); matched exactly. */
-export const SIGNED_OUT_ONLY_ROUTES = ['/login', '/register']
+/**
+ * Signed-out only (signed-in users are sent to the dashboard); matched exactly.
+ * The landing page is here so it can stay static instead of reading the session itself.
+ */
+export const SIGNED_OUT_ONLY_ROUTES = ['/', '/login', '/register']
 
 /**
  * Reachable by everyone, signed in or not, and never redirected - matched
