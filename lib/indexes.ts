@@ -22,6 +22,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
     // Serves getAccountActivityMap's $match({userId, isArchived, type}) aggregation, used by
     // both /api/accounts and the balance strip's per-mutation refetches.
     db.collection('transactions').createIndex({ userId: 1, isArchived: 1, type: 1 }),
+    // Planner: a user's plans, most recently changed first (list page and dashboard card)
+    db.collection('plannerScenarios').createIndex({ userId: 1, updatedAt: -1 }),
     // One account per email. Sign-up checks first, but two sign-ups at the same instant
     // both passed that check; the index makes the second one fail. Emails are stored
     // lowercased, so this is case-insensitive too. Logged rather than thrown: existing

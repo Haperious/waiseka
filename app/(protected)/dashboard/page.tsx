@@ -25,6 +25,7 @@ import CutoffCard, { type CutoffData } from '@/components/dashboard/CutoffCard'
 import NeedsTodayRow, { type InsightItem } from '@/components/dashboard/NeedsTodayRow'
 import LastThreeMonthsBand, { type RangeMonth, type CategoryMover } from '@/components/dashboard/LastThreeMonthsBand'
 import RecentActivityCard from '@/components/dashboard/RecentActivityCard'
+import PlannerCard from '@/components/dashboard/PlannerCard'
 
 interface Summary {
   totalIncome: number
@@ -406,6 +407,9 @@ export default function DashboardPage() {
 
       {/* ── Needs you today ──────────────────────────────────────────── */}
       <NeedsTodayRow items={insights} loading={insightsLoading} />
+
+      {/* ── Planner: where this month's balance is heading ─────────────── */}
+      <PlannerCard />
 
       {/* ── Recent activity + Budgets ───────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }} className="max-lg:!grid-cols-1">

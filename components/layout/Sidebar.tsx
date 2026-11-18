@@ -26,6 +26,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CalendarDays,
+  CalendarRange,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/context/LanguageContext'
@@ -48,6 +49,7 @@ const navSections: NavSection[] = [
     items: [
       { href: '/budgets',      labelKey: 'nav.budgets',      icon: PieChart        },
       { href: '/goals',        labelKey: 'nav.goals',        icon: Target          },
+      { href: '/planner',      labelKey: 'nav.planner',      icon: CalendarRange   },
       { href: '/categories',   labelKey: 'nav.categories',   icon: Tags            },
       { href: '/reports',      labelKey: 'nav.reports',      icon: CalendarDays    },
     ],
@@ -74,7 +76,7 @@ interface SidebarProps {
 
 // The mobile "More" drawer only lists items not already on the bottom nav
 // (Home / Transactions / Budgets have their own tap targets there).
-const MOBILE_MORE_HREFS = new Set(['/accounts', '/goals', '/reports', '/categories', '/ai/chat', '/tips', '/settings'])
+const MOBILE_MORE_HREFS = new Set(['/accounts', '/goals', '/planner', '/reports', '/categories', '/ai/chat', '/tips', '/settings'])
 
 const SIDEBAR_COLLAPSED_KEY = 'waiseka-sidebar-collapsed'
 

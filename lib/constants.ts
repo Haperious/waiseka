@@ -30,6 +30,23 @@ export const PREMIUM_BUDGET_LIMIT = 20
 /** Max active goals a free-tier user may have at one time. */
 export const FREE_GOAL_LIMIT = 3
 
+// ── Planner limits ───────────────────────────────────────────────────────────
+/** Max saved Planner scenarios a free-tier user may have. */
+export const FREE_PLANNER_SCENARIO_LIMIT = 3
+
+/** Max saved Planner scenarios a premium user may have (a storage guard, not a sales limit). */
+export const PREMIUM_PLANNER_SCENARIO_LIMIT = 50
+
+/** Max planned items in one scenario - payload-size guard. */
+export const MAX_PLANNER_ITEMS = 100
+
+/** How far ahead a scenario's end date may be. */
+export const PLANNER_MAX_DAYS_AHEAD = 366
+
+/** Longest plan name and planned-item note. */
+export const MAX_PLANNER_NAME = 60
+export const MAX_PLANNER_NOTE = 200
+
 // ── Account limits ───────────────────────────────────────────────────────────
 /** Max non-archived accounts a free-tier user may have at one time. */
 export const FREE_ACCOUNT_LIMIT = 5
