@@ -681,6 +681,7 @@ export default function PlannerPage() {
             onSave={saveItem}
             onCancel={() => setItemDialog(null)}
             onLog={startLogging}
+            onSwitchToBulk={(type) => setItemDialog({ mode: 'bulk', type })}
           />
         )}
       </Modal>

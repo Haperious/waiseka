@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { TrendingDown, TrendingUp } from 'lucide-react'
+import { ListPlus, TrendingDown, TrendingUp } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { AmountField, CategoryChips, Field, FormModalLayout, Segmented, moneyLabel } from '@/components/forms/FormParts'
@@ -30,10 +30,12 @@ interface ItemFormProps {
   onCancel: () => void
   /** Editing a fixed item: log it as a real transaction. */
   onLog?: (item: PlannerItem) => void
+  /** Adding: switch this dialog to "Add several", keeping the chosen type. */
+  onSwitchToBulk?: (type: PlannerItemType) => void
 }
 
 /** Add or edit one planned income or expense. Render inside <Modal variant="form">. */
-export default function ItemForm({ item, defaultType = 'expense', currency, liveAmount, minDate, maxDate, onSave, onCancel, onLog }: ItemFormProps) {
+export default function ItemForm({ item, defaultType = 'expense', currency, liveAmount, minDate, maxDate, onSave, onCancel, onLog, onSwitchToBulk }: ItemFormProps) {
   const { t } = useLanguage()
   const { categories } = useCategories()
   const live = item?.source === 'budget' || item?.source === 'card'
@@ -109,6 +111,19 @@ export default function ItemForm({ item, defaultType = 'expense', currency, live
             { value: 'income', icon: TrendingUp, label: t('planner.income'), color: 'var(--color-income)' },
           ]}
         />
+      )}
+
+      {!item && onSwitchToBulk && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onSwitchToBulk(type)}
+          style={{ alignSelf: 'flex-start' }}
+        >
+          <ListPlus aria-hidden style={{ width: 14, height: 14 }} />
+          {t('planner.switchToBulk')}
+        </Button>
       )}
 
       {live ? (
