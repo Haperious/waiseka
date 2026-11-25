@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, Banknote, Check, CreditCard, Lock, PieChart, Plus, Repeat, Trash2, Wallet } from 'lucide-react'
+import { AlertCircle, Banknote, Check, CreditCard, ListPlus, Lock, PieChart, Plus, Repeat, Trash2, Wallet } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Modal from '@/components/ui/Modal'
@@ -29,6 +29,7 @@ import { itemLabel, projectScenario, type Projection } from '@/lib/planner/proje
 import type { PlannerItem, PlannerItemType, PlannerScenario } from '@/lib/planner/types'
 import type { CurrencyCode } from '@/lib/currency'
 import TransactionForm, { type TransactionPrefill } from '../transactions/TransactionForm'
+import BulkItemForm from './BulkItemForm'
 import ItemForm from './ItemForm'
 import PlanMenu from './PlanMenu'
 import PlanPicker from './PlanPicker'
@@ -41,7 +42,7 @@ import PlannerTimeline from './PlannerTimeline'
 import { usePlannerList, usePlannerScenario } from './usePlanner'
 import styles from './planner.module.css'
 
-type ItemDialog = { mode: 'add'; type: PlannerItemType } | { mode: 'edit'; item: PlannerItem } | null
+type ItemDialog = { mode: 'add'; type: PlannerItemType } | { mode: 'bulk'; type: PlannerItemType } | { mode: 'edit'; item: PlannerItem } | null
 type Confirm = { kind: 'removeItem'; item: PlannerItem } | { kind: 'deletePlan' } | null
 type View = 'items' | 'days'
 type MobileTab = PlannerItemType | 'days'
@@ -216,6 +217,31 @@ export default function PlannerPage() {
     setItems(exists ? draft.items.map((i) => (i.id === item.id ? item : i)) : [...draft.items, item])
     setItemDialog(null)
   }
+  /** Adds the rows from "Add several" in one change, with Undo. */
+  const saveItems = (added: PlannerItem[]) => {
+    if (!draft) return
+    const room = MAX_PLANNER_ITEMS - draft.items.length
+    if (added.length > room) {
+      toast(t('planner.tooManyItems'), 'error')
+      return
+    }
+    const ids = new Set(added.map((i) => i.id))
+    const scenarioId = draft._id
+    setItems([...draft.items, ...added])
+    setItemDialog(null)
+    toast(
+      added.length === 1 ? t('planner.bulkAddedOne') : t('planner.bulkAdded').replace('{n}', String(added.length)),
+      'success',
+      {
+        label: t('planner.undo'),
+        onClick: () => {
+          const current = draftRef.current
+          if (!current || current._id !== scenarioId) return
+          update({ items: current.items.filter((i) => !ids.has(i.id)) })
+        },
+      },
+    )
+  }
   const patchItem = (id: string, patch: Partial<PlannerItem>) =>
     draft && setItems(draft.items.map((i) => (i.id === id ? { ...i, ...patch } : i)))
 
@@ -282,11 +308,23 @@ export default function PlannerPage() {
         <p className={styles.subtitle}>{t('planner.subtitle')}</p>
       </div>
       {draft && !loadError && (
-        <Button size="sm" className={styles.addButton} onClick={() => setItemDialog({ mode: 'add', type: 'expense' })}>
-          <Plus aria-hidden style={{ width: 14, height: 14 }} />
-          <span className={styles.addLong}>{t('planner.addItem')}</span>
-          <span className={styles.addShort}>{t('planner.addShort')}</span>
-        </Button>
+        <div className={styles.headerActions}>
+          <Button
+            size="sm"
+            variant="outline"
+            className={styles.addButton}
+            aria-label={t('planner.addSeveral')}
+            onClick={() => setItemDialog({ mode: 'bulk', type: isDesktop ? 'expense' : typeTab })}
+          >
+            <ListPlus aria-hidden style={{ width: 14, height: 14 }} />
+            <span className={styles.addLong}>{t('planner.addSeveral')}</span>
+          </Button>
+          <Button size="sm" className={styles.addButton} onClick={() => setItemDialog({ mode: 'add', type: 'expense' })}>
+            <Plus aria-hidden style={{ width: 14, height: 14 }} />
+            <span className={styles.addLong}>{t('planner.addItem')}</span>
+            <span className={styles.addShort}>{t('planner.addShort')}</span>
+          </Button>
+        </div>
       )}
     </div>
   )
@@ -604,14 +642,34 @@ export default function PlannerPage() {
         )}
       </Modal>
 
+      {/* ── Add several items at once ── */}
+      <Modal
+        open={itemDialog?.mode === 'bulk'}
+        onClose={() => setItemDialog(null)}
+        title={t('planner.addSeveralTitle')}
+        variant="form"
+        className="max-w-3xl"
+      >
+        {itemDialog?.mode === 'bulk' && draft && (
+          <BulkItemForm
+            defaultType={itemDialog.type}
+            currency={draft.currency}
+            maxDate={maxDate}
+            room={MAX_PLANNER_ITEMS - draft.items.length}
+            onSave={saveItems}
+            onCancel={() => setItemDialog(null)}
+          />
+        )}
+      </Modal>
+
       {/* ── Add / edit item ── */}
       <Modal
-        open={!!itemDialog}
+        open={!!itemDialog && itemDialog.mode !== 'bulk'}
         onClose={() => setItemDialog(null)}
         title={itemDialog?.mode === 'edit' ? t('planner.editItem') : itemDialog?.type === 'income' ? t('planner.addIncome') : t('planner.addExpense')}
         variant="form"
       >
-        {itemDialog && draft && (
+        {itemDialog && itemDialog.mode !== 'bulk' && draft && (
           <ItemForm
             key={itemDialog.mode === 'edit' ? itemDialog.item.id : `new-${itemDialog.type}`}
             item={itemDialog.mode === 'edit' ? itemDialog.item : undefined}

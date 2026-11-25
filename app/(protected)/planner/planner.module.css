@@ -1119,3 +1119,204 @@ button.dayLine:focus-visible {
     height: 30px;
   }
 }
+
+/* ── Add several (bulk rows) ──────────────────────────────────── */
+
+.bulkHead {
+  display: none;
+}
+
+.bulkRows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Mobile: type + amount + remove, then category + date, then note */
+.bulkRow {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto;
+  grid-template-areas:
+    'type amount amount remove'
+    'cat cat date date'
+    'note note note note';
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.bulkType {
+  grid-area: type;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bulkType:focus-visible,
+.bulkRemove:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.bulkAmount {
+  grid-area: amount;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 10px;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--color-elevated);
+}
+
+.bulkAmount:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+.bulkAmount input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.bulkSymbol {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.bulkField {
+  height: 38px;
+  min-width: 0;
+  width: 100%;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-input, var(--color-card));
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+}
+
+.bulkField:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-sage);
+}
+
+.bulkCategory { grid-area: cat; }
+.bulkDate { grid-area: date; }
+.bulkNote { grid-area: note; }
+
+.bulkInvalid {
+  border-color: var(--color-expense);
+}
+
+.bulkRemove {
+  grid-area: remove;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.bulkRemove:hover {
+  color: var(--color-expense);
+  background: var(--color-expense-bg);
+}
+
+.bulkError {
+  grid-column: 1 / -1;
+}
+
+.bulkFooterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.bulkTotals {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Wide enough for one line per row */
+@media (min-width: 720px) {
+  .bulkHead,
+  .bulkRow {
+    display: grid;
+    grid-template-columns: 38px 130px minmax(0, 1fr) 140px minmax(0, 1fr) 32px;
+    gap: 8px;
+  }
+
+  .bulkHead {
+    padding: 0 2px;
+    margin-bottom: -10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .bulkRows {
+    gap: 6px;
+  }
+
+  .bulkRow {
+    grid-template-areas: 'type amount cat date note remove';
+    padding: 0;
+    border: none;
+    row-gap: 2px;
+  }
+
+  .bulkType {
+    padding: 0;
+  }
+
+  .bulkTypeText {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
