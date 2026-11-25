@@ -9,6 +9,7 @@ import { MAX_DESCRIPTION_LENGTH, readTransactionFields, type EntryType } from '@
 import type { IUser } from '@/lib/models/User'
 import type { IAccount } from '@/lib/models/Account'
 import { checkSpendingAlert } from '@/lib/notifications'
+import { runAfterResponse } from '@/lib/background'
 import { primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 import { resolveDefaultAccount } from '@/lib/services/defaultAccount'
 
@@ -169,8 +170,8 @@ export async function POST(req: NextRequest) {
     }
     for (const [category, { total, merchant }] of expenseByCategory) {
       // Every row shares the batch's account, so one currency for the whole batch
-      checkSpendingAlert(session.user.id, category, resolvedCurrency, merchant, total, db, user)
-        .catch((err) => console.error('[transactions/bulk] spending alert error:', err))
+      runAfterResponse('transactions/bulk spending alert', () =>
+        checkSpendingAlert(session.user.id, category, resolvedCurrency, merchant, total, db, user))
     }
   }
 

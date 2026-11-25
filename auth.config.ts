@@ -33,6 +33,8 @@ export const authConfig: NextAuthConfig = {
         token.createdAt = u.createdAt
         // auth.ts drops the session once the stored value moves past this one
         token.passwordChangedAt = u.passwordChangedAt ?? null
+        // When this session signed in (ms). auth.ts drops it once sessionsRevokedAt passes it.
+        token.authTime = Date.now()
         // MFA-enabled accounts start every new session unverified. Only the jwt callback
         // in auth.ts flips this to true, after consuming a server-issued MFA ticket -
         // never trust an `update` payload here, the browser can send one too.

@@ -8,6 +8,10 @@ import { checkLoginRateLimit } from '@/lib/auth-rate-limit'
 import { getClientIp } from '@/lib/rate-limit'
 import { LOGIN_RATE_LIMITED_CODE } from '@/lib/constants'
 import { consumeMfaTicket } from '@/lib/mfa-ticket'
+import { MAX_EMAIL_LENGTH } from '@/lib/request'
+
+// Looser than the 128 a new password may have, so no account set before that cap is locked out
+const MAX_SIGN_IN_PASSWORD_LENGTH = 1024
 import { authConfig } from './auth.config'
 
 /** Surfaces as `code` on the client's signIn() result so the login page can explain the lockout. */
@@ -28,15 +32,18 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
       const token = await authConfig.callbacks!.jwt!(params)
       if (!token) return null
 
-      // Complete the MFA step. The update payload is client-controllable, so it only
-      // carries a ticket; the flag flips only if that ticket is consumed from the DB.
-      if (params.trigger === 'update' && token.mfaVerified === false && token.id) {
+      // Complete the MFA step (or re-stamp the session that just turned MFA on). The update
+      // payload is client-controllable, so it only carries a ticket; nothing changes unless
+      // that ticket is consumed from the DB.
+      if (params.trigger === 'update' && token.id) {
         const ticket = (params.session as { mfaTicket?: unknown } | undefined)?.mfaTicket
         if (typeof ticket === 'string') {
           try {
             const db = await getDb()
             if (await consumeMfaTicket(db, token.id as string, ticket)) {
               token.mfaVerified = true
+              // Survives the sessionsRevokedAt cut-off checked below
+              token.authTime = Date.now()
             }
           } catch (error) {
             // Fail closed: the session stays unverified and validate-session reports the failure
@@ -54,13 +61,20 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
             .collection<IUser>('users')
             .findOne(
               { _id: new ObjectId(token.id as string) },
-              { projection: { passwordChangedAt: 1, isVerified: 1, isAdmin: 1, tier: 1, premiumOverride: 1 } }
+              { projection: { passwordChangedAt: 1, sessionsRevokedAt: 1, isVerified: 1, isAdmin: 1, tier: 1, premiumOverride: 1 } }
             )
 
           const dbChangedAt = dbUser?.passwordChangedAt?.getTime() ?? null
           const tokenChangedAt = (token.passwordChangedAt as number | null) ?? null
 
           if (dbChangedAt && dbChangedAt !== tokenChangedAt) {
+            return null
+          }
+
+          // Signed out everywhere (MFA turned on, or reset by an admin). Sessions from
+          // before authTime existed count as signed in at 0, so they're cut off too.
+          const revokedAt = dbUser?.sessionsRevokedAt?.getTime()
+          if (revokedAt && ((token.authTime as number | undefined) ?? 0) < revokedAt) {
             return null
           }
 
@@ -100,8 +114,11 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   providers: [
     Credentials({
       async authorize(credentials, request) {
-        const { email, password } = credentials as { email: string; password: string }
-        if (!email || !password) return null
+        // Client-supplied: anything but short strings is refused before it reaches the
+        // limiter, the query or bcrypt (which only reads 72 bytes of a password anyway)
+        const { email, password } = (credentials ?? {}) as { email?: unknown; password?: unknown }
+        if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) return null
+        if (email.length > MAX_EMAIL_LENGTH || password.length > MAX_SIGN_IN_PASSWORD_LENGTH) return null
 
         // Checked before the DB lookup and bcrypt compare so a locked-out
         // attacker gets no timing signal and costs us no hashing work
@@ -109,7 +126,8 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         if (!rateLimitResult.allowed) throw new LoginRateLimitedError()
 
         const db = await getDb()
-        const user = await db.collection<IUser>('users').findOne({ email: email.toLowerCase() })
+        // Trimmed like sign-up and forgot-password, so a pasted " me@x.com " still signs in
+        const user = await db.collection<IUser>('users').findOne({ email: email.trim().toLowerCase() })
         const passwordMatch = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH)
         if (!user || !passwordMatch) return null
 

@@ -9,10 +9,14 @@ import type { IUser } from '@/lib/models/User'
 import type { IAccount } from '@/lib/models/Account'
 import { readPaging, readTransactionFields } from '@/lib/transactionInput'
 import { checkSpendingAlert } from '@/lib/notifications'
+import { runAfterResponse } from '@/lib/background'
 import { currencyScope, isCurrencyCode, primaryCurrencyOf, resolveTransactionCurrency } from '@/lib/services/currencyScope'
 import { resolveDefaultAccount } from '@/lib/services/defaultAccount'
 import { getAccountLedger } from '@/lib/services/accountBalance'
 import { escapeRegex } from '@/lib/security'
+
+const MAX_SEARCH_LENGTH = 200
+const MAX_TAG_FILTERS = 20
 
 export async function GET(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -24,7 +28,9 @@ export async function GET(req: NextRequest) {
   const startDate = searchParams.get('startDate')
   const endDate = searchParams.get('endDate')
   const tags = searchParams.get('tags')
-  const search = searchParams.get('search')
+  // Capped so a crafted URL can't make every page read run a huge regex scan; no
+  // description (500) or category (100) is longer than this anyway
+  const search = searchParams.get('search')?.slice(0, MAX_SEARCH_LENGTH)
   const accountId = searchParams.get('accountId')
   // Optional: only the view-currency switcher sends it. Absent = every currency (as before).
   const currency = searchParams.get('currency')
@@ -56,7 +62,7 @@ export async function GET(req: NextRequest) {
   query.date = { $gte: effectiveStart }
   if (callerEnd) query.date.$lte = callerEnd
 
-  if (tags) query.tags = { $in: tags.split(',') }
+  if (tags) query.tags = { $in: tags.split(',').slice(0, MAX_TAG_FILTERS) }
   if (accountId === 'unassigned') {
     // Transfers also have no accountId (they use fromAccountId/toAccountId) - they aren't unlinked
     query.accountId = null
@@ -182,9 +188,8 @@ export async function POST(req: NextRequest) {
   const transaction = { _id: result.insertedId, ...doc }
 
   if (type === 'expense' && postUser) {
-    checkSpendingAlert(session.user.id, category, resolvedCurrency, description ?? category, amount, db, postUser).catch(
-      (err) => console.error('[transactions] spending alert error:', err)
-    )
+    runAfterResponse('transactions spending alert', () =>
+      checkSpendingAlert(session.user.id, category, resolvedCurrency, description ?? category, amount, db, postUser))
   }
 
   return NextResponse.json(transaction, { status: 201 })

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readJsonBody } from '@/lib/request'
+import { readEmail, readJsonBody } from '@/lib/request'
 import { cleanUserText } from '@/lib/text'
 import bcrypt from 'bcryptjs'
 import { ObjectId } from 'mongodb'
@@ -9,7 +9,8 @@ import { DEFAULT_CATEGORIES, type ICategory } from '@/lib/models/Category'
 import type { IAccount } from '@/lib/models/Account'
 import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email'
 import { rateLimit, getClientIp, tooManyRequests } from '@/lib/rate-limit'
-import type { IEmailLog } from '@/lib/models/EmailLog'
+import { logEmail } from '@/lib/models/EmailLog'
+import { runAfterResponse } from '@/lib/background'
 import { APP_URL } from '@/lib/app-url'
 import { createEmailToken } from '@/lib/resetToken'
 import { newPasswordError } from '@/lib/passwordStrength'
@@ -29,9 +30,9 @@ export async function POST(req: NextRequest) {
     const { password, confirmPassword } = body
     // Same cleaning as a rename (/api/users/me): a name of invisible characters is no name
     const name = typeof body.name === 'string' ? cleanUserText(body.name) : ''
-    const email = typeof body.email === 'string' ? body.email.trim() : ''
+    const rawEmail = typeof body.email === 'string' ? body.email.trim() : ''
 
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !rawEmail || !password || !confirmPassword) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
 
@@ -39,8 +40,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name must be 100 characters or fewer' }, { status: 400 })
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    const email = readEmail(rawEmail)
+    if (!email) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
@@ -154,15 +155,14 @@ export async function POST(req: NextRequest) {
 
     const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${verifyToken}`
 
-    const emailLogs = db.collection<Omit<IEmailLog, '_id'>>('email_logs')
-
-    sendWelcomeEmail({ firstName, email: lowerEmail })
-      .then(() => emailLogs.insertOne({ userId, type: 'welcome', sentAt: new Date() } as unknown as Omit<IEmailLog, '_id'>))
-      .catch((err) => console.error('[register] welcome email error:', err))
-
-    sendVerificationEmail({ firstName, email: lowerEmail, verifyUrl })
-      .then(() => emailLogs.insertOne({ userId, type: 'email_verification', sentAt: new Date() } as unknown as Omit<IEmailLog, '_id'>))
-      .catch((err) => console.error('[register] verification email error:', err))
+    runAfterResponse('register welcome email', async () => {
+      await sendWelcomeEmail({ firstName, email: lowerEmail })
+      await logEmail(db, { userId, type: 'welcome' })
+    })
+    runAfterResponse('register verification email', async () => {
+      await sendVerificationEmail({ firstName, email: lowerEmail, verifyUrl })
+      await logEmail(db, { userId, type: 'email_verification' })
+    })
 
     return NextResponse.json({ message: 'Account created successfully' }, { status: 201 })
   } catch (err) {

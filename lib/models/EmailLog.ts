@@ -10,6 +10,7 @@ export type EmailLogType =
   | 'monthly_report'
   | 're_engage'
   | 'savings_milestone'
+  | 'mfa_changed'       // two-factor turned on/off or reset by an admin
 
 export interface IEmailLog {
   _id: ObjectId

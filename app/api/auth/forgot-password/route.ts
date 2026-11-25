@@ -6,7 +6,9 @@ import type { IUser } from '@/lib/models/User'
 import { logEmail } from '@/lib/models/EmailLog'
 import { APP_URL } from '@/lib/app-url'
 import { createEmailToken } from '@/lib/resetToken'
-import { readJsonBody } from '@/lib/request'
+import { MAX_EMAIL_LENGTH, readJsonBody } from '@/lib/request'
+import { runAfterResponse } from '@/lib/background'
+import { describeUserAgent } from '@/lib/userAgent'
 
 const EXPIRY_MINUTES = 30
 // 3 requests per IP per 15 minutes
@@ -33,6 +35,8 @@ export async function POST(req: NextRequest) {
   // not, so it can't be used to tell which emails have accounts.
   // Trimmed like sign-up does, so a pasted " me@x.com " still finds the account
   const normalizedEmail = email.trim().toLowerCase()
+  // No account can have a longer address (sign-up refuses one), so there is nothing to send
+  if (normalizedEmail.length > MAX_EMAIL_LENGTH) return NextResponse.json({ message: GENERIC_REPLY })
   const perEmail = await rateLimit(`forgot-password:email:${normalizedEmail}`, EMAIL_RATE_LIMIT, EMAIL_RATE_WINDOW_MS)
   if (!perEmail.allowed) return NextResponse.json({ message: GENERIC_REPLY })
 
@@ -59,8 +63,7 @@ export async function POST(req: NextRequest) {
     createdAt: new Date(),
   })
 
-  const ua = req.headers.get('user-agent') ?? 'Unknown device'
-  const deviceInfo = parseUserAgent(ua)
+  const deviceInfo = describeUserAgent(req.headers.get('user-agent'))
   const requestedAt = new Date().toLocaleString('en-US', {
     month: 'long', day: 'numeric', year: 'numeric',
     hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
@@ -69,32 +72,19 @@ export async function POST(req: NextRequest) {
   const resetUrl = `${APP_URL}/reset-password?token=${token}`
   const firstName = user.name.split(' ')[0]
 
-  sendResetPasswordEmail({
-    firstName,
-    email: user.email,
-    resetUrl,
-    expiryMinutes: EXPIRY_MINUTES,
-    requestedAt,
-    deviceInfo,
-    locationApprox: 'Location unavailable',
+  // Sent after the response, so a registered email answers as fast as an unknown one
+  runAfterResponse('forgot-password email', async () => {
+    await sendResetPasswordEmail({
+      firstName,
+      email: user.email,
+      resetUrl,
+      expiryMinutes: EXPIRY_MINUTES,
+      requestedAt,
+      deviceInfo,
+      locationApprox: 'Location unavailable',
+    })
+    await logEmail(db, { userId: user._id.toString(), type: 'reset_password' })
   })
-    .then(() => logEmail(db, { userId: user._id.toString(), type: 'reset_password' }))
-    .catch((err) => console.error('[forgot-password] email error:', err))
 
   return NextResponse.json({ message: GENERIC_REPLY })
-}
-
-function parseUserAgent(ua: string): string {
-  const browser = ua.includes('Chrome') ? 'Chrome'
-    : ua.includes('Firefox') ? 'Firefox'
-    : ua.includes('Safari') ? 'Safari'
-    : ua.includes('Edge') ? 'Edge'
-    : 'Unknown browser'
-  const os = ua.includes('Windows') ? 'Windows'
-    : ua.includes('Mac') ? 'macOS'
-    : ua.includes('Android') ? 'Android'
-    : ua.includes('iPhone') || ua.includes('iPad') ? 'iOS'
-    : ua.includes('Linux') ? 'Linux'
-    : 'Unknown OS'
-  return `${browser} on ${os}`
 }

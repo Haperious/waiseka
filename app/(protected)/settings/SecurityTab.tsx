@@ -120,7 +120,10 @@ function MfaSection() {
   }, [])
   const { data: mfaEnabled = false, loading: mfaLoading, mutate: setMfaStatus } = useResource(fetchMfaStatus)
 
-  const [mfaStep, setMfaStep] = useState<'idle' | 'setup' | 'backup-codes' | 'disable'>('idle')
+  const [mfaStep, setMfaStep] = useState<'idle' | 'confirm-enable' | 'setup' | 'backup-codes' | 'disable'>('idle')
+  const [mfaPassword, setMfaPassword] = useState('')
+  // This device was signed out along with the others - sign in again after the codes
+  const [mfaSignedOut, setMfaSignedOut] = useState(false)
   const [mfaQr, setMfaQr] = useState('')
   const [mfaSecret, setMfaSecret] = useState('')
   const [mfaToken, setMfaToken] = useState('')
@@ -134,9 +137,14 @@ function MfaSection() {
     setMfaError('')
     setMfaWorking(true)
     try {
-      const res = await fetch('/api/auth/mfa/setup', { method: 'POST' })
+      const res = await fetch('/api/auth/mfa/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: mfaPassword }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to start MFA setup')
+      setMfaPassword('')
       setMfaQr(data.qrDataUrl)
       setMfaSecret(data.manualEntryKey)
       setMfaToken('')
@@ -164,6 +172,7 @@ function MfaSection() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Verification failed')
       setMfaBackupCodes(data.backupCodes)
+      setMfaSignedOut(data.signedOut === true)
       setMfaStatus(() => true)
       setMfaStep('backup-codes')
     } catch (err: unknown) {
@@ -174,8 +183,8 @@ function MfaSection() {
   }
 
   const handleMfaDisable = async () => {
-    if (!mfaToken) {
-      setMfaError('Enter your current TOTP code to disable MFA')
+    if (!mfaPassword || !mfaToken) {
+      setMfaError('Enter your password and your current 6-digit code to disable MFA')
       return
     }
     setMfaError('')
@@ -184,10 +193,11 @@ function MfaSection() {
       const res = await fetch('/api/auth/mfa/disable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: mfaToken }),
+        body: JSON.stringify({ password: mfaPassword, token: mfaToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to disable MFA')
+      setMfaPassword('')
       setMfaStatus(() => false)
       setMfaStep('idle')
       setMfaToken('')
@@ -240,7 +250,7 @@ function MfaSection() {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => { setMfaStep('disable'); setMfaToken(''); setMfaError('') }}
+                onClick={() => { setMfaStep('disable'); setMfaToken(''); setMfaPassword(''); setMfaError('') }}
               >
                 <ShieldOff size={14} style={{ marginRight: 6 }} />
                 Disable MFA
@@ -248,13 +258,39 @@ function MfaSection() {
             </div>
           ) : (
             <div>
-              <Button size="sm" onClick={handleMfaSetupStart} loading={mfaWorking}>
+              <Button size="sm" onClick={() => { setMfaStep('confirm-enable'); setMfaPassword(''); setMfaError('') }}>
                 <ShieldCheck size={14} style={{ marginRight: 6 }} />
                 Enable MFA
               </Button>
             </div>
           )}
         </div>
+      ) : mfaStep === 'confirm-enable' ? (
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (mfaPassword) handleMfaSetupStart() }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+        >
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+            Confirm your password to set up two-factor authentication. Once it&apos;s on, your other devices
+            will be signed out and will need a code to sign back in.
+          </p>
+          <PasswordInput
+            label="Your password"
+            value={mfaPassword}
+            onChange={(e) => setMfaPassword(e.target.value)}
+            autoComplete="current-password"
+            autoFocus
+          />
+          {mfaError && <p style={{ fontSize: '0.82rem', color: 'var(--color-expense)' }}>{mfaError}</p>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button type="submit" size="sm" loading={mfaWorking} disabled={!mfaPassword}>
+              Continue
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { setMfaStep('idle'); setMfaError(''); setMfaPassword('') }}>
+              Cancel
+            </Button>
+          </div>
+        </form>
       ) : mfaStep === 'setup' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
@@ -333,16 +369,29 @@ function MfaSection() {
             </Button>
           </div>
           <div>
-            <Button size="sm" onClick={() => { setMfaStep('idle'); setMfaBackupCodes([]) }}>
-              I&apos;ve saved these codes
+            <Button
+              size="sm"
+              onClick={() => {
+                setMfaStep('idle')
+                setMfaBackupCodes([])
+                if (mfaSignedOut) signOut({ callbackUrl: '/login' })
+              }}
+            >
+              {mfaSignedOut ? "I've saved these codes, sign me in again" : "I've saved these codes"}
             </Button>
           </div>
         </div>
       ) : mfaStep === 'disable' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-            Enter your current 6-digit TOTP code to confirm disabling MFA.
+            Enter your password and the current 6-digit code from your authenticator app to turn two-factor off.
           </p>
+          <PasswordInput
+            label="Your password"
+            value={mfaPassword}
+            onChange={(e) => setMfaPassword(e.target.value)}
+            autoComplete="current-password"
+          />
           <input
             type="text"
             inputMode="numeric"
@@ -354,10 +403,10 @@ function MfaSection() {
           />
           {mfaError && <p style={{ fontSize: '0.82rem', color: 'var(--color-expense)' }}>{mfaError}</p>}
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button size="sm" variant="danger" onClick={handleMfaDisable} loading={mfaWorking} disabled={mfaToken.length !== 6}>
+            <Button size="sm" variant="danger" onClick={handleMfaDisable} loading={mfaWorking} disabled={mfaToken.length !== 6 || !mfaPassword}>
               Confirm Disable
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setMfaStep('idle'); setMfaError(''); setMfaToken('') }}>
+            <Button size="sm" variant="ghost" onClick={() => { setMfaStep('idle'); setMfaError(''); setMfaToken(''); setMfaPassword('') }}>
               Cancel
             </Button>
           </div>

@@ -45,6 +45,8 @@ export async function resetAiQueries() {
     )
   } catch (err) {
     console.error('[scheduler] AI reset error:', err)
+    // Rethrown so /api/cron reports the job as failed and the failure alert goes out
+    throw err
   }
 }
 
@@ -64,6 +66,9 @@ export async function sendBudgetReminders() {
       .find({ 'notifications.email.enabled': true }, { projection: { name: 1, email: 1, preferences: 1, notifications: 1 } })
       .toArray()
 
+    // Sends run side by side but are all awaited: on Netlify the function can be frozen
+    // as soon as /api/cron responds, so a send still in flight then may never go out
+    const pending: Promise<unknown>[] = []
     for (const user of users) {
       const frequency = user.notifications?.email?.frequency ?? 'weekly'
       const lastSent = user.notifications?.email?.lastSentBudget
@@ -147,7 +152,7 @@ export async function sendBudgetReminders() {
       )
 
       const [first, ...otherCurrencies] = sections
-      sendBudgetReminderEmail({
+      pending.push(sendBudgetReminderEmail({
         firstName: user.name.split(' ')[0],
         email: user.email,
         monthName,
@@ -156,10 +161,13 @@ export async function sendBudgetReminders() {
         otherCurrencies,
       })
         .then(() => logEmail(db, { userId, type: 'budget_reminder' }))
-        .catch((err) => console.error(`[scheduler] budget reminder error for user ${userId}:`, err))
+        .catch((err) => console.error(`[scheduler] budget reminder error for user ${userId}:`, err)))
     }
+    await Promise.all(pending)
   } catch (err) {
     console.error('[scheduler] budget reminder job error:', err)
+    // Rethrown so /api/cron reports the job as failed and the failure alert goes out
+    throw err
   }
 }
 
@@ -181,6 +189,9 @@ export async function sendReEngageEmails() {
       }, { projection: { name: 1, email: 1, preferences: 1, notifications: 1 } })
       .toArray()
 
+    // Sends run side by side but are all awaited: on Netlify the function can be frozen
+    // as soon as /api/cron responds, so a send still in flight then may never go out
+    const pending: Promise<unknown>[] = []
     for (const user of users) {
       const frequency = user.notifications?.email?.frequency ?? 'weekly'
       const lastSent = user.notifications?.email?.lastSentReEngage
@@ -212,7 +223,7 @@ export async function sendReEngageEmails() {
         { $set: { 'notifications.email.lastSentReEngage': new Date() } }
       )
 
-      sendReEngageEmail({
+      pending.push(sendReEngageEmail({
         firstName: user.name.split(' ')[0],
         email: user.email,
         daysSinceLogin,
@@ -223,10 +234,13 @@ export async function sendReEngageEmails() {
         topGoalTarget: fmt(topGoal.targetAmount, sym),
       })
         .then(() => logEmail(db, { userId, type: 're_engage' }))
-        .catch((err) => console.error(`[scheduler] re-engage error for user ${userId}:`, err))
+        .catch((err) => console.error(`[scheduler] re-engage error for user ${userId}:`, err)))
     }
+    await Promise.all(pending)
   } catch (err) {
     console.error('[scheduler] re-engage job error:', err)
+    // Rethrown so /api/cron reports the job as failed and the failure alert goes out
+    throw err
   }
 }
 
@@ -249,6 +263,9 @@ export async function sendMonthlyReports() {
       .find({ 'notifications.email.enabled': true }, { projection: { name: 1, email: 1, preferences: 1 } })
       .toArray()
 
+    // Sends run side by side but are all awaited: on Netlify the function can be frozen
+    // as soon as /api/cron responds, so a send still in flight then may never go out
+    const pending: Promise<unknown>[] = []
     for (const user of users) {
       const userId = user._id.toString()
       const primary = primaryCurrencyOf(user)
@@ -274,7 +291,7 @@ export async function sendMonthlyReports() {
       )
 
       const [first, ...otherCurrencies] = sections
-      sendMonthlyReportEmail({
+      pending.push(sendMonthlyReportEmail({
         firstName: user.name.split(' ')[0],
         email: user.email,
         monthName,
@@ -284,10 +301,13 @@ export async function sendMonthlyReports() {
         otherCurrencies,
       })
         .then(() => logEmail(db, { userId, type: 'monthly_report' }))
-        .catch((err) => console.error(`[scheduler] monthly report error for user ${userId}:`, err))
+        .catch((err) => console.error(`[scheduler] monthly report error for user ${userId}:`, err)))
     }
+    await Promise.all(pending)
   } catch (err) {
     console.error('[scheduler] monthly report job error:', err)
+    // Rethrown so /api/cron reports the job as failed and the failure alert goes out
+    throw err
   }
 }
 
@@ -407,6 +427,9 @@ export async function sendPushNotifications() {
 
     const now = Date.now()
 
+    // Sends run side by side but are all awaited: on Netlify the function can be frozen
+    // as soon as /api/cron responds, so a send still in flight then may never go out
+    const pending: Promise<unknown>[] = []
     for (const user of users) {
       const lastSeen = user.notifications?.lastSeen
         ? new Date(user.notifications.lastSeen).getTime() : 0
@@ -416,13 +439,16 @@ export async function sendPushNotifications() {
 
       const type = daysSince >= threshold * 2 ? 'inactivity' : 'reminder'
       if (user.notifications?.push?.fcmToken) {
-        sendPushNotification({ fcmToken: user.notifications.push.fcmToken, type, user }).catch((err) =>
+        pending.push(sendPushNotification({ fcmToken: user.notifications.push.fcmToken, type, user }).catch((err) =>
           console.error(`[scheduler] push error for user ${user._id.toString()}:`, err)
-        )
+        ))
       }
     }
+    await Promise.all(pending)
   } catch (err) {
     console.error('[scheduler] push notification error:', err)
+    // Rethrown so /api/cron reports the job as failed and the failure alert goes out
+    throw err
   }
 }
 
@@ -435,6 +461,8 @@ export async function runAccountAlertsJob() {
     await runAccountAlerts(db)
   } catch (err) {
     console.error('[scheduler] account alerts error:', err)
+    // Rethrown so /api/cron reports the job as failed and the failure alert goes out
+    throw err
   }
 }
 
@@ -452,10 +480,12 @@ export async function runAccountAlertsJob() {
 export function startSchedulers() {
   if (process.env.DISABLE_INPROCESS_CRON === 'true') return
 
-  cron.schedule('0 0 * * *', resetAiQueries)           // midnight daily
-  cron.schedule('0 8 1 * *', sendMonthlyReports)        // 8 AM on 1st
-  cron.schedule('0 9 15 * *', sendBudgetReminders)      // 9 AM on 15th
-  cron.schedule('0 10 * * *', sendReEngageEmails)       // 10 AM daily
-  cron.schedule('0 9 * * *', sendPushNotifications)     // 9 AM daily
-  cron.schedule('0 8 * * *', runAccountAlertsJob)       // 8 AM daily
+  // Jobs rethrow (for /api/cron) after logging, so the rejection is just swallowed here
+  const run = (job: () => Promise<void>) => () => { job().catch(() => {}) }
+  cron.schedule('0 0 * * *', run(resetAiQueries))           // midnight daily
+  cron.schedule('0 8 1 * *', run(sendMonthlyReports))        // 8 AM on 1st
+  cron.schedule('0 9 15 * *', run(sendBudgetReminders))      // 9 AM on 15th
+  cron.schedule('0 10 * * *', run(sendReEngageEmails))       // 10 AM daily
+  cron.schedule('0 9 * * *', run(sendPushNotifications))     // 9 AM daily
+  cron.schedule('0 8 * * *', run(runAccountAlertsJob))       // 8 AM daily
 }

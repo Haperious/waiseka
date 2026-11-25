@@ -642,6 +642,69 @@ export async function sendVerificationEmail(data: { firstName: string; email: st
   await sendMail(data.email, 'Verify your WaiseKa email address', html)
 }
 
+// ─── 7b. Two-factor authentication changed ────────────────────────────────────
+
+export type MfaChange = 'enabled' | 'disabled' | 'reset_by_admin'
+
+export interface MfaChangedEmailData {
+  firstName: string
+  email: string
+  change: MfaChange
+  /** Already formatted for display, e.g. "November 25, 2026 at 02:51 PM UTC". */
+  occurredAt: string
+  /** "Chrome on Windows" - omitted for an admin reset, where it'd be the admin's device. */
+  deviceInfo?: string
+}
+
+const MFA_CHANGE_COPY: Record<MfaChange, { subject: string; em: string; line: string; notYou: string }> = {
+  enabled: {
+    subject: 'Two-factor authentication is now on',
+    em: 'is now on.',
+    line: 'Two-factor authentication was turned on for your WaiseKa account. Signing in now also needs a code from your authenticator app, and your other devices have been signed out.',
+    notYou: 'Someone may know your password. Reset it now, then contact us so we can confirm your identity and restore your access.',
+  },
+  disabled: {
+    subject: 'Two-factor authentication was turned off',
+    em: 'was turned off.',
+    line: 'Two-factor authentication was turned off for your WaiseKa account. Signing in now needs only your password.',
+    notYou: 'Someone may be signed in to your account. Reset your password now, then turn two-factor back on in Settings → Security.',
+  },
+  reset_by_admin: {
+    subject: 'Your two-factor authentication was reset',
+    em: 'was reset.',
+    line: 'WaiseKa support reset two-factor authentication on your account to help you get back in. You have been signed out on every device. Sign in with your password, then set up two-factor again in Settings → Security.',
+    notYou: "Didn't ask us for this? Reset your password now and reply to us right away.",
+  },
+}
+
+export async function sendMfaChangedEmail(data: MfaChangedEmailData) {
+  const copy = MFA_CHANGE_COPY[data.change]
+  const details = [
+    { k: 'When', v: data.occurredAt },
+    { k: 'Device', v: data.deviceInfo ?? '' },
+  ].filter((d) => d.v)
+  const detailsTable = listBox(details.map((d) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="width:96px;font-family:${SANS};font-size:12px;font-weight:600;color:${C.muted}">${d.k}</td>
+      <td style="font-family:${MONO};font-size:12px;color:${C.text}">${esc(d.v)}</td>
+    </tr></table>`), 'Change details')
+
+  const html = shell({
+    title: copy.subject,
+    tag: 'Security',
+    tagAlert: data.change !== 'enabled',
+    hero: hero('Account security', 'Two-factor authentication', copy.em, data.change === 'enabled' ? 'accent' : 'expense'),
+    body: [
+      p(`Hi ${esc(data.firstName)}, ${esc(copy.line)}`),
+      detailsTable,
+      callout('expense', 'shield', `<strong>Wasn't you?</strong> ${esc(copy.notYou)} Contact: <a href="mailto:${CONTACT_EMAIL}" style="color:${C.accent}">${CONTACT_EMAIL}</a>`),
+      cta(`${APP_URL}/forgot-password`, 'Reset my password'),
+    ],
+    footerLinks: [{ href: `${APP_URL}/settings`, label: 'Security settings' }],
+    footerNote: "Automated security email, sent whenever two-factor authentication changes. You can't turn these off.",
+  })
+  await sendMail(data.email, `[WaiseKa] ${copy.subject}`, html)
+}
+
 // ─── 8. Savings Milestone (1g) ────────────────────────────────────────────────
 
 export interface SavingsMilestoneEmailData {

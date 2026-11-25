@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, InputHTMLAttributes, useState } from 'react'
+import { forwardRef, InputHTMLAttributes, useId, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -12,12 +12,15 @@ interface PasswordInputProps extends InputHTMLAttributes<HTMLInputElement> {
 const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
   ({ className, label, error, id, ...props }, ref) => {
     const [show, setShow] = useState(false)
+    // Without an id the label wasn't tied to the field, so screen readers didn't announce it
+    const autoId = useId()
+    const inputId = id ?? autoId
 
     return (
       <div className="flex flex-col gap-1">
         {label && (
           <label
-            htmlFor={id}
+            htmlFor={inputId}
             className="text-sm font-medium"
             style={{ color: 'var(--color-text-secondary)' }}
           >
@@ -26,7 +29,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         )}
         <div className="relative">
           <input
-            id={id}
+            id={inputId}
             ref={ref}
             type={show ? 'text' : 'password'}
             className={cn(

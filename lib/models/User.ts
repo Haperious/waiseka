@@ -87,12 +87,16 @@ export interface IUser {
     enabledAt: Date
     /** One-time proof of a passed MFA step - see lib/mfa-ticket.ts. */
     pendingTicket?: { tokenHash: string; expiresAt: Date }
+    /** TOTP time step of the last accepted code, so a code can't be replayed - see lib/totp.ts. */
+    lastTimeStep?: number
   }
   importUsage?: {
     count: number
     resetAt: Date
   }
   passwordChangedAt?: Date
+  /** Sessions signed in before this are rejected (MFA turned on, or reset by an admin) - see auth.ts. */
+  sessionsRevokedAt?: Date
   lastLogin?: Date
   createdAt: Date
   updatedAt: Date

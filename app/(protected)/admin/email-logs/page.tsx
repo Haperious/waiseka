@@ -22,6 +22,7 @@ const EMAIL_TYPES: { value: EmailLogType | ""; label: string }[] = [
   { value: "monthly_report", label: "Monthly Report" },
   { value: "re_engage", label: "Re-Engage" },
   { value: "savings_milestone", label: "Savings Milestone" },
+  { value: "mfa_changed", label: "MFA Changed" },
 ]
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -34,6 +35,7 @@ const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   monthly_report: { bg: "#ede7f6", text: "#4527a0" },
   re_engage: { bg: "#fff8e1", text: "#e65100" },
   savings_milestone: { bg: "#e8f5e9", text: "#2e7d32" },
+  mfa_changed: { bg: "#fce4ec", text: "#c62828" },
 }
 
 interface EmailLog {

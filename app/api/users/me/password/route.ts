@@ -6,6 +6,7 @@ import { requireVerifiedSession } from '@/lib/auth-helpers'
 import { getDb } from '@/lib/mongodb'
 import type { IUser } from '@/lib/models/User'
 import { newPasswordError } from '@/lib/passwordStrength'
+import { confirmPassword as checkCurrentPassword } from '@/lib/reauth'
 
 export async function PUT(req: NextRequest) {
   const session = await requireVerifiedSession()
@@ -35,8 +36,10 @@ export async function PUT(req: NextRequest) {
   const user = await users.findOne({ _id: new ObjectId(session.user.id) })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const match = await bcrypt.compare(currentPassword, user.password)
-  if (!match) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
+  // Rate-limited and shared with the MFA forms: a stolen session can't guess the
+  // current password without limit (or keep the server busy hashing)
+  const reauthError = await checkCurrentPassword(session.user.id, user.password, currentPassword)
+  if (reauthError) return reauthError
 
   const hashed = await bcrypt.hash(newPassword, 12)
   const now = new Date()

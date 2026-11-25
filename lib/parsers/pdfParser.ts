@@ -2,6 +2,9 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 
+/** Statements run a few pages; anything past this is not one. */
+export const MAX_PDF_PAGES = 100
+
 export async function extractFromPDF(fileBuffer: Buffer, password?: string): Promise<string> {
   // pdfjs-dist v5 references these browser globals at module init time.
   // They don't exist in Netlify's Node.js runtime, so we stub them before importing.
@@ -68,10 +71,12 @@ export async function extractFromPDF(fileBuffer: Buffer, password?: string): Pro
   const loadParams: Record<string, unknown> = { data: new Uint8Array(fileBuffer) }
   if (password) loadParams.password = password
 
+  const loadingTask = pdfjs.getDocument(loadParams)
   let pdf: PDFDocumentProxy
   try {
-    pdf = await pdfjs.getDocument(loadParams).promise
+    pdf = await loadingTask.promise
   } catch (err: unknown) {
+    await loadingTask.destroy().catch(() => {})
     const name = (err as { name?: string }).name
     if (name === 'PasswordException') {
       const code = (err as { code?: number }).code
@@ -85,13 +90,22 @@ export async function extractFromPDF(fileBuffer: Buffer, password?: string): Pro
   }
   let fullText = ''
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i)
-    const content = await page.getTextContent()
-    const pageText = content.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .join(' ')
-    fullText += pageText + '\n'
+  try {
+    // A small file can still declare thousands of pages; a statement never needs that many,
+    // and reading them all would hold the function until it times out
+    const pageCount = Math.min(pdf.numPages, MAX_PDF_PAGES)
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await pdf.getPage(i)
+      const content = await page.getTextContent()
+      const pageText = content.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .join(' ')
+      fullText += pageText + '\n'
+      page.cleanup()
+    }
+  } finally {
+    // Frees the parsed document in a warm container instead of waiting for GC
+    await loadingTask.destroy()
   }
 
   return fullText

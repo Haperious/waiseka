@@ -11,6 +11,7 @@ import { objectIdParam } from "@/lib/route-params"
 import type { IGoal } from "@/lib/models/Goal"
 import type { IUser } from "@/lib/models/User"
 import { sendSavingsMilestoneEmail } from "@/lib/email"
+import { runAfterResponse } from "@/lib/background"
 import { getCurrencySymbol } from "@/lib/currency"
 import { INVALID_CURRENCY_MESSAGE, isCurrencyCode, primaryCurrencyOf } from "@/lib/services/currencyScope"
 import { formatCurrency } from "@/lib/utils"
@@ -126,9 +127,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const afterPercent = Math.floor((goal.savedAmount / goal.targetAmount) * 100)
     const crossed = MILESTONES.find((m) => beforePercent < m && afterPercent >= m)
     if (crossed) {
-      checkMilestone(session.user.id, goal, crossed, db).catch((err) =>
-        console.error("[goals] milestone email error:", err),
-      )
+      runAfterResponse("goals milestone email", () => checkMilestone(session.user.id, goal, crossed, db))
     }
 
     return NextResponse.json(goal)
@@ -146,9 +145,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const afterPercent = Math.floor((goal.savedAmount / goal.targetAmount) * 100)
     const crossed = MILESTONES.find((m) => beforePercent < m && afterPercent >= m)
     if (crossed) {
-      checkMilestone(session.user.id, goal, crossed, db).catch((err) =>
-        console.error("[goals] milestone email error:", err),
-      )
+      runAfterResponse("goals milestone email", () => checkMilestone(session.user.id, goal, crossed, db))
     }
   }
 

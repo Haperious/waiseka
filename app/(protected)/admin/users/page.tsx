@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, CheckCircle, XCircle, Users, Crown, Bot, Mail, Bell } from 'lucide-react'
+import { RefreshCw, CheckCircle, XCircle, Users, Crown, Bot, Mail, Bell, ShieldCheck } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
+import PasswordInput from '@/components/ui/PasswordInput'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/utils'
 import { useResource } from '@/hooks/useFetch'
@@ -29,6 +31,7 @@ interface AdminUser {
   premiumOverride: boolean
   isVerified: boolean
   lastLogin: string | null
+  mfa?: { enabled?: boolean }
   ai: {
     enabled: boolean
     queriesUsed: number
@@ -113,6 +116,95 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   )
 }
 
+// ─── MFA ──────────────────────────────────────────────────────────────────────
+
+function MfaCell({ user, onReset }: { user: AdminUser; onReset: (u: AdminUser) => void }) {
+  if (!user.mfa?.enabled) {
+    return <span className="text-xs" style={{ color: 'var(--color-text-muted)', fontFamily: "'Sora', sans-serif" }}>Off</span>
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+        style={{ backgroundColor: 'var(--color-income-bg)', color: 'var(--color-income)', fontFamily: "'Sora', sans-serif" }}
+      >
+        <ShieldCheck className="h-3 w-3" /> On
+      </span>
+      <button
+        onClick={() => onReset(user)}
+        className="text-xs px-2 py-1 rounded"
+        style={{ border: '1px solid var(--color-border)', color: 'var(--color-expense)', fontFamily: "'Sora', sans-serif" }}
+      >
+        Reset
+      </button>
+    </div>
+  )
+}
+
+/** Confirms an MFA reset with the admin's own password. */
+function ResetMfaDialog({ user, onClose, onDone }: { user: AdminUser | null; onClose: () => void; onDone: (id: string) => void }) {
+  const { toast } = useToast()
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [working, setWorking] = useState(false)
+
+  const close = () => {
+    setPassword('')
+    setError('')
+    onClose()
+  }
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !password) return
+    setWorking(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/admin/users/${user._id}/reset-mfa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data.error ?? 'Reset failed')
+        return
+      }
+      toast(`Two-factor reset for ${user.email}. They've been emailed and signed out.`, 'success')
+      onDone(user._id)
+      close()
+    } catch {
+      setError('Something went wrong')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  return (
+    <Modal open={user !== null} onClose={close} title="Reset two-factor authentication">
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+          This removes two-factor from <strong>{user?.email}</strong> and signs them out on every device. They can then
+          sign in with just their password and set it up again. Only do this after confirming the request really comes
+          from the account owner (for example, from the email address on the account).
+        </p>
+        <PasswordInput
+          label="Your admin password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          autoFocus
+          error={error || undefined}
+        />
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={close}>Cancel</Button>
+          <Button type="submit" variant="danger" loading={working} disabled={!password}>Reset MFA</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 // ─── Mobile User Card ─────────────────────────────────────────────────────────
 
 function UserCard({
@@ -127,8 +219,10 @@ function UserCard({
   onReminderCancel,
   onReset,
   onReminder,
+  onResetMfa,
 }: {
   user: AdminUser
+  onResetMfa: (u: AdminUser) => void
   onUpdate: (id: string, patch: Record<string, unknown>) => void
   onResetConfirm: (id: string) => void
   onReminderConfirm: (id: string) => void
@@ -178,6 +272,10 @@ function UserCard({
         <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
           <span style={{ fontFamily: "'DM Mono', monospace" }}>Last: {relativeTime(user.lastLogin ?? null)}</span>
           <span style={{ fontFamily: "'DM Mono', monospace" }}>Queries: {user.ai.queriesUsed}/{user.ai.queriesCapOverride ?? 15}</span>
+          <div className="flex items-center gap-1.5">
+            <span style={{ fontFamily: "'Sora', sans-serif" }}>MFA</span>
+            <MfaCell user={user} onReset={onResetMfa} />
+          </div>
           <div className="flex items-center gap-1.5 ml-auto">
             <span style={{ fontFamily: "'Sora', sans-serif" }}>AI</span>
             <Toggle checked={user.ai.enabled} onChange={(v) => onUpdate(user._id, { 'ai.enabled': v })} />
@@ -248,6 +346,7 @@ export default function AdminUsersPage() {
   const [confirmReset, setConfirmReset] = useState<string | null>(null)
   const [confirmReminder, setConfirmReminder] = useState<string | null>(null)
   const [sendingReminder, setSendingReminder] = useState<string | null>(null)
+  const [resetMfaUser, setResetMfaUser] = useState<AdminUser | null>(null)
   const limit = 20
 
   useEffect(() => {
@@ -371,7 +470,7 @@ export default function AdminUsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  {['User', 'Last Login', 'Verified', 'Tier', 'AI', 'Queries', 'Actions', ''].map(h => (
+                  {['User', 'Last Login', 'Verified', 'MFA', 'Tier', 'AI', 'Queries', 'Actions', ''].map(h => (
                     <th
                       key={h}
                       className="px-4 py-3 text-left text-xs font-semibold"
@@ -386,7 +485,7 @@ export default function AdminUsersPage() {
                 {loading
                   ? Array.from({ length: 5 }).map((_, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                        {Array.from({ length: 8 }).map((_, j) => (
+                        {Array.from({ length: 9 }).map((_, j) => (
                           <td key={j} className="px-4 py-3">
                             <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--color-border)', width: j === 0 ? '120px' : '60px' }} />
                           </td>
@@ -424,6 +523,11 @@ export default function AdminUsersPage() {
                             ? <CheckCircle className="h-4 w-4" style={{ color: 'var(--color-income)' }} />
                             : <XCircle className="h-4 w-4" style={{ color: 'var(--color-expense)' }} />
                           }
+                        </td>
+
+                        {/* MFA */}
+                        <td className="px-4 py-3">
+                          <MfaCell user={user} onReset={setResetMfaUser} />
                         </td>
 
                         {/* Tier */}
@@ -516,7 +620,7 @@ export default function AdminUsersPage() {
 
                 {!loading && users.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                    <td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
                       No users found.
                     </td>
                   </tr>
@@ -549,9 +653,16 @@ export default function AdminUsersPage() {
                   onReminderCancel={() => setConfirmReminder(null)}
                   onReset={resetQueries}
                   onReminder={sendReminder}
+                  onResetMfa={setResetMfaUser}
                 />
               ))}
       </div>
+
+      <ResetMfaDialog
+        user={resetMfaUser}
+        onClose={() => setResetMfaUser(null)}
+        onDone={(id) => setUsers((us) => us.map((u) => (u._id === id ? { ...u, mfa: { enabled: false } } : u)))}
+      />
 
       {/* Pagination */}
       {totalPages > 1 && (

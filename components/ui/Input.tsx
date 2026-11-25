@@ -1,4 +1,4 @@
-import { forwardRef, InputHTMLAttributes, ReactNode, useRef, useCallback } from 'react'
+import { forwardRef, InputHTMLAttributes, ReactNode, useRef, useCallback, useId } from 'react'
 import { cn } from '@/lib/utils'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -9,6 +9,9 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, id, onClick, ...props }, ref) => {
     const innerRef = useRef<HTMLInputElement>(null)
+    // Without an id the label wasn't tied to the field, so screen readers didn't announce it
+    const autoId = useId()
+    const inputId = id ?? autoId
 
     const resolvedRef = (node: HTMLInputElement | null) => {
       innerRef.current = node
@@ -34,7 +37,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className="flex flex-col gap-1">
         {label && (
           <label
-            htmlFor={id}
+            htmlFor={inputId}
             className="text-sm font-medium"
             style={{ color: 'var(--color-text-secondary)' }}
           >
@@ -42,7 +45,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           </label>
         )}
         <input
-          id={id}
+          id={inputId}
           ref={resolvedRef}
           onClick={handleClick}
           className={cn(

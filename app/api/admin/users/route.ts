@@ -8,6 +8,8 @@ const USER_PROJECTION = {
   name: 1, email: 1, tier: 1, premiumOverride: 1, isVerified: 1,
   'ai.enabled': 1, 'ai.queriesUsed': 1, 'ai.queriesCapOverride': 1, 'ai.resetDate': 1,
   lastLogin: 1,
+  // Only the on/off flag - never the secret or backup codes
+  'mfa.enabled': 1,
   createdAt: 1,
 }
 

@@ -51,6 +51,21 @@ export function readOptionalText(
   return text.length <= max ? text : null
 }
 
+/** RFC 5321's limit on a deliverable address. */
+export const MAX_EMAIL_LENGTH = 254
+
+// Every part excludes the separator that ends it, so there is only one way to match and
+// the check runs in linear time. The old /^[^\s@]+@[^\s@]+\.[^\s@]+$/ backtracked
+// quadratically: a 40 KB string of dots took about a second of CPU per request.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/
+
+/** A trimmed, lowercased email address, or null when it isn't a plausible one. */
+export function readEmail(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const email = value.trim().toLowerCase()
+  return email.length <= MAX_EMAIL_LENGTH && EMAIL_SHAPE.test(email) ? email : null
+}
+
 /** A #rgb / #rrggbb colour (alpha digits allowed) - what every colour picker in the app sends. */
 export function isHexColor(value: unknown): value is string {
   return typeof value === 'string' && /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)
