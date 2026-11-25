@@ -1,6 +1,7 @@
 'use client'
 
-import { CreditCard, PieChart, Plus, Repeat, Sparkles } from 'lucide-react'
+import { useId, useState } from 'react'
+import { Plus, Sparkles } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { useLanguage } from '@/context/LanguageContext'
 import { formatAmount } from '@/lib/currency'
@@ -8,6 +9,7 @@ import { formatDay } from '@/lib/planner/days'
 import type { PlannerContext, PlannerItem } from '@/lib/planner/types'
 import type { TranslationKey } from '@/lib/translations'
 import { newItemId } from './ItemForm'
+import styles from './planner.module.css'
 
 export interface Suggestion {
   key: string
@@ -81,55 +83,67 @@ export function buildSuggestions(
   return out
 }
 
-const ICON = { recurring: Repeat, budget: PieChart, card: CreditCard } as const
-
-export default function PlannerSuggestions({ suggestions, currency, onAdd }: {
+/**
+ * Banner with what the user's data suggests: count + first names, Review/Hide for the
+ * full list (desktop), and Add all.
+ */
+export default function PlannerSuggestions({ suggestions, currency, compact = false, onAdd }: {
   suggestions: Suggestion[]
   currency: string
+  /** Mobile: one row, no Review. */
+  compact?: boolean
   onAdd: (items: PlannerItem[]) => void
 }) {
   const { t } = useLanguage()
+  const [expanded, setExpanded] = useState(false)
+  const listId = useId()
   if (suggestions.length === 0) return null
 
+  const count = suggestions.length === 1
+    ? t('planner.suggestCountOne')
+    : t('planner.suggestCount').replace('{n}', String(suggestions.length))
+  const names = suggestions.slice(0, 3).map((s) => s.title).join(', ')
+  const open = expanded && !compact
+
   return (
-    <section style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 16, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-          <Sparkles size={15} style={{ color: 'var(--color-accent)' }} />
-          {t('planner.suggestions')}
-        </h2>
-        {suggestions.length > 1 && (
-          <Button size="sm" variant="outline" onClick={() => onAdd(suggestions.map((s) => s.item()))}>
-            {t('planner.addAll')}
+    <section className={styles.banner} aria-label={t('planner.suggestions')}>
+      <div className={styles.bannerRow}>
+        <Sparkles aria-hidden size={15} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+        <p className={styles.bannerText}>
+          <strong>{count}</strong>
+          {!compact && <span className={styles.bannerNames}> {names}</span>}
+        </p>
+        {!compact && (
+          <Button size="sm" variant="ghost" aria-expanded={open} aria-controls={listId} onClick={() => setExpanded((v) => !v)}>
+            {open ? t('planner.hide') : t('planner.review')}
           </Button>
         )}
+        <Button size="sm" className={styles.bannerAddAll} onClick={() => onAdd(suggestions.map((s) => s.item()))}>
+          {t('planner.addAll')}
+        </Button>
       </div>
-      <p style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{t('planner.suggestionsHint')}</p>
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {suggestions.map((s) => {
-          const Icon = ICON[s.kind]
-          return (
-            <li key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 12, backgroundColor: 'var(--color-elevated)' }}>
-              <Icon size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+      {open && (
+        <ul id={listId} className={styles.bannerGrid}>
+          {suggestions.map((s) => (
+            <li key={s.key} className={styles.sugCard}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</p>
-                <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{s.detail}</p>
+                <p className={styles.sugTitle} title={s.title}>{s.title}</p>
+                <p className={styles.sugSub}>
+                  {s.type === 'income' ? '+' : '-'}{formatAmount(s.amount, currency)} · {s.detail}
+                </p>
               </div>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: s.type === 'income' ? 'var(--color-income)' : 'var(--color-expense)' }}>
-                {s.type === 'income' ? '+' : '-'}{formatAmount(s.amount, currency)}
-              </span>
               <button
                 type="button"
+                className={styles.sugAdd}
                 aria-label={t('planner.addSuggestion').replace('{item}', s.title)}
                 onClick={() => onAdd([s.item()])}
-                style={{ width: 30, height: 30, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-accent)', cursor: 'pointer' }}
               >
-                <Plus size={15} />
+                <Plus aria-hidden size={15} />
               </button>
             </li>
-          )
-        })}
-      </ul>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }

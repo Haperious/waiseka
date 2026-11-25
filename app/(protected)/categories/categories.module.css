@@ -257,119 +257,11 @@
   text-decoration: underline;
 }
 
-/* ── Close button (bar + sheet) ───────────────────────────────── */
+/* ── Selection (bar + sheet live in components/ui/SelectionActions) ── */
 
-.iconButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.12s ease;
-}
-
-.iconButton:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
-}
-
-/* ── Selection bar (desktop) ──────────────────────────────────── */
-
-.bar,
+/* Room so the floating selection bar never covers the last row (desktop only) */
 .barSpacer {
   display: none;
-}
-
-@keyframes barIn {
-  from { opacity: 0; transform: translate(-50%, 8px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
-}
-
-.barInfo {
-  min-width: 140px;
-  max-width: 260px;
-  display: flex;
-  flex-direction: column;
-}
-
-.barName {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.barType {
-  font-size: 0.7rem;
-  color: var(--color-text-secondary);
-}
-
-.barClose {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-}
-
-.barClose:hover {
-  background-color: var(--color-card);
-}
-
-/* ── Bottom sheet (mobile) ────────────────────────────────────── */
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes sheetIn {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-
-/* Above BottomNav (z-40), below the edit Modal (z-50) */
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 45;
-  background-color: var(--color-backdrop);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  animation: fadeIn 0.3s ease;
-}
-
-.sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 46;
-  background-color: var(--color-card);
-  border-top: 1px solid var(--color-border);
-  border-radius: 20px 20px 0 0;
-  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  animation: sheetIn 0.3s ease;
-}
-
-.handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 999px;
-  background-color: var(--color-elevated);
-  align-self: center;
-}
-
-.sheetInfo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .sheetTile {
@@ -380,52 +272,6 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-.sheetText {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.sheetName {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sheetType {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-}
-
-.sheetClose {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-}
-
-.sheetActions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.sheetButton {
-  width: 100%;
-  height: 44px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .backdrop,
-  .sheet,
-  .bar {
-    animation: none !important;
-  }
 }
 
 /* ── Small tablets ────────────────────────────────────────────── */
@@ -485,30 +331,8 @@
     font-size: 0.84rem;
   }
 
-  .bar {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    position: absolute;
-    left: 50%;
-    bottom: 28px;
-    transform: translateX(-50%);
-    z-index: 5;
-    padding: 8px 8px 8px 16px;
-    background-color: var(--color-elevated);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    animation: barIn 0.2s ease;
-  }
-
   .barSpacer {
     display: block;
     height: 72px;
-  }
-
-  .backdrop,
-  .sheet {
-    display: none;
   }
 }

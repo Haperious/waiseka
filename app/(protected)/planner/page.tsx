@@ -1,11 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarPlus, Copy, Lock, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, Banknote, Check, CreditCard, Lock, PieChart, Plus, Repeat, Trash2, Wallet } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Modal from '@/components/ui/Modal'
+import Segmented from '@/components/ui/Segmented'
 import Select from '@/components/ui/Select'
+import SelectionActions from '@/components/ui/SelectionActions'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/ui/Toast'
 import { useLanguage } from '@/context/LanguageContext'
@@ -13,24 +15,39 @@ import { useCurrency } from '@/context/CurrencyContext'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useDefaultAccount } from '@/hooks/useDefaultAccount'
 import { extractApiError } from '@/hooks/useFetch'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { onTransactionSaved } from '@/lib/transactionEvents'
-import { MAX_PLANNER_ITEMS, MAX_PLANNER_NAME as MAX_SCENARIO_NAME, PLANNER_MAX_DAYS_AHEAD } from '@/lib/constants'
-import { addDays, localToday } from '@/lib/planner/days'
-import { projectScenario } from '@/lib/planner/projection'
+import { formatAmount } from '@/lib/currency'
+import {
+  MAX_PLANNER_ITEMS, MAX_PLANNER_NAME as MAX_SCENARIO_NAME, PLANNER_MAX_DAYS_AHEAD, PLANNER_VIEW_STORAGE_KEY,
+} from '@/lib/constants'
+import { addDays, formatDay, localToday } from '@/lib/planner/days'
+import { describe } from '@/lib/planner/describe'
+import { findFixSuggestion, type FixSuggestion } from '@/lib/planner/fixSuggestion'
+import { itemLabel, projectScenario, type Projection } from '@/lib/planner/projection'
 import type { PlannerItem, PlannerItemType, PlannerScenario } from '@/lib/planner/types'
 import type { CurrencyCode } from '@/lib/currency'
 import TransactionForm, { type TransactionPrefill } from '../transactions/TransactionForm'
 import ItemForm from './ItemForm'
+import PlanMenu from './PlanMenu'
+import PlanPicker from './PlanPicker'
 import PlanSettingsForm from './PlanSettingsForm'
-import PlannerItems, { NeedsALook } from './PlannerItems'
+import PlannerItems from './PlannerItems'
+import PlannerLowestCard from './PlannerLowestCard'
 import PlannerSuggestions, { buildSuggestions } from './PlannerSuggestions'
-import PlannerSummary from './PlannerSummary'
+import PlannerSummary, { PlannerHeroMobile } from './PlannerSummary'
 import PlannerTimeline from './PlannerTimeline'
 import { usePlannerList, usePlannerScenario } from './usePlanner'
 import styles from './planner.module.css'
 
 type ItemDialog = { mode: 'add'; type: PlannerItemType } | { mode: 'edit'; item: PlannerItem } | null
 type Confirm = { kind: 'removeItem'; item: PlannerItem } | { kind: 'deletePlan' } | null
+type View = 'items' | 'days'
+type MobileTab = PlannerItemType | 'days'
+
+/** Same breakpoint as the desktop rules in planner.module.css. */
+const DESKTOP_QUERY = '(min-width: 1024px)'
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 16,
@@ -39,6 +56,14 @@ const cardStyle: React.CSSProperties = {
 function readIdFromUrl(): string | null {
   if (typeof window === 'undefined') return null
   return new URLSearchParams(window.location.search).get('id')
+}
+
+/** The sheet's leading glyph: where the item comes from, or its type for manual ones. */
+function itemIcon(item: PlannerItem) {
+  if (item.source === 'recurring') return Repeat
+  if (item.source === 'budget') return PieChart
+  if (item.source === 'card') return CreditCard
+  return item.type === 'income' ? Banknote : Wallet
 }
 
 export default function PlannerPage() {
@@ -55,6 +80,7 @@ export default function PlannerPage() {
   const [chosenId, setChosenId] = useState<string | null>(readIdFromUrl)
   // The chosen plan if it still exists, else the most recently changed one
   const selectedId = scenarios.some((s) => s._id === chosenId) ? chosenId : scenarios[0]?._id ?? null
+  const selectedListItem = scenarios.find((s) => s._id === selectedId)
 
   const { mutate: mutateList, refetch: refetchList } = list
   const onSaved = useCallback((s: PlannerScenario) => {
@@ -73,6 +99,17 @@ export default function PlannerPage() {
   const [itemDialog, setItemDialog] = useState<ItemDialog>(null)
   const [confirm, setConfirm] = useState<Confirm>(null)
   const [logging, setLogging] = useState<{ item: PlannerItem; prefill: TransactionPrefill } | null>(null)
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [typeTab, setTypeTab] = useState<PlannerItemType>('expense')
+
+  const isDesktop = useMediaQuery(DESKTOP_QUERY)
+  const [storedView, setStoredView] = useLocalStorage(PLANNER_VIEW_STORAGE_KEY)
+  const view: View = storedView === 'days' ? 'days' : 'items'
+  const mobileTab: MobileTab = view === 'days' ? 'days' : typeTab
+
+  // The latest plan, for Undo callbacks that run after later edits
+  const draftRef = useRef(draft)
+  useEffect(() => { draftRef.current = draft }, [draft])
 
   // A transaction logged anywhere (quick add, this page) changes the starting balance
   useEffect(() => onTransactionSaved(() => void reloadContext()), [reloadContext])
@@ -84,6 +121,21 @@ export default function PlannerPage() {
     () => (draft && context ? buildSuggestions(context, draft, t) : []),
     [draft, context, t],
   )
+  const fix = useMemo(() => (draft && projection ? findFixSuggestion(draft.items, projection) : null), [draft, projection])
+  // Planned items past their date, oldest first: the "needs a look" pill selects the first
+  const overdue = useMemo(
+    () => (draft && projection
+      ? draft.items
+        .filter((i) => !i.done && projection.items[i.id]?.overdue)
+        .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
+      : []),
+    [draft, projection],
+  )
+
+  // The selection is an open item that still exists in this plan
+  const selectedItem = (selectedItemId && draft?.items.find((i) => i.id === selectedItemId && !i.done)) || null
+  // Removed, marked done or the plan changed: drop it so it doesn't pop back
+  if (selectedItemId && draft && !selectedItem) setSelectedItemId(null)
 
   const currencies = useMemo(() => {
     const codes = new Set<string>([primaryCurrency])
@@ -180,21 +232,60 @@ export default function PlannerPage() {
     })
   }
 
+  const selectItem = (item: PlannerItem) => setSelectedItemId((cur) => (cur === item.id ? null : item.id))
+  const clearSelection = useCallback(() => setSelectedItemId(null), [])
+
+  /** Moves an expense to after the next income, with Undo. */
+  const moveItem = (f: FixSuggestion) => {
+    if (!draft) return
+    const id = f.item.id
+    const oldDate = f.item.date
+    const scenarioId = draft._id
+    patchItem(id, { date: f.toDay })
+    toast(
+      t('planner.moved').replace('{item}', itemLabel(f.item)).replace('{day}', formatDay(f.toDay, today)),
+      'success',
+      {
+        label: t('planner.undo'),
+        onClick: () => {
+          const current = draftRef.current
+          if (!current || current._id !== scenarioId) return
+          update({ items: current.items.map((i) => (i.id === id ? { ...i, date: oldDate } : i)) })
+        },
+      },
+    )
+  }
+
+  const setView = (v: View) => setStoredView(v)
+  const onMobileTab = (v: string) => {
+    if (v === 'days') {
+      setView('days')
+    } else {
+      setTypeTab(v as PlannerItemType)
+      setView('items')
+    }
+  }
+
+  const reviewOverdue = () => {
+    const first = overdue[0]
+    if (!first) return
+    setView('items')
+    setTypeTab(first.type)
+    setSelectedItemId(first.id)
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const header = (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-      <div>
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-text-primary)', fontFamily: 'var(--font-playfair), Georgia, serif', lineHeight: 1.1 }}>
-          {t('planner.title')}
-        </h1>
-        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, maxWidth: 560, lineHeight: 1.5 }}>
-          {t('planner.subtitle')}
-        </p>
+    <div className={styles.header}>
+      <div style={{ minWidth: 0 }}>
+        <h1 className={styles.title}>{t('planner.title')}</h1>
+        <p className={styles.subtitle}>{t('planner.subtitle')}</p>
       </div>
-      {scenarios.length > 0 && (
-        <Button size="sm" onClick={() => setCreating(true)} disabled={atLimit} title={atLimit ? t('planner.limitReached') : undefined}>
-          <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
-          <span className="hidden sm:inline">{t('planner.newPlan')}</span>
+      {draft && !loadError && (
+        <Button size="sm" className={styles.addButton} onClick={() => setItemDialog({ mode: 'add', type: 'expense' })}>
+          <Plus aria-hidden style={{ width: 14, height: 14 }} />
+          <span className={styles.addLong}>{t('planner.addItem')}</span>
+          <span className={styles.addShort}>{t('planner.addShort')}</span>
         </Button>
       )}
     </div>
@@ -226,7 +317,7 @@ export default function PlannerPage() {
 
   if (list.loading && !list.data) {
     return (
-      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className={styles.page}>
         {header}
         <SkeletonCard />
         <SkeletonCard />
@@ -236,7 +327,7 @@ export default function PlannerPage() {
 
   if (list.error && !list.data) {
     return (
-      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className={styles.page}>
         {header}
         <div style={{ ...cardStyle, padding: 24, textAlign: 'center' }}>
           <p style={{ fontSize: '0.86rem', color: 'var(--color-text-muted)', marginBottom: 12 }}>{list.error}</p>
@@ -246,8 +337,70 @@ export default function PlannerPage() {
     )
   }
 
+  const needsPill = overdue.length > 0 && (
+    <button type="button" className={styles.needsPill} onClick={reviewOverdue}>
+      <AlertCircle aria-hidden size={13} />
+      {overdue.length === 1 ? t('planner.needsALookCountOne') : t('planner.needsALookCount').replace('{n}', String(overdue.length))}
+    </button>
+  )
+
+  const selection = (p: Projection, d: PlannerScenario) => {
+    if (!selectedItem) return null
+    const item = selectedItem
+    const resolved = p.items[item.id]
+    const { when } = describe(item, resolved, t, today, d.endDate)
+    const amount = `${item.type === 'income' ? '+' : '-'}${formatAmount(resolved?.amount ?? item.amount, d.currency)}`
+    const Icon = itemIcon(item)
+    // On mobile the sheet would sit under the modal, so it closes first (as on Categories)
+    const log = () => {
+      if (!isDesktop) clearSelection()
+      startLogging(item)
+    }
+    const edit = () => {
+      if (!isDesktop) clearSelection()
+      setItemDialog({ mode: 'edit', item })
+    }
+    const done = () => patchItem(item.id, { done: true })
+    const remove = () => setConfirm({ kind: 'removeItem', item })
+    return (
+      <SelectionActions
+        open
+        title={itemLabel(item)}
+        subtitle={`${amount} · ${when}`}
+        sheetLeading={
+          <div
+            aria-hidden
+            className={styles.sheetTile}
+            style={{
+              backgroundColor: item.type === 'income' ? 'var(--color-income-bg)' : 'var(--color-expense-bg)',
+              color: item.type === 'income' ? 'var(--color-income)' : 'var(--color-expense)',
+            }}
+          >
+            <Icon size={18} />
+          </div>
+        }
+        actions={[
+          { key: 'log', label: t('planner.logShort'), variant: 'primary', onClick: log },
+          { key: 'done', label: t('planner.markDone'), variant: 'secondary', onClick: done },
+          { key: 'edit', label: t('common.edit'), variant: 'ghost', onClick: edit },
+          { key: 'remove', label: t('planner.remove'), variant: 'danger', icon: Trash2, iconOnly: true, onClick: remove },
+        ]}
+        sheetActions={[
+          { key: 'log', label: t('planner.logShort'), variant: 'primary', fullWidth: true, onClick: log },
+          { key: 'done', label: t('planner.done'), variant: 'secondary', onClick: done },
+          { key: 'edit', label: t('common.edit'), variant: 'outline', onClick: edit },
+          { key: 'remove', label: t('planner.remove'), variant: 'danger', onClick: remove },
+        ]}
+        mobileColumns={3}
+        barPlacement="sticky"
+        escapeDisabled={!!itemDialog || !!logging || !!confirm || settingsOpen || creating}
+        onClose={clearSelection}
+      />
+    )
+  }
+
   return (
-    <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className={styles.page}>
       {header}
 
       {scenarios.length === 0 ? (
@@ -260,35 +413,54 @@ export default function PlannerPage() {
         </div>
       ) : (
         <>
-          {/* ── Plan picker and plan actions ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div className={styles.tabs} role="tablist" aria-label={t('planner.yourPlans')} style={{ flex: 1, minWidth: 0 }}>
-              {scenarios.map((s) => (
-                <button
-                  key={s._id}
-                  type="button"
-                  role="tab"
-                  aria-selected={s._id === selectedId}
-                  className={`${styles.tab} ${s._id === selectedId ? styles.tabOn : ''}`}
-                  onClick={() => choose(s._id)}
-                  title={s.name}
-                >
-                  {s._id === selectedId && draft ? draft.name : s.name}
-                </button>
-              ))}
-            </div>
+          {/* ── Plan picker, usage, plan actions, save status ── */}
+          <div className={styles.toolbar}>
+            <PlanPicker
+              scenarios={scenarios}
+              selectedId={selectedId}
+              name={draft?.name ?? selectedListItem?.name ?? ''}
+              endDate={draft?.endDate ?? selectedListItem?.endDate ?? today}
+              today={today}
+              usageShort={limit !== null ? t('planner.usageShort').replace('{n}', String(scenarios.length)).replace('{max}', String(limit)) : null}
+              atLimit={atLimit}
+              isDesktop={isDesktop}
+              onChoose={choose}
+              onNew={() => setCreating(true)}
+            />
             {limit !== null && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                {atLimit && <Lock size={12} />}
+              <span className={styles.usage}>
+                {atLimit && <Lock aria-hidden size={12} />}
                 {t('planner.usage').replace('{n}', String(scenarios.length)).replace('{max}', String(limit))}
+              </span>
+            )}
+            {draft && (
+              <PlanMenu
+                createDisabled={atLimit || busy}
+                limitReached={atLimit}
+                onEdit={() => setSettingsOpen(true)}
+                onDuplicate={() => void createPlan({ duplicateOf: draft._id }, t('planner.duplicated'))}
+                onCarryOver={() => void createPlan({ carryFrom: draft._id }, t('planner.carried'))}
+                onDelete={() => setConfirm({ kind: 'deletePlan' })}
+              />
+            )}
+            {draft && (
+              <span aria-live="polite" className={styles.saveStatus} style={saveState === 'error' ? { color: 'var(--color-expense)' } : undefined}>
+                {saveState === 'saving' ? t('planner.saving')
+                  : saveState === 'saved' ? <><Check aria-hidden size={13} />{t('planner.saved')}</>
+                    : saveState === 'error' ? (
+                      <>
+                        {saveError ?? t('planner.saveFailed')}{' '}
+                        <button type="button" className={styles.inlineLink} onClick={() => void flush()}>
+                          {t('planner.retry')}
+                        </button>
+                      </>
+                    ) : t('planner.notSavedAsTransactions')}
               </span>
             )}
           </div>
 
           {atLimit && (
-            <p style={{ fontSize: '0.78rem', color: 'var(--color-accent)', backgroundColor: 'var(--color-sage)', border: '1px solid var(--color-accent)', borderRadius: 12, padding: '10px 14px', lineHeight: 1.5 }}>
-              {t('planner.limitBanner').replace('{max}', String(limit))}
-            </p>
+            <p className={styles.limitBanner}>{t('planner.limitBanner').replace('{max}', String(limit))}</p>
           )}
 
           {loadError ? (
@@ -299,39 +471,9 @@ export default function PlannerPage() {
             <SkeletonCard />
           ) : (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  <Button size="sm" variant="ghost" onClick={() => setSettingsOpen(true)}>
-                    <Pencil size={14} style={{ marginRight: 4 }} />{t('planner.editPlan')}
-                  </Button>
-                  <Button size="sm" variant="ghost" disabled={atLimit || busy} title={atLimit ? t('planner.limitReached') : undefined}
-                    onClick={() => void createPlan({ duplicateOf: draft._id }, t('planner.duplicated'))}>
-                    <Copy size={14} style={{ marginRight: 4 }} />{t('planner.duplicate')}
-                  </Button>
-                  <Button size="sm" variant="ghost" disabled={atLimit || busy} title={atLimit ? t('planner.limitReached') : undefined}
-                    onClick={() => void createPlan({ carryFrom: draft._id }, t('planner.carried'))}>
-                    <CalendarPlus size={14} style={{ marginRight: 4 }} />{t('planner.carryOver')}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirm({ kind: 'deletePlan' })} style={{ color: 'var(--color-expense)' }}>
-                    <Trash2 size={14} style={{ marginRight: 4 }} />{t('common.delete')}
-                  </Button>
-                </div>
-                <span aria-live="polite" style={{ fontSize: '0.72rem', color: saveState === 'error' ? 'var(--color-expense)' : 'var(--color-text-muted)' }}>
-                  {saveState === 'saving' ? t('planner.saving')
-                    : saveState === 'saved' ? t('planner.saved')
-                      : saveState === 'error' ? (
-                        <>
-                          {saveError ?? t('planner.saveFailed')}{' '}
-                          <button type="button" onClick={() => void flush()} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-accent)', fontWeight: 700, cursor: 'pointer', fontSize: 'inherit' }}>
-                            {t('planner.retry')}
-                          </button>
-                        </>
-                      ) : t('planner.notSavedAsTransactions')}
-                </span>
-              </div>
-
-              <div className={styles.layout}>
-                <div className={styles.column}>
+              {/* ── Hero: where you land + the lowest point ── */}
+              {isDesktop ? (
+                <div className={styles.hero}>
                   <PlannerSummary
                     projection={projection}
                     currency={draft.currency}
@@ -340,45 +482,98 @@ export default function PlannerPage() {
                     accountCount={draft.accountIds.length}
                     onEditSettings={() => setSettingsOpen(true)}
                   />
-                  {projection.expired && (
-                    <div style={{ ...cardStyle, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                      <p style={{ flex: 1, minWidth: 200, fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>{t('planner.expiredHint')}</p>
-                      <Button size="sm" disabled={atLimit || busy} onClick={() => void createPlan({ carryFrom: draft._id }, t('planner.carried'))}>
-                        {t('planner.carryOver')}
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>{t('planner.extend')}</Button>
-                    </div>
-                  )}
-                  <NeedsALook
-                    items={draft.items} projection={projection} currency={draft.currency} today={today} endDate={draft.endDate}
-                    onAdd={(type) => setItemDialog({ mode: 'add', type })}
-                    onToggle={(i) => patchItem(i.id, { enabled: !i.enabled })}
-                    onEdit={(item) => setItemDialog({ mode: 'edit', item })}
-                    onDone={(i, done) => patchItem(i.id, { done })}
-                    onRemove={(item) => setConfirm({ kind: 'removeItem', item })}
-                  />
-                  <PlannerItems
-                    items={draft.items} projection={projection} currency={draft.currency} today={today} endDate={draft.endDate}
-                    onAdd={(type) => setItemDialog({ mode: 'add', type })}
-                    onToggle={(i) => patchItem(i.id, { enabled: !i.enabled })}
-                    onEdit={(item) => setItemDialog({ mode: 'edit', item })}
-                    onDone={(i, done) => patchItem(i.id, { done })}
-                    onRemove={(item) => setConfirm({ kind: 'removeItem', item })}
-                  />
+                  <PlannerLowestCard projection={projection} currency={draft.currency} today={today} fix={fix} onMove={moveItem} />
                 </div>
-                <div className={styles.column}>
-                  <PlannerSuggestions
-                    suggestions={suggestions}
-                    currency={draft.currency}
-                    onAdd={(added) => {
-                      const room = MAX_PLANNER_ITEMS - draft.items.length
-                      if (room <= 0) { toast(t('planner.tooManyItems'), 'error'); return }
-                      setItems([...draft.items, ...added.slice(0, room)])
-                    }}
-                  />
-                  <PlannerTimeline projection={projection} currency={draft.currency} today={today} />
+              ) : (
+                <PlannerHeroMobile
+                  projection={projection}
+                  currency={draft.currency}
+                  endDate={draft.endDate}
+                  today={today}
+                  fix={fix}
+                  onMove={moveItem}
+                />
+              )}
+
+              {projection.expired && (
+                <div className={styles.expiredCard}>
+                  <p style={{ flex: 1, minWidth: 200, fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>{t('planner.expiredHint')}</p>
+                  <Button size="sm" disabled={atLimit || busy} onClick={() => void createPlan({ carryFrom: draft._id }, t('planner.carried'))}>
+                    {t('planner.carryOver')}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>{t('planner.extend')}</Button>
                 </div>
+              )}
+
+              <PlannerSuggestions
+                suggestions={suggestions}
+                currency={draft.currency}
+                compact={!isDesktop}
+                onAdd={(added) => {
+                  const room = MAX_PLANNER_ITEMS - draft.items.length
+                  if (room <= 0) { toast(t('planner.tooManyItems'), 'error'); return }
+                  setItems([...draft.items, ...added.slice(0, room)])
+                }}
+              />
+
+              {/* ── View switch ── */}
+              <div className={styles.viewBar}>
+                {!isDesktop && needsPill}
+                {isDesktop ? (
+                  <Segmented
+                    ariaLabel={t('planner.viewLabel')}
+                    className={styles.viewSegmented}
+                    value={view}
+                    onChange={(v) => setView(v as View)}
+                    options={[
+                      { value: 'items', label: t('planner.viewItems') },
+                      { value: 'days', label: t('planner.viewDays') },
+                    ]}
+                  />
+                ) : (
+                  <Segmented
+                    ariaLabel={t('planner.viewLabel')}
+                    className={styles.viewSegmented}
+                    value={mobileTab}
+                    onChange={onMobileTab}
+                    options={[
+                      { value: 'income', label: t('planner.income'), color: 'var(--color-income)' },
+                      { value: 'expense', label: t('planner.expenses'), color: 'var(--color-expense)' },
+                      { value: 'days', label: t('planner.viewDaysShort') },
+                    ]}
+                  />
+                )}
+                {isDesktop && needsPill}
+                <p className={styles.switchHint}>{t('planner.switchHint')}</p>
               </div>
+
+              {view === 'days' ? (
+                <PlannerTimeline
+                  projection={projection}
+                  currency={draft.currency}
+                  today={today}
+                  compact={!isDesktop}
+                  onSelect={(id) => setSelectedItemId(id)}
+                />
+              ) : (
+                <PlannerItems
+                  items={draft.items}
+                  projection={projection}
+                  currency={draft.currency}
+                  today={today}
+                  endDate={draft.endDate}
+                  selectedId={selectedItem?.id ?? null}
+                  only={isDesktop ? undefined : typeTab}
+                  onAdd={(type) => setItemDialog({ mode: 'add', type })}
+                  onSelect={selectItem}
+                  onToggle={(i) => patchItem(i.id, { enabled: !i.enabled })}
+                  onDone={(i, done) => patchItem(i.id, { done })}
+                  onRemove={(item) => setConfirm({ kind: 'removeItem', item })}
+                />
+              )}
+
+              {/* ── Selection: floating bar (desktop) / bottom sheet (mobile) ── */}
+              {selection(projection, draft)}
             </>
           )}
         </>
@@ -464,7 +659,7 @@ export default function PlannerPage() {
           {confirm?.kind === 'deletePlan'
             ? t('planner.deletePlanBody').replace('{name}', draft?.name ?? '')
             : confirm?.kind === 'removeItem'
-              ? t('planner.removeItemBody').replace('{item}', confirm.item.note ? `${confirm.item.category} · ${confirm.item.note}` : confirm.item.category)
+              ? t('planner.removeItemBody').replace('{item}', itemLabel(confirm.item))
               : ''}
         </p>
         <div style={{ display: 'flex', gap: 10 }}>

@@ -1,61 +1,1121 @@
-/* Phone widths: the row label already opens the edit form, so the extra edit button goes */
-@media (max-width: 480px) {
-  .hideNarrow {
-    display: none !important;
-  }
-}
+/* Planner, Option B: income vs. expenses board.
+   Mobile-first; desktop (>= 1024px) overrides at the bottom. Tokens only, no hex. */
 
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-/* Wide screens: plan on the left, suggestions and the day-by-day list on the right */
-@media (min-width: 1024px) {
-  .layout {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  }
-}
-
-.column {
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-width: 0;
+  gap: 14px;
+  /* <main> gives 12px side padding under 640px; the design wants 16px */
+  padding-inline: 4px;
 }
 
-.tabs {
+/* ── Header ───────────────────────────────────────────────────── */
+
+.header {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: thin;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.tab {
+.title {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 900;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  display: none;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  max-width: 560px;
+  line-height: 1.5;
+}
+
+.addButton {
   flex-shrink: 0;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-card);
-  color: var(--color-text-secondary);
-  font-size: 0.8rem;
-  font-weight: 600;
+  gap: 4px;
+}
+
+.addLong {
+  display: none;
+}
+
+/* ── Toolbar: picker + usage + ⋯ + save status ────────────────── */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.usage {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.saveStatus {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.inlineLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: inherit;
   cursor: pointer;
 }
 
-.tab:hover {
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+.limitBanner {
+  font-size: 0.78rem;
+  color: var(--color-accent);
+  background-color: var(--color-sage);
+  border: 1px solid var(--color-accent);
+  border-radius: 12px;
+  padding: 10px 14px;
+  line-height: 1.5;
+}
+
+.popWrap {
+  position: relative;
+}
+
+.picker {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.picker:hover,
+.picker[aria-expanded='true'] {
   border-color: var(--color-accent);
 }
 
-.tabOn {
+.picker:focus-visible,
+.iconTrigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.pickerName {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: 0.86rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickerRange,
+.pickerUsage {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.iconTrigger {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.iconTrigger:hover,
+.iconTrigger[aria-expanded='true'] {
   border-color: var(--color-accent);
-  background: var(--color-sage);
+  color: var(--color-text-primary);
+}
+
+/* ── Menus (picker popover, ⋯ menu) ───────────────────────────── */
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 40;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  animation: popIn 0.15s ease;
+}
+
+.actionsMenu {
+  right: 0;
+  width: 220px;
+}
+
+.pickerMenu {
+  left: 0;
+  width: 300px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.menuItem,
+.pickerItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem {
+  min-height: 36px;
+}
+
+.pickerItem {
+  min-height: 48px;
+  padding: 6px 10px;
+}
+
+.menuItem:hover:not(:disabled),
+.menuItem:focus-visible,
+.pickerItem:hover,
+.pickerItem:focus-visible {
+  background-color: var(--color-card);
+  outline: none;
+}
+
+.menuItem:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.menuItemDanger {
+  color: var(--color-expense);
+}
+
+.pickerItemOn,
+.pickerItemOn:hover,
+.pickerItemOn:focus-visible {
+  background-color: var(--color-sage);
   color: var(--color-accent);
+}
+
+.pickerItemText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pickerItemName {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickerItemMeta {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 6px 4px;
+  background-color: var(--color-border);
+}
+
+/* Picker on mobile: bottom sheet. Above BottomNav (z-40), below Modals (z-50) */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sheetIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background-color: var(--color-backdrop);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+}
+
+.pickerSheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 46;
+  max-height: 70dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: var(--color-card);
+  border-top: 1px solid var(--color-border);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: sheetIn 0.3s ease;
+}
+
+.pickerSheet .pickerItem,
+.pickerSheet .menuItem {
+  min-height: 52px;
+}
+
+.pickerSheet .pickerItem:hover:not(.pickerItemOn),
+.pickerSheet .menuItem:hover:not(:disabled) {
+  background-color: var(--color-elevated);
+}
+
+.sheetHandle {
+  width: 36px;
+  height: 4px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background-color: var(--color-elevated);
+  align-self: center;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.heroCard {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.heroLeft {
+  padding: 22px 24px 16px;
+  gap: 12px;
+}
+
+.heroRight {
+  padding: 22px 24px 18px;
+  gap: 14px;
+}
+
+.heroMobile {
+  padding: 16px;
+  gap: 12px;
+}
+
+.heroTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
+}
+
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.heroNumber {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.heroNote {
+  margin-top: 6px;
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.heroHint {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.chartLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+}
+
+.datePill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background-color: var(--color-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.fixRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background-color: var(--color-expense-bg);
+}
+
+.fixText {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.fixButton {
+  flex-shrink: 0;
+  height: 36px !important;
+}
+
+.tiles {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border-left: 3px solid;
+  background-color: var(--color-elevated);
+}
+
+.tileLabel {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.tileValue {
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mHeroCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mHeroCol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mHeroColDivider {
+  border-left: 1px solid var(--color-border);
+  padding-left: 12px;
+}
+
+.mNumber {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expiredCard {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Suggestions banner ───────────────────────────────────────── */
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-accent);
+  background-color: var(--color-sage);
+}
+
+.bannerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bannerText {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bannerNames {
+  color: var(--color-text-secondary);
+}
+
+.bannerAddAll {
+  flex-shrink: 0;
+}
+
+.bannerGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sugCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background-color: var(--color-card);
+}
+
+.sugTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sugSub {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sugAdd {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.sugAdd:hover {
+  border-color: var(--color-accent);
+}
+
+/* ── View switch ──────────────────────────────────────────────── */
+
+.viewBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.viewSegmented {
+  width: 100%;
+}
+
+.needsPill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: none;
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  cursor: pointer;
+}
+
+.needsPill:hover {
+  text-decoration: underline;
+}
+
+.switchHint {
+  display: none;
+  margin-left: auto;
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+}
+
+/* ── Items: two striped cards ─────────────────────────────────── */
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.listCard {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid;
+  border-radius: 16px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 8px;
+}
+
+.listTotal {
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.listEmpty {
+  padding: 12px 14px 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 6px 14px;
+  border-top: 1px solid var(--color-border);
+  transition: background 0.12s ease;
+}
+
+.rowSelected {
+  background-color: var(--color-sage);
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rowButton {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.rowButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowLabel {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowSub {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowAmount {
+  flex-shrink: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rowMatch {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  color: var(--color-accent);
+}
+
+.doneFooter {
+  border-top: 1px solid var(--color-border);
+  padding: 10px 14px;
+}
+
+.doneToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.doneList {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.doneRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.doneLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doneAmount {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.smallIcon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.smallIcon:hover {
+  background-color: var(--color-elevated);
+}
+
+.smallIconDanger {
+  color: var(--color-expense);
+}
+
+/* ── Day by day ───────────────────────────────────────────────── */
+
+.daysCard {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.daysList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dayRow,
+.dayRowCompact {
+  border-top: 1px solid var(--color-border);
+}
+
+.dayRow:first-child,
+.dayRowCompact:first-child {
+  border-top: none;
+}
+
+.dayRow {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 130px;
+  gap: 16px;
+  align-items: start;
+  padding: 12px 20px;
+}
+
+.dayRowCompact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+}
+
+.dayRowNegative {
+  background-color: var(--color-expense-bg);
+}
+
+.dayTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dayName {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.dayRowCompact .dayName {
+  font-size: 0.74rem;
+}
+
+.dayBalance {
+  text-align: right;
+  font-size: 0.86rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.dayRowCompact .dayBalance {
+  font-size: 0.8rem;
+}
+
+.dayLines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dayLine {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+button.dayLine:hover .dayLineLabel {
+  text-decoration: underline;
+}
+
+button.dayLine:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.dayRowCompact .dayLine {
+  min-height: 28px;
+  align-items: center;
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+}
+
+.dayLineLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dayLineAmount {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.loggedTag {
+  margin-left: 6px;
+  font-style: normal;
+  color: var(--color-accent);
+}
+
+/* Selection: the leading tile in the mobile sheet */
+.sheetTile {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu,
+  .sheetBackdrop,
+  .pickerSheet {
+    animation: none !important;
+  }
+}
+
+/* ── Desktop ──────────────────────────────────────────────────── */
+
+@media (min-width: 1024px) {
+  .page {
+    gap: 18px;
+    padding-inline: 0;
+  }
+
+  .header {
+    align-items: flex-start;
+  }
+
+  .subtitle {
+    display: block;
+  }
+
+  .addLong {
+    display: inline;
+  }
+
+  .addShort {
+    display: none;
+  }
+
+  .usage {
+    display: inline-flex;
+  }
+
+  .saveStatus {
+    width: auto;
+    margin-left: auto;
+  }
+
+  .popWrap .picker {
+    width: auto;
+    max-width: 460px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 10px;
+  }
+
+  .iconTrigger {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+
+  .viewBar {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .viewSegmented {
+    width: auto;
+  }
+
+  .needsPill {
+    align-self: center;
+  }
+
+  .switchHint {
+    display: block;
+  }
+
+  .listHeader {
+    padding: 16px 18px 10px;
+  }
+
+  .listTotal {
+    font-size: 1.2rem;
+  }
+
+  .listEmpty {
+    padding: 12px 18px 16px;
+  }
+
+  .row {
+    min-height: 0;
+    padding: 9px 18px;
+  }
+
+  .rowButton {
+    min-height: 0;
+  }
+
+  .rowSub {
+    font-size: 0.72rem;
+  }
+
+  .rowAmount {
+    font-size: 0.88rem;
+  }
+
+  .doneFooter {
+    padding: 10px 18px;
+  }
+
+  .smallIcon {
+    width: 30px;
+    height: 30px;
+  }
 }

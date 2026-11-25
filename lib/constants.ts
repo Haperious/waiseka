@@ -47,6 +47,9 @@ export const PLANNER_MAX_DAYS_AHEAD = 366
 export const MAX_PLANNER_NAME = 60
 export const MAX_PLANNER_NOTE = 200
 
+/** localStorage key for the Planner's last view (Items / Day by day, or the mobile tab). */
+export const PLANNER_VIEW_STORAGE_KEY = 'planner.view'
+
 // ── Account limits ───────────────────────────────────────────────────────────
 /** Max non-archived accounts a free-tier user may have at one time. */
 export const FREE_ACCOUNT_LIMIT = 5

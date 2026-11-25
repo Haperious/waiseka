@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Plus, Search, X } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Segmented from '@/components/ui/Segmented'
+import SelectionActions from '@/components/ui/SelectionActions'
 import { useToast } from '@/components/ui/Toast'
 import { useLanguage } from '@/context/LanguageContext'
 import { useCategories, type Category } from '@/hooks/useCategories'
@@ -98,16 +99,6 @@ export default function CategoriesPage() {
   // The selected category was filtered out or deleted: drop the selection so it
   // doesn't pop back when the filter changes again
   if (selectedId && !selected && !loading) setSelectedId(null)
-
-  // Escape clears the selection (the Modal handles its own Escape)
-  useEffect(() => {
-    if (!selectedId || modalOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedId(null)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [selectedId, modalOpen])
 
   const filterOptions = [
     { value: 'all', label: <>{t('common.all')}<span className={styles.countLabel}> · {categories.length}</span></> },
@@ -295,77 +286,38 @@ export default function CategoriesPage() {
 
       {/* ── Selection: floating bar (desktop) / bottom sheet (mobile) ────────── */}
       {selected && (
-        <>
-          <div role="region" aria-label={selected.name} className={styles.bar}>
-            <Dot color={selected.color} size={10} />
-            <div className={styles.barInfo}>
-              <span className={styles.barName}>{selected.name}</span>
-              <span className={styles.barType}>{TYPE_LABELS[selected.type]}</span>
+        <SelectionActions
+          open
+          title={selected.name}
+          subtitle={TYPE_LABELS[selected.type]}
+          leading={<Dot color={selected.color} size={10} />}
+          sheetLeading={
+            // ~14% alpha tint of the category colour (category colours are #rrggbb)
+            <div aria-hidden className={styles.sheetTile} style={{ backgroundColor: `${selected.color}24` }}>
+              <Dot color={selected.color} size={14} />
             </div>
-            <Button variant="secondary" size="sm" onClick={() => openEdit(selected)}>
-              {t('common.edit')}
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              loading={deletingId === selected._id}
-              onClick={() => handleDelete(selected)}
-            >
-              {t('common.delete')}
-            </Button>
-            <button
-              type="button"
-              aria-label={t('common.close')}
-              onClick={clearSelection}
-              className={`${styles.iconButton} ${styles.barClose}`}
-            >
-              <X style={{ width: 15, height: 15 }} />
-            </button>
-          </div>
-
-          <div aria-hidden className={styles.backdrop} onClick={clearSelection} />
-          <div role="dialog" aria-label={selected.name} className={styles.sheet}>
-            <div aria-hidden className={styles.handle} />
-            <div className={styles.sheetInfo}>
-              {/* ~14% alpha tint of the category colour (category colours are #rrggbb) */}
-              <div aria-hidden className={styles.sheetTile} style={{ backgroundColor: `${selected.color}24` }}>
-                <Dot color={selected.color} size={14} />
-              </div>
-              <div className={styles.sheetText}>
-                <span className={styles.sheetName}>{selected.name}</span>
-                <span className={styles.sheetType}>{TYPE_LABELS[selected.type]}</span>
-              </div>
-              <button
-                type="button"
-                aria-label={t('common.close')}
-                onClick={clearSelection}
-                className={`${styles.iconButton} ${styles.sheetClose}`}
-              >
-                <X style={{ width: 18, height: 18 }} />
-              </button>
-            </div>
-            <div className={styles.sheetActions}>
-              <Button
-                variant="danger"
-                className={styles.sheetButton}
-                loading={deletingId === selected._id}
-                onClick={() => handleDelete(selected)}
-              >
-                {t('common.delete')}
-              </Button>
-              <Button
-                className={styles.sheetButton}
-                onClick={() => {
-                  // Close the sheet so it isn't left sitting under the modal
-                  clearSelection()
-                  openEdit(selected)
-                }}
-              >
-                {t('common.edit')}
-              </Button>
-            </div>
-          </div>
-        </>
+          }
+          actions={[
+            { key: 'edit', label: t('common.edit'), variant: 'secondary', onClick: () => openEdit(selected) },
+            { key: 'delete', label: t('common.delete'), variant: 'danger', loading: deletingId === selected._id, onClick: () => handleDelete(selected) },
+          ]}
+          sheetActions={[
+            { key: 'delete', label: t('common.delete'), variant: 'danger', loading: deletingId === selected._id, onClick: () => handleDelete(selected) },
+            {
+              key: 'edit',
+              label: t('common.edit'),
+              variant: 'primary',
+              onClick: () => {
+                // Close the sheet so it isn't left sitting under the modal
+                clearSelection()
+                openEdit(selected)
+              },
+            },
+          ]}
+          mobileColumns={2}
+          escapeDisabled={modalOpen}
+          onClose={clearSelection}
+        />
       )}
 
       {/* ── Add / Edit modal ─────────────────────────────────────────────────── */}

@@ -6,15 +6,26 @@ import { cn } from '@/lib/utils'
 
 type ToastType = 'success' | 'error'
 
+/** A button inside the toast, e.g. Undo. Clicking it also dismisses the toast. */
+export interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
 interface ToastItem {
   id: number
   message: string
   type: ToastType
+  action?: ToastAction
 }
 
 interface ToastContextValue {
-  toast: (message: string, type?: ToastType) => void
+  toast: (message: string, type?: ToastType, action?: ToastAction) => void
 }
+
+const TOAST_MS = 4000
+/** Longer when there's something to click, so there's time to reach it. */
+const TOAST_WITH_ACTION_MS = 7000
 
 const ToastContext = createContext<ToastContextValue>({ toast: () => {} })
 
@@ -22,12 +33,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const counterRef = useRef(0)
 
-  const toast = useCallback((message: string, type: ToastType = 'success') => {
+  const toast = useCallback((message: string, type: ToastType = 'success', action?: ToastAction) => {
     const id = ++counterRef.current
-    setToasts((prev) => [...prev, { id, message, type }])
+    setToasts((prev) => [...prev, { id, message, type, action }])
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    }, action ? TOAST_WITH_ACTION_MS : TOAST_MS)
   }, [])
 
   return (
@@ -65,6 +76,15 @@ function ToastItem({ toast, onRemove }: { toast: ToastItem; onRemove: () => void
         <XCircle className="h-5 w-5 shrink-0" />
       )}
       <p className="text-sm flex-1">{toast.message}</p>
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => { toast.action?.onClick(); onRemove() }}
+          style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', fontWeight: 700, fontSize: '0.85rem', textDecoration: 'underline', cursor: 'pointer' }}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button onClick={onRemove} className="text-white/70 hover:text-white" aria-label="Dismiss">
         <X className="h-4 w-4" />
       </button>
