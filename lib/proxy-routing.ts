@@ -2,7 +2,7 @@ import { LEGAL_DOCUMENT_PATHS } from '@/lib/legal/legalDocuments'
 
 /** Signed-in only; matched by prefix. Every page folder in app/(protected) must be listed. */
 export const PROTECTED_ROUTE_PREFIXES = [
-  '/dashboard', '/transactions', '/accounts', '/budgets', '/goals', '/categories', '/reports', '/settings',
+  '/dashboard', '/transactions', '/accounts', '/budgets', '/goals', '/planner', '/categories', '/reports', '/settings',
   '/tips', '/premium', '/ai', '/admin',
 ]
 

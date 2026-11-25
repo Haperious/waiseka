@@ -41,14 +41,27 @@ const TYPE_OPTIONS = [
 
 type DateChoice = 'today' | 'yesterday' | 'other'
 
+/** Starting values for a new transaction (e.g. logging a Planner item). Ignored when editing. */
+export interface TransactionPrefill {
+  type: TxType
+  amount: number
+  category: string
+  description?: string
+  /** yyyy-MM-dd */
+  date: string
+  accountId?: string
+}
+
 interface TransactionFormProps {
   transaction?: Transaction
+  prefill?: TransactionPrefill
   onSuccess: () => void
   onCancel: () => void
 }
 
 /** Desktop add/edit transaction form. Render inside <Modal variant="form">. */
-export default function TransactionForm({ transaction, onSuccess, onCancel }: TransactionFormProps) {
+export default function TransactionForm({ transaction, prefill: prefillProp, onSuccess, onCancel }: TransactionFormProps) {
+  const prefill = transaction ? undefined : prefillProp
   const { toast } = useToast()
   const { t } = useLanguage()
   const { categories } = useCategories()
@@ -56,14 +69,16 @@ export default function TransactionForm({ transaction, onSuccess, onCancel }: Tr
   const { currency: primaryCurrency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
-    type: (transaction?.type ?? 'expense') as TxType,
-    amount: transaction?.amount ? String(transaction.amount) : '',
-    category: transaction?.category ?? '',
-    description: transaction?.description ?? '',
-    date: transaction?.date ? format(new Date(transaction.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+    type: (transaction?.type ?? prefill?.type ?? 'expense') as TxType,
+    amount: transaction?.amount ? String(transaction.amount) : prefill ? String(prefill.amount) : '',
+    category: transaction?.category ?? prefill?.category ?? '',
+    description: transaction?.description ?? prefill?.description ?? '',
+    date: transaction?.date
+      ? format(new Date(transaction.date), 'yyyy-MM-dd')
+      : prefill?.date ?? format(new Date(), 'yyyy-MM-dd'),
     isRecurring: transaction?.isRecurring ?? false,
     // null = not chosen yet, so a new transaction falls back to the default account below
-    accountId: (transaction ? transaction.accountId ?? UNASSIGNED : null) as string | null,
+    accountId: (transaction ? transaction.accountId ?? UNASSIGNED : prefill?.accountId ?? null) as string | null,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const dateInputRef = useRef<HTMLInputElement>(null)
